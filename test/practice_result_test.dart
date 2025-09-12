@@ -1,5 +1,5 @@
-import 'package:escritura/practice_result.dart';
-import 'package:escritura/scripture_ref.dart';
+import 'package:daily_manna/practice_result.dart';
+import 'package:daily_manna/scripture_ref.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

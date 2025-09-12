@@ -1,5 +1,5 @@
-import 'package:escritura/bible_service.dart';
-import 'package:escritura/practice_result.dart';
+import 'package:daily_manna/bible_service.dart';
+import 'package:daily_manna/practice_result.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -54,7 +54,7 @@ class ShareDialog extends StatelessWidget {
 
   _share(BuildContext context, String shareContent) async {
     await SharePlus.instance.share(
-      ShareParams(text: 'Escritura Daily Results\n\n$shareContent'),
+      ShareParams(text: 'Daily Manna Results\n\n$shareContent'),
     );
     if (context.mounted) {
       Navigator.of(context).pop();

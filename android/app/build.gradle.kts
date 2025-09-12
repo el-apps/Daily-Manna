@@ -15,7 +15,7 @@ plugins {
 }
 
 android {
-    namespace = "com.github.el_apps.escritura"
+    namespace = "com.github.el_apps.daily_manna"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -29,7 +29,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.github.el_apps.escritura"
+        applicationId = "com.github.el_apps.daily_manna"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 24
