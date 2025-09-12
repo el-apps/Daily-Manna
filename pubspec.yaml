@@ -1,8 +1,8 @@
-name: escritura
+name: daily_manna
 description: 'An app for building strong daily habits in interacting with the Word of God.'
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 0.7.0+13
+version: 0.8.0+14
 
 environment:
   sdk: ^3.9.0

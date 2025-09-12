@@ -1,8 +1,8 @@
-import 'package:escritura/bible_service.dart';
-import 'package:escritura/practice_result.dart';
-import 'package:escritura/scripture_ref.dart';
-import 'package:escritura/share_dialog.dart';
-import 'package:escritura/verse_selector.dart';
+import 'package:daily_manna/bible_service.dart';
+import 'package:daily_manna/practice_result.dart';
+import 'package:daily_manna/scripture_ref.dart';
+import 'package:daily_manna/share_dialog.dart';
+import 'package:daily_manna/verse_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

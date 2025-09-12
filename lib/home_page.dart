@@ -1,4 +1,4 @@
-import 'package:escritura/verse_memorization.dart';
+import 'package:daily_manna/verse_memorization.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatelessWidget {
@@ -11,7 +11,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Escritura')),
+      appBar: AppBar(title: Text('Daily Manna')),
       body: ListView(
         children: [
           Padding(

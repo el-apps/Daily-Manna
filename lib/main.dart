@@ -1,21 +1,21 @@
-import 'package:escritura/bible_service.dart';
-import 'package:escritura/home_page.dart';
-import 'package:escritura/verse_memorization.dart';
+import 'package:daily_manna/bible_service.dart';
+import 'package:daily_manna/home_page.dart';
+import 'package:daily_manna/verse_memorization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  runApp(const EscrituraApp());
+  runApp(const DailyMannaApp());
 }
 
-class EscrituraApp extends StatefulWidget {
-  const EscrituraApp({super.key});
+class DailyMannaApp extends StatefulWidget {
+  const DailyMannaApp({super.key});
 
   @override
-  State<EscrituraApp> createState() => _EscrituraAppState();
+  State<DailyMannaApp> createState() => _DailyMannaAppState();
 }
 
-class _EscrituraAppState extends State<EscrituraApp> {
+class _DailyMannaAppState extends State<DailyMannaApp> {
   late BibleService _bibleService;
   late Future _bibleFuture;
 
@@ -33,7 +33,7 @@ class _EscrituraAppState extends State<EscrituraApp> {
         ? Provider.value(
             value: _bibleService,
             child: MaterialApp(
-              title: 'Escritura',
+              title: 'Daily Manna',
               theme: ThemeData(
                 colorScheme: ColorScheme.fromSeed(
                   seedColor: Colors.brown,

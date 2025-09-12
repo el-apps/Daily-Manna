@@ -1,4 +1,4 @@
-import 'package:escritura/scripture_ref.dart';
+import 'package:daily_manna/scripture_ref.dart';
 
 class MemorizationResult {
   MemorizationResult({
