@@ -64,10 +64,6 @@ clean:
 # Full rebuild
 rebuild: clean deps gen
 
-# Serve the web build (after building)
-serve-web:
-    cd build/web && python3 -m http.server 8000
-
 # Generate launcher icons
 icons:
     dart run flutter_launcher_icons

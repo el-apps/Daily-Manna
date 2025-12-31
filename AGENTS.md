@@ -39,8 +39,7 @@ Use `just` to run common tasks:
 
 - `just deps` - Install dependencies
 - `just gen` - Run code generation (freezed)
-- `just web` - Run web version in debug mode
-- `just chrome` - Run in Chrome browser
+- `just web` - Run web version on local server (port 8000)
 - `just android` - Run on Android device/emulator
 - `just build-web` - Build web release
 - `just build-apk` - Build Android APK
