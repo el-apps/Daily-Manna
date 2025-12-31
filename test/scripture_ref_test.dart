@@ -105,13 +105,13 @@ void main() {
         expect(ref.toString(), 'John 3:16');
       });
 
-      test('returns Unknown with chapter and verse when bookId is null', () {
+      test('returns Unknown when bookId is null', () {
         final ref = ScriptureRef(
           chapterNumber: 3,
           verseNumber: 16,
         );
 
-        expect(ref.toString(), 'Unknown 3:16');
+        expect(ref.toString(), 'Unknown');
       });
     });
   });
@@ -129,8 +129,8 @@ void main() {
       expect(refString('John', 3, 16), 'John 3:16');
     });
 
-    test('returns Unknown with chapter and verse when book title is null', () {
-      expect(refString(null, 3, 16), 'Unknown 3:16');
+    test('returns Unknown when book title is null', () {
+      expect(refString(null, 3, 16), 'Unknown');
     });
 
     test('returns Unknown when all parameters are null', () {

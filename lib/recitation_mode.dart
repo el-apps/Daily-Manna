@@ -1,11 +1,11 @@
 import 'package:daily_manna/bible_service.dart';
 import 'package:daily_manna/openrouter_service.dart';
 import 'package:daily_manna/passage_confirmation_dialog.dart';
+import 'package:daily_manna/passage_range_selector.dart';
 import 'package:daily_manna/recitation_results.dart';
 import 'package:daily_manna/scripture_ref.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/settings_service.dart';
-import 'package:daily_manna/verse_selector.dart';
 import 'package:daily_manna/whisper_service.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
@@ -28,7 +28,11 @@ class _RecitationModeState extends State<RecitationMode> {
 
   bool _isRecording = false;
   String? _recordingPath;
-  ScriptureRef _selectedRef = ScriptureRef();
+  PassageRangeRef _selectedRef = PassageRangeRef(
+    bookId: '',
+    startChapter: 1,
+    startVerse: 1,
+  );
   bool _useSelectedPassage = false;
 
   @override
@@ -135,7 +139,12 @@ class _RecitationModeState extends State<RecitationMode> {
 
       // If passage was pre-selected, skip recognition step
       if (_useSelectedPassage && _selectedRef.complete) {
-        _showRecitationResults(_selectedRef, transcribedText);
+        final ref = ScriptureRef(
+          bookId: _selectedRef.bookId,
+          chapterNumber: _selectedRef.startChapter,
+          verseNumber: _selectedRef.startVerse,
+        );
+        _showRecitationResults(ref, transcribedText);
         return;
       }
 
@@ -242,7 +251,7 @@ class _RecitationModeState extends State<RecitationMode> {
                   ),
             ),
             const SizedBox(height: 16),
-            VerseSelector(
+            PassageRangeSelector(
               ref: _selectedRef,
               onSelected: (ref) {
                 setState(() {
