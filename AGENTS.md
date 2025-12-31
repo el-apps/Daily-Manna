@@ -37,7 +37,6 @@ android/                   # Android platform files
 
 Use `just` to run common tasks:
 
-- `just deps` - Install dependencies
 - `just gen` - Run code generation (freezed)
 - `just web` - Run web version on local debug server (port 8000)
 - `just android` - Run on Android device/emulator
@@ -45,10 +44,11 @@ Use `just` to run common tasks:
 - `just start-web-prod` - Build web production release and start server on 0.0.0.0:8000 (background)
 - `just stop-web-prod` - Stop the production web server
 - `just logs-web-prod` - Check production web server logs
-- `just build-apk` - Build Android APK
+- `just build-apk-prod` - Build Android APK (release)
 - `just test` - Run tests
 - `just analyze` - Analyze code
-- `just fmt` - Format code
+- `just format` - Format code
+- `just clean` - Clean build artifacts
 
 ## Development Guidelines
 
@@ -61,7 +61,7 @@ Examples:
 - `start-web-prod` - start something
 - `stop-web-prod` - stop something
 - `logs-web-prod` - view logs for something
-- `fmt` - simple verbs stand alone
+- `format` - simple verbs stand alone
 
 ### Git Commits
 
@@ -111,7 +111,7 @@ if (ref.complete) { /* all fields are set */ }
 
 ## Web Support
 
-Flutter web support is enabled.
+Flutter web support is enabled. A custom Python server with CORS headers is used for serving the production build.
 
 **For local development:**
 
@@ -123,7 +123,7 @@ The app will be served at http://localhost:8000 in debug mode.
 
 **For production deployment:**
 
-The app can be deployed inside an exe.dev VM, a service providing virtual machines with persistent disks and HTTPS access. From within the exe.dev VM, use:
+The app can be deployed inside an [exe.dev](https://exe.dev) VM, a service providing virtual machines with persistent disks and HTTPS access. From within the exe.dev VM, use:
 
 ```bash
 just start-web-prod
@@ -133,6 +133,12 @@ This builds a production release and starts the server on 0.0.0.0:8000 in the ba
 
 ```bash
 just stop-web-prod
+```
+
+View logs with:
+
+```bash
+just logs-web-prod
 ```
 
 For manual production builds without serving:
