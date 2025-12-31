@@ -1,3 +1,4 @@
+import 'package:daily_manna/mode_card.dart';
 import 'package:daily_manna/recitation_mode.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/verse_memorization.dart';
@@ -26,21 +27,19 @@ class HomePage extends StatelessWidget {
               ).textTheme.titleSmall!.copyWith(fontStyle: FontStyle.italic),
             ),
           ),
-          for (final feature in features) FeatureCard(feature),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Card.filled(
-              child: ListTile(
-                contentPadding: const EdgeInsetsGeometry.symmetric(
-                  vertical: 16,
-                  horizontal: 24,
-                ),
-                leading: const Text('Settings'),
-                trailing: const Icon(Icons.settings),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SettingsPage()),
-                ),
+          for (final feature in features)
+            ModeCard(
+              title: feature.title,
+              icon: feature.icon,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => feature.widget),
               ),
+            ),
+          ModeCard(
+            title: 'Settings',
+            icon: Icons.settings,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsPage()),
             ),
           ),
           const ListTile(leading: Text('More features coming soon!')),
@@ -51,30 +50,3 @@ class HomePage extends StatelessWidget {
 }
 
 typedef Feature = ({String title, IconData icon, Widget widget});
-
-class FeatureCard extends StatelessWidget {
-  const FeatureCard(this.feature, {super.key});
-
-  final Feature feature;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16),
-    child: Card.filled(
-      child: ListTile(
-        contentPadding: EdgeInsetsGeometry.symmetric(
-          vertical: 16,
-          horizontal: 24,
-        ),
-        leading: Text(
-          feature.title,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        trailing: Icon(feature.icon),
-        onTap: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => feature.widget)),
-      ),
-    ),
-  );
-}
