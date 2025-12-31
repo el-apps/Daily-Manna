@@ -1,4 +1,5 @@
 import 'package:bible_parser_flutter/bible_parser_flutter.dart';
+import 'package:daily_manna/passage_range_selector.dart';
 import 'package:daily_manna/scripture_ref.dart';
 import 'package:flutter/material.dart';
 
@@ -52,4 +53,15 @@ class BibleService {
     ref.chapterNumber,
     ref.verseNumber,
   );
+
+  String getRangeRefName(PassageRangeRef ref) {
+    final bookTitle = booksMap[ref.bookId]?.title ?? 'Unknown';
+    if (ref.endChapter == null || ref.endVerse == null) {
+      return '$bookTitle ${ref.startChapter}:${ref.startVerse}';
+    }
+    if (ref.endChapter == ref.startChapter) {
+      return '$bookTitle ${ref.startChapter}:${ref.startVerse}-${ref.endVerse}';
+    }
+    return '$bookTitle ${ref.startChapter}:${ref.startVerse}-${ref.endChapter}:${ref.endVerse}';
+  }
 }

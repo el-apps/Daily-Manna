@@ -43,8 +43,9 @@ class PassageRangeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bibleService = context.read<BibleService>();
     return ListTile(
-      title: Text(ref.complete ? ref.display : 'Select passage'),
+      title: Text(ref.complete ? bibleService.getRangeRefName(ref) : 'Select passage'),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => _openSelectorDialog(context),
     );
@@ -141,8 +142,8 @@ class _SelectPassageRangeDialogState extends State<_SelectPassageRangeDialog> {
                           bookId: selected.bookId,
                           startChapter: chapterNumber ?? 1,
                           startVerse: selected.startVerse,
-                          endChapter: selected.endChapter,
-                          endVerse: selected.endVerse,
+                          endChapter: selected.endChapter ?? chapterNumber,
+                          endVerse: selected.endVerse ?? selected.startVerse,
                         ),
                       ),
                     ),
@@ -169,8 +170,8 @@ class _SelectPassageRangeDialogState extends State<_SelectPassageRangeDialog> {
                           bookId: selected.bookId,
                           startChapter: selected.startChapter,
                           startVerse: verseNumber ?? 1,
-                          endChapter: selected.endChapter,
-                          endVerse: selected.endVerse,
+                          endChapter: selected.endChapter ?? selected.startChapter,
+                          endVerse: selected.endVerse ?? verseNumber,
                         ),
                       ),
                     ),
@@ -182,7 +183,7 @@ class _SelectPassageRangeDialogState extends State<_SelectPassageRangeDialog> {
             // End verse selector
             if (selected.bookId.isNotEmpty)
               Text(
-                'End Verse (Optional)',
+                'End Verse',
                 style: Theme.of(context).textTheme.labelMedium,
               ),
             if (selected.bookId.isNotEmpty)
