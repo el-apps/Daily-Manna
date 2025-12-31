@@ -1,5 +1,7 @@
+import 'package:daily_manna/bible_service.dart';
 import 'package:daily_manna/openrouter_service.dart';
 import 'package:daily_manna/passage_confirmation_dialog.dart';
+import 'package:daily_manna/recitation_results.dart';
 import 'package:daily_manna/scripture_ref.dart';
 import 'package:daily_manna/settings_service.dart';
 import 'package:daily_manna/whisper_service.dart';
@@ -7,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
+import 'package:word_tools/word_tools.dart';
 
 class RecitationMode extends StatefulWidget {
   const RecitationMode({super.key});
@@ -152,41 +155,33 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   void _showRecitationResults(ScriptureRef ref, String transcribedText) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Recitation Complete'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Passage: ${ref.bookId} ${ref.chapterNumber}:${ref.verseNumber}',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Transcribed Text:',
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                transcribedText,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
-          ),
+    final bibleService = context.read<BibleService>();
+    
+    // Get the actual verse
+    String actualVerse = '';
+    if (bibleService.hasVerse(ref)) {
+      actualVerse = bibleService.getVerse(
+        ref.bookId!,
+        ref.chapterNumber!,
+        ref.verseNumber!,
+      );
+    }
+
+    // Grade the recitation
+    final score = compareWordSequences(actualVerse, transcribedText);
+
+    // Navigate to results page
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => RecitationResults(
+          ref: ref,
+          transcribedText: transcribedText,
+          score: score,
+          onReciteAgain: () {
+            Navigator.of(context).pop(); // Pop results page
+            setState(() => _recordingPath = null);
+          },
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() => _recordingPath = null);
-            },
-            child: const Text('Recite Again'),
-          ),
-        ],
       ),
     );
   }
