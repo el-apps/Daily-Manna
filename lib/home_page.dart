@@ -1,3 +1,4 @@
+import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/verse_memorization.dart';
 import 'package:flutter/material.dart';
 
@@ -24,7 +25,23 @@ class HomePage extends StatelessWidget {
             ),
           ),
           for (final feature in features) FeatureCard(feature),
-          ListTile(leading: Text('More features coming soon!')),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Card.filled(
+              child: ListTile(
+                contentPadding: const EdgeInsetsGeometry.symmetric(
+                  vertical: 16,
+                  horizontal: 24,
+                ),
+                leading: const Text('Settings'),
+                trailing: const Icon(Icons.settings),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SettingsPage()),
+                ),
+              ),
+            ),
+          ),
+          const ListTile(leading: Text('More features coming soon!')),
         ],
       ),
     );

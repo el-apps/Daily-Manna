@@ -1,5 +1,6 @@
 import 'package:daily_manna/bible_service.dart';
 import 'package:daily_manna/home_page.dart';
+import 'package:daily_manna/settings_service.dart';
 import 'package:daily_manna/verse_memorization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -17,21 +18,29 @@ class DailyMannaApp extends StatefulWidget {
 
 class _DailyMannaAppState extends State<DailyMannaApp> {
   late BibleService _bibleService;
-  late Future _bibleFuture;
+  late SettingsService _settingsService;
+  late Future _initFuture;
 
   @override
   void initState() {
     super.initState();
     _bibleService = BibleService();
-    _bibleFuture = _bibleService.load(context);
+    _settingsService = SettingsService();
+    _initFuture = Future.wait([
+      _settingsService.init(),
+      _bibleService.load(context),
+    ]);
   }
 
   @override
   Widget build(BuildContext context) => FutureBuilder(
-    future: _bibleFuture,
+    future: _initFuture,
     builder: (context, asyncSnapshot) => _bibleService.isLoaded
-        ? Provider.value(
-            value: _bibleService,
+        ? MultiProvider(
+            providers: [
+              Provider.value(value: _bibleService),
+              Provider.value(value: _settingsService),
+            ],
             child: MaterialApp(
               title: 'Daily Manna',
               theme: ThemeData(
@@ -48,7 +57,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
               ),
               home: HomePage(),
             ),
-          )
+            )
         : Center(child: CircularProgressIndicator()),
   );
 }
