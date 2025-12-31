@@ -64,7 +64,7 @@ class _RecitationResultsState extends State<RecitationResults> {
               child: Row(
                 children: [
                   Icon(
-                    isCorrect ? Icons.check_circle : Icons.close_circle,
+                    isCorrect ? Icons.check_circle : Icons.error,
                     color: isCorrect ? Colors.green : Colors.red,
                     size: 40,
                   ),
