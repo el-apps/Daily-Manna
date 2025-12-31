@@ -58,7 +58,8 @@ build-web:
 
 # Build web production release and start server on 0.0.0.0:8000 (background)
 start-web-prod: build-web
-    cd build/web && nohup python3 -m http.server 8000 --bind 0.0.0.0 > server.log 2>&1 &
+    cp web/server.py build/web/server.py
+    cd build/web && nohup python3 server.py > server.log 2>&1 &
     @echo "Web server started on 0.0.0.0:8000"
 
 # Stop the production web server running on port 8000
