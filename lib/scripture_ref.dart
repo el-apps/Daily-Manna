@@ -20,11 +20,12 @@ abstract class ScriptureRef with _$ScriptureRef {
 }
 
 String refString(String? bookTitle, int? chapterNumber, int? verseNumber) {
+  final book = bookTitle ?? 'Unknown';
   if (chapterNumber == null) {
-    return bookTitle ?? 'Unknown';
+    return book;
   }
   if (verseNumber == null) {
-    return '$bookTitle $chapterNumber';
+    return '$book $chapterNumber';
   }
-  return '$bookTitle $chapterNumber:$verseNumber';
+  return '$book $chapterNumber:$verseNumber';
 }
