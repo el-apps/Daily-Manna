@@ -4,6 +4,7 @@ import 'package:daily_manna/passage_confirmation_dialog.dart';
 import 'package:daily_manna/recitation_results.dart';
 import 'package:daily_manna/scripture_ref.dart';
 import 'package:daily_manna/settings_service.dart';
+import 'package:daily_manna/verse_selector.dart';
 import 'package:daily_manna/whisper_service.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
@@ -26,6 +27,8 @@ class _RecitationModeState extends State<RecitationMode> {
 
   bool _isRecording = false;
   String? _recordingPath;
+  ScriptureRef _selectedRef = ScriptureRef();
+  bool _useSelectedPassage = false;
 
   @override
   void initState() {
@@ -127,6 +130,12 @@ class _RecitationModeState extends State<RecitationMode> {
 
       if (!mounted) return;
 
+      // If passage was pre-selected, skip recognition step
+      if (_useSelectedPassage && _selectedRef.complete) {
+        _showRecitationResults(_selectedRef, transcribedText);
+        return;
+      }
+
       _showLoadingDialog('Recognizing passage...');
 
       // Recognize passage
@@ -212,25 +221,61 @@ class _RecitationModeState extends State<RecitationMode> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Recitation Mode')),
-      body: Center(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
-              _isRecording ? Icons.mic : Icons.mic_none,
-              size: 80,
-              color: _isRecording ? Colors.red : Colors.grey,
-            ),
-            const SizedBox(height: 24),
+            // Optional passage selector
             Text(
-              _isRecording ? 'Recording...' : 'Ready to recite',
-              style: Theme.of(context).textTheme.titleLarge,
+              'Select Passage (Optional)',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 48),
-            FilledButton.icon(
-              onPressed: _isRecording ? _stopRecording : _startRecording,
-              icon: Icon(_isRecording ? Icons.stop : Icons.mic),
-              label: Text(_isRecording ? 'Stop' : 'Start Recording'),
+            const SizedBox(height: 12),
+            Text(
+              'If you know which passage you\'ll recite, select it here to skip automatic recognition.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            VerseSelector(
+              ref: _selectedRef,
+              onSelected: (ref) {
+                setState(() {
+                  _selectedRef = ref;
+                  _useSelectedPassage = ref.complete;
+                });
+              },
+            ),
+            const SizedBox(height: 32),
+            // Recording section
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    _isRecording ? Icons.mic : Icons.mic_none,
+                    size: 80,
+                    color: _isRecording ? Colors.red : Colors.grey,
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    _isRecording ? 'Recording...' : 'Ready to recite',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 48),
+                  FilledButton.icon(
+                    onPressed: _isRecording ? _stopRecording : _startRecording,
+                    icon: Icon(_isRecording ? Icons.stop : Icons.mic),
+                    label: Text(_isRecording ? 'Stop Recording' : 'Start Recording'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
