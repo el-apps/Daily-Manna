@@ -3,6 +3,7 @@ import 'package:daily_manna/openrouter_service.dart';
 import 'package:daily_manna/passage_confirmation_dialog.dart';
 import 'package:daily_manna/recitation_results.dart';
 import 'package:daily_manna/scripture_ref.dart';
+import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/settings_service.dart';
 import 'package:daily_manna/verse_selector.dart';
 import 'package:daily_manna/whisper_service.dart';
@@ -71,8 +72,10 @@ class _RecitationModeState extends State<RecitationMode> {
           ),
           FilledButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
+              Navigator.of(context).pop(); // Close dialog
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsPage()),
+              );
             },
             child: const Text('Go to Settings'),
           ),
