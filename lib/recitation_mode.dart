@@ -223,7 +223,7 @@ class _RecitationModeState extends State<RecitationMode> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Recitation Mode')),
+      appBar: AppBar(title: const Text('Recite')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
