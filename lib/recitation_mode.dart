@@ -7,6 +7,7 @@ import 'package:daily_manna/scripture_ref.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/settings_service.dart';
 import 'package:daily_manna/whisper_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
@@ -91,16 +92,26 @@ class _RecitationModeState extends State<RecitationMode> {
   Future<void> _startRecording() async {
     try {
       if (await _recorder.hasPermission()) {
-        final directory = await getApplicationDocumentsDirectory();
-        _recordingPath =
-            '${directory.path}/recitation_${DateTime.now().millisecondsSinceEpoch}.m4a';
+        String recordingPath;
+        
+        if (kIsWeb) {
+          // On web, use a simple path identifier
+          recordingPath = 'recitation_${DateTime.now().millisecondsSinceEpoch}.m4a';
+        } else {
+          // On mobile, use actual file path
+          final directory = await getApplicationDocumentsDirectory();
+          recordingPath =
+              '${directory.path}/recitation_${DateTime.now().millisecondsSinceEpoch}.m4a';
+        }
+        
+        _recordingPath = recordingPath;
 
         await _recorder.start(
           const RecordConfig(
             encoder: AudioEncoder.aacLc,
             sampleRate: 16000,
           ),
-          path: _recordingPath!,
+          path: recordingPath,
         );
 
         setState(() => _isRecording = true);
@@ -114,10 +125,12 @@ class _RecitationModeState extends State<RecitationMode> {
 
   Future<void> _stopRecording() async {
     try {
-      await _recorder.stop();
+      final audioPath = await _recorder.stop();
       setState(() => _isRecording = false);
 
-      if (_recordingPath != null) {
+      // On web, recorder.stop() returns the audio data path
+      // On mobile, we already have the path from start()
+      if (_recordingPath != null || audioPath != null) {
         await _processRecording();
       }
     } catch (e) {
@@ -126,13 +139,14 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   Future<void> _processRecording() async {
-    if (_recordingPath == null) return;
+    final audioPath = _recordingPath;
+    if (audioPath == null) return;
 
     _showLoadingDialog('Transcribing audio...');
 
     try {
       // Transcribe audio
-      final transcribedText = await _whisperService.transcribeAudio(_recordingPath!);
+      final transcribedText = await _whisperService.transcribeAudio(audioPath);
       Navigator.pop(context); // Close loading dialog
 
       if (!mounted) return;
