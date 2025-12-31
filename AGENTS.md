@@ -49,6 +49,19 @@ Use `just` to run common tasks:
 
 ## Development Guidelines
 
+### Git Commits
+
+Use conventional commit format:
+- `feat:` - New features
+- `fix:` - Bug fixes
+- `chore:` - Maintenance tasks
+- `docs:` - Documentation changes
+- `refactor:` - Code refactoring
+- `style:` - Formatting changes
+- `test:` - Adding/updating tests
+
+Include scope when relevant: `fix(web):`, `feat(android):`
+
 ### Code Generation
 
 After modifying any `@freezed` annotated classes, run:
