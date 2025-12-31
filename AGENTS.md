@@ -39,9 +39,12 @@ Use `just` to run common tasks:
 
 - `just deps` - Install dependencies
 - `just gen` - Run code generation (freezed)
-- `just web` - Run web version on local server (port 8000)
+- `just web` - Run web version on local debug server (port 8000)
 - `just android` - Run on Android device/emulator
-- `just build-web` - Build web release
+- `just build-web` - Build web production release
+- `just start-web-prod` - Build web production release and start server on 0.0.0.0:8000 (background)
+- `just stop-web-prod` - Stop the production web server
+- `just logs-web-prod` - Check production web server logs
 - `just build-apk` - Build Android APK
 - `just test` - Run tests
 - `just analyze` - Analyze code
@@ -49,9 +52,21 @@ Use `just` to run common tasks:
 
 ## Development Guidelines
 
+### Just Recipe Naming
+
+Recipe names use verb-first format: `verb-noun`
+
+Examples:
+- `build-web` - build something
+- `start-web-prod` - start something
+- `stop-web-prod` - stop something
+- `logs-web-prod` - view logs for something
+- `fmt` - simple verbs stand alone
+
 ### Git Commits
 
 Use conventional commit format:
+
 - `feat:` - New features
 - `fix:` - Bug fixes
 - `chore:` - Maintenance tasks
@@ -65,6 +80,7 @@ Include scope when relevant: `fix(web):`, `feat(android):`
 ### Code Generation
 
 After modifying any `@freezed` annotated classes, run:
+
 ```bash
 just gen
 ```
@@ -78,6 +94,7 @@ just gen
 ### Bible Data Access
 
 Use `BibleService` via Provider:
+
 ```dart
 final bibleService = context.read<BibleService>();
 final verse = bibleService.getVerse('Gen', 1, 1);
@@ -86,6 +103,7 @@ final verse = bibleService.getVerse('Gen', 1, 1);
 ### Scripture References
 
 Use the `ScriptureRef` freezed class:
+
 ```dart
 final ref = ScriptureRef(bookId: 'Gen', chapterNumber: 1, verseNumber: 1);
 if (ref.complete) { /* all fields are set */ }
@@ -93,14 +111,32 @@ if (ref.complete) { /* all fields are set */ }
 
 ## Web Support
 
-Flutter web support is enabled. To run locally:
+Flutter web support is enabled.
+
+**For local development:**
+
 ```bash
 just web
 ```
 
-The app will be served at http://localhost:8000
+The app will be served at http://localhost:8000 in debug mode.
 
-For production builds:
+**For production deployment:**
+
+The app can be deployed inside an exe.dev VM, a service providing virtual machines with persistent disks and HTTPS access. From within the exe.dev VM, use:
+
+```bash
+just start-web-prod
+```
+
+This builds a production release and starts the server on 0.0.0.0:8000 in the background, making it accessible to external clients. Stop the server with:
+
+```bash
+just stop-web-prod
+```
+
+For manual production builds without serving:
+
 ```bash
 just build-web
 ```
@@ -115,6 +151,7 @@ just build-web
 ## TODO Items
 
 See TODO comments in code for planned features:
+
 - Persistent storage of memorization results (currently in-memory)
 - User verse queue management
 - Additional features beyond memorization

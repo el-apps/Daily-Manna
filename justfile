@@ -9,6 +9,13 @@ default:
 deps:
     flutter pub get
 
+# Clean build artifacts
+clean:
+    flutter clean
+
+# Full rebuild
+rebuild: clean deps gen
+
 # Run code generation (freezed)
 gen:
     dart run build_runner build --delete-conflicting-outputs
@@ -17,37 +24,9 @@ gen:
 watch:
     dart run build_runner watch --delete-conflicting-outputs
 
-# Run the app on web (debug mode)
-web:
-    flutter run -d web-server --web-port=8000 --web-hostname=0.0.0.0
-
-# Run the app on Android
-android:
-    flutter run -d android
-
-# Build web release
-build-web:
-    flutter build web --release
-
-# Build Android APK
-build-apk:
-    flutter build apk --release
-
-# Build Android App Bundle
-build-aab:
-    flutter build appbundle --release
-
-# Run tests
-test:
-    flutter test
-
-# Run tests with coverage
-test-cov:
-    flutter test --coverage
-
-# Analyze code
-analyze:
-    flutter analyze
+# Generate launcher icons
+icons:
+    dart run flutter_launcher_icons
 
 # Format code
 fmt:
@@ -57,13 +36,47 @@ fmt:
 fmt-check:
     dart format --set-exit-if-changed lib test
 
-# Clean build artifacts
-clean:
-    flutter clean
+# Analyze code
+analyze:
+    flutter analyze
 
-# Full rebuild
-rebuild: clean deps gen
+# Run tests
+test:
+    flutter test
 
-# Generate launcher icons
-icons:
-    dart run flutter_launcher_icons
+# Run tests with coverage
+test-cov:
+    flutter test --coverage
+
+# Run the app on web (debug mode)
+web:
+    flutter run -d web-server
+
+# Build web release
+build-web:
+    flutter build web --release
+
+# Build web production release and start server on 0.0.0.0:8000 (background)
+start-web-prod: build-web
+    cd build/web && nohup python3 -m http.server 8000 --bind 0.0.0.0 > server.log 2>&1 &
+    @echo "Web server started on 0.0.0.0:8000"
+
+# Stop the production web server running on port 8000
+stop-web-prod:
+    lsof -ti:8000 | xargs kill -9 2>/dev/null || echo "No server running on port 8000"
+
+# Check production web server logs
+logs-web-prod:
+    tail -f build/web/server.log
+
+# Run the app on Android
+android:
+    flutter run -d android
+
+# Build Android APK
+build-apk:
+    flutter build apk --release
+
+# Build Android App Bundle
+build-aab:
+    flutter build appbundle --release
