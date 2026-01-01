@@ -30,6 +30,7 @@ class _RecitationModeState extends State<RecitationMode> {
    bool _isRecording = false;
    List<int>? _audioBytes;
    Stream<Uint8List>? _audioStream;
+   List<List<int>> _audioChunks = [];
    PassageRangeRef _selectedRef = PassageRangeRef(
      bookId: '',
      startChapter: 1,
@@ -98,8 +99,16 @@ class _RecitationModeState extends State<RecitationMode> {
           sampleRate: 16000,
         );
         
+        // Clear previous chunks
+        _audioChunks.clear();
+        
         // Record to stream on all platforms
         _audioStream = await _recorder.startStream(config);
+        
+        // Listen to stream and collect chunks
+        _audioStream!.listen((chunk) {
+          _audioChunks.add(chunk);
+        });
 
         setState(() => _isRecording = true);
       } else {
@@ -115,24 +124,14 @@ class _RecitationModeState extends State<RecitationMode> {
       await _recorder.stop();
       setState(() => _isRecording = false);
 
-      if (_audioStream == null) {
-        _showError('Failed to stop recording');
-        return;
-      }
-
-      final audioDataList = <List<int>>[];
-      await for (final chunk in _audioStream!) {
-        audioDataList.add(chunk);
-      }
-
-      if (audioDataList.isEmpty) {
+      if (_audioChunks.isEmpty) {
         _showError('No audio data recorded');
         return;
       }
 
       // Combine all chunks into single byte array
       _audioBytes = Uint8List.fromList(
-        audioDataList.expand((chunk) => chunk).toList(),
+        _audioChunks.expand((chunk) => chunk).toList(),
       );
       await _processRecording();
     } catch (e) {
@@ -220,6 +219,7 @@ class _RecitationModeState extends State<RecitationMode> {
             setState(() {
               _audioBytes = null;
               _audioStream = null;
+              _audioChunks.clear();
             });
           },
         ),
