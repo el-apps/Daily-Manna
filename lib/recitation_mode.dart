@@ -9,7 +9,6 @@ import 'package:daily_manna/scripture_ref.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/settings_service.dart';
 import 'package:daily_manna/whisper_service.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
