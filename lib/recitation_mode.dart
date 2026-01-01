@@ -31,7 +31,7 @@ class _RecitationModeState extends State<RecitationMode> {
    bool _isRecording = false;
    List<int>? _audioBytes;
    Stream<Uint8List>? _audioStream;
-   List<List<int>> _audioChunks = [];
+   final List<List<int>> _audioChunks = [];
    PassageRangeRef _selectedRef = PassageRangeRef(
      bookId: '',
      startChapter: 1,

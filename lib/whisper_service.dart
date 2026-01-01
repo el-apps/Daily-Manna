@@ -18,15 +18,15 @@ class WhisperService {
     }
 
     final request = http.MultipartRequest('POST', Uri.parse(_baseUrl))
-      ..headers['Authorization'] = 'Bearer $apiKey'
-      ..fields['model'] = 'whisper-1'
-      ..files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          audioBytes,
-          filename: filename,
-        ),
-      );
+     ..headers['Authorization'] = 'Bearer $apiKey'
+     ..fields['model'] = 'gpt-4o-transcribe'
+     ..files.add(
+       http.MultipartFile.fromBytes(
+         'file',
+         audioBytes,
+         filename: filename,
+       ),
+     );
 
     final response = await request.send();
 

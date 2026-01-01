@@ -70,7 +70,6 @@ class _PassageConfirmationDialogState extends State<PassageConfirmationDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final bibleService = context.read<BibleService>();
     final recognizedPassage = widget.recognitionResult.book != null
         ? '${widget.recognitionResult.book} ${widget.recognitionResult.startChapter}:${widget.recognitionResult.startVerse}'
         : 'Could not recognize passage';
@@ -109,7 +108,6 @@ class _PassageConfirmationDialogState extends State<PassageConfirmationDialog> {
       actions: [
         TextButton(
           onPressed: () {
-            widget.onConfirm(null);
             Navigator.of(context).pop();
           },
           child: const Text('Cancel'),
