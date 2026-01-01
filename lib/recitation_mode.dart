@@ -1,4 +1,5 @@
-import 'package:daily_manna/audio_helper.dart';
+import 'dart:typed_data';
+
 import 'package:daily_manna/bible_service.dart';
 import 'package:daily_manna/openrouter_service.dart';
 import 'package:daily_manna/passage_confirmation_dialog.dart';
@@ -10,7 +11,6 @@ import 'package:daily_manna/settings_service.dart';
 import 'package:daily_manna/whisper_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 import 'package:word_tools/word_tools.dart';
@@ -29,7 +29,6 @@ class _RecitationModeState extends State<RecitationMode> {
    late OpenRouterService _openRouterService;
 
    bool _isRecording = false;
-   String? _recordingPath;
    List<int>? _audioBytes;
    Stream<Uint8List>? _audioStream;
    PassageRangeRef _selectedRef = PassageRangeRef(
@@ -100,17 +99,8 @@ class _RecitationModeState extends State<RecitationMode> {
           sampleRate: 16000,
         );
         
-        if (kIsWeb) {
-          // On web, record to stream to get bytes directly
-          _audioStream = await _recorder.startStream(config);
-        } else {
-          // On mobile, record to file
-          final directory = await getApplicationDocumentsDirectory();
-          final recordingPath =
-              '${directory.path}/recitation_${DateTime.now().millisecondsSinceEpoch}.m4a';
-          _recordingPath = recordingPath;
-          await _recorder.start(config, path: recordingPath);
-        }
+        // Record to stream on all platforms
+        _audioStream = await _recorder.startStream(config);
 
         setState(() => _isRecording = true);
       } else {
@@ -123,49 +113,29 @@ class _RecitationModeState extends State<RecitationMode> {
 
   Future<void> _stopRecording() async {
     try {
-      if (kIsWeb) {
-        // On web, collect stream data
-        await _recorder.stop();
-        setState(() => _isRecording = false);
+      await _recorder.stop();
+      setState(() => _isRecording = false);
 
-        if (_audioStream == null) {
-          _showError('Failed to stop recording');
-          return;
-        }
-
-        final audioDataList = <List<int>>[];
-        await for (final chunk in _audioStream!) {
-          audioDataList.add(chunk);
-        }
-
-        if (audioDataList.isEmpty) {
-          _showError('No audio data recorded');
-          return;
-        }
-
-        // Combine all chunks into single byte array
-        _audioBytes = Uint8List.fromList(
-          audioDataList.expand((chunk) => chunk).toList(),
-        );
-        await _processRecording();
-      } else {
-        // On mobile, read from file
-        await _recorder.stop();
-        setState(() => _isRecording = false);
-
-        if (_recordingPath == null) {
-          _showError('Failed to stop recording');
-          return;
-        }
-
-        final bytes = await readAudioFile(_recordingPath!);
-        if (bytes != null) {
-          _audioBytes = bytes;
-          await _processRecording();
-        } else {
-          _showError('Failed to read audio file');
-        }
+      if (_audioStream == null) {
+        _showError('Failed to stop recording');
+        return;
       }
+
+      final audioDataList = <List<int>>[];
+      await for (final chunk in _audioStream!) {
+        audioDataList.add(chunk);
+      }
+
+      if (audioDataList.isEmpty) {
+        _showError('No audio data recorded');
+        return;
+      }
+
+      // Combine all chunks into single byte array
+      _audioBytes = Uint8List.fromList(
+        audioDataList.expand((chunk) => chunk).toList(),
+      );
+      await _processRecording();
     } catch (e) {
       _showError('Failed to stop recording: $e');
     }
@@ -249,7 +219,6 @@ class _RecitationModeState extends State<RecitationMode> {
           onReciteAgain: () {
             Navigator.of(context).pop(); // Pop results page
             setState(() {
-              _recordingPath = null;
               _audioBytes = null;
               _audioStream = null;
             });
