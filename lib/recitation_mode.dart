@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:daily_manna/bible_service.dart';
+import 'package:daily_manna/wav_encoder.dart';
 import 'package:daily_manna/openrouter_service.dart';
 import 'package:daily_manna/passage_confirmation_dialog.dart';
 import 'package:daily_manna/passage_range_selector.dart';
@@ -146,9 +147,11 @@ class _RecitationModeState extends State<RecitationMode> {
     _showLoadingDialog('Transcribing audio...');
 
     try {
+      // Encode PCM to WAV format
+      final wavData = WavEncoder.encodePcm16ToWav(audioBytes.toList());
+      
       // Transcribe audio
-      final filename = 'audio.pcm';
-      final transcribedText = await _whisperService.transcribeAudioBytes(audioBytes, filename);
+      final transcribedText = await _whisperService.transcribeAudioBytes(wavData, 'audio.wav');
       Navigator.pop(context); // Close loading dialog
 
       if (!mounted) return;
