@@ -1,6 +1,9 @@
+import 'package:daily_manna/bible_service.dart';
 import 'package:daily_manna/openrouter_service.dart';
+import 'package:daily_manna/passage_range_selector.dart';
 import 'package:daily_manna/scripture_ref.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class PassageConfirmationDialog extends StatefulWidget {
   final PassageRecognitionResult recognitionResult;
@@ -20,144 +23,85 @@ class PassageConfirmationDialog extends StatefulWidget {
 }
 
 class _PassageConfirmationDialogState extends State<PassageConfirmationDialog> {
-  late TextEditingController _bookController;
-  late TextEditingController _startChapterController;
-  late TextEditingController _startVerseController;
-  late TextEditingController _endChapterController;
-  late TextEditingController _endVerseController;
+  late PassageRangeRef _selectedRef;
 
   @override
   void initState() {
     super.initState();
     final result = widget.recognitionResult;
-    _bookController = TextEditingController(text: result.book ?? '');
-    _startChapterController =
-        TextEditingController(text: result.startChapter?.toString() ?? '');
-    _startVerseController =
-        TextEditingController(text: result.startVerse?.toString() ?? '');
-    _endChapterController =
-        TextEditingController(text: result.endChapter?.toString() ?? '');
-    _endVerseController =
-        TextEditingController(text: result.endVerse?.toString() ?? '');
-  }
+    final bibleService = context.read<BibleService>();
 
-  @override
-  void dispose() {
-    _bookController.dispose();
-    _startChapterController.dispose();
-    _startVerseController.dispose();
-    _endChapterController.dispose();
-    _endVerseController.dispose();
-    super.dispose();
+    // Find book ID from book name
+    String bookId = '';
+    if (result.book != null) {
+      final book = bibleService.books.firstWhere(
+        (b) => b.title.toLowerCase() == result.book!.toLowerCase(),
+        orElse: () => bibleService.books.first,
+      );
+      bookId = book.id;
+    }
+
+    _selectedRef = PassageRangeRef(
+      bookId: bookId,
+      startChapter: result.startChapter ?? 1,
+      startVerse: result.startVerse ?? 1,
+      endChapter: result.endChapter,
+      endVerse: result.endVerse,
+    );
   }
 
   void _confirm() {
-    if (_bookController.text.isEmpty ||
-        _startChapterController.text.isEmpty ||
-        _startVerseController.text.isEmpty) {
+    if (!_selectedRef.complete) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all required fields')),
+        const SnackBar(content: Text('Please select a valid passage')),
       );
       return;
     }
 
-    try {
-      final ref = ScriptureRef(
-        bookId: _bookController.text,
-        chapterNumber: int.parse(_startChapterController.text),
-        verseNumber: int.parse(_startVerseController.text),
-      );
+    final ref = ScriptureRef(
+      bookId: _selectedRef.bookId,
+      chapterNumber: _selectedRef.startChapter,
+      verseNumber: _selectedRef.startVerse,
+    );
 
-      widget.onConfirm(ref);
-      Navigator.of(context).pop();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Invalid input: $e')),
-      );
-    }
+    widget.onConfirm(ref);
+    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
+    final bibleService = context.read<BibleService>();
+    final recognizedPassage = widget.recognitionResult.book != null
+        ? '${widget.recognitionResult.book} ${widget.recognitionResult.startChapter}:${widget.recognitionResult.startVerse}'
+        : 'Could not recognize passage';
+
     return AlertDialog(
       title: const Text('Confirm Passage'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Recognized Passage:',
-              style: Theme.of(context).textTheme.labelLarge,
+              'Recognized:',
+              style: Theme.of(context).textTheme.labelMedium,
             ),
-            const SizedBox(height: 8),
-            if (widget.recognitionResult.book == null)
-              const Text('Could not recognize passage. Please enter manually.')
-            else
-              Text(
-                '${widget.recognitionResult.book} ${widget.recognitionResult.startChapter}:${widget.recognitionResult.startVerse}',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 4),
+            Text(
+              recognizedPassage,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 20),
             Text(
               'Edit if needed:',
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _bookController,
-              decoration: const InputDecoration(
-                labelText: 'Book',
-                hintText: 'Genesis, Exodus, etc.',
-              ),
+              style: Theme.of(context).textTheme.labelMedium,
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _startChapterController,
-                    decoration: const InputDecoration(
-                      labelText: 'Start Chapter',
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _startVerseController,
-                    decoration: const InputDecoration(
-                      labelText: 'Start Verse',
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _endChapterController,
-                    decoration: const InputDecoration(
-                      labelText: 'End Chapter (optional)',
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _endVerseController,
-                    decoration: const InputDecoration(
-                      labelText: 'End Verse (optional)',
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-              ],
+            PassageRangeSelector(
+              ref: _selectedRef,
+              onSelected: (ref) {
+                setState(() => _selectedRef = ref);
+              },
             ),
           ],
         ),
