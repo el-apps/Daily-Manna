@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'package:daily_manna/settings_service.dart';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class WhisperService {

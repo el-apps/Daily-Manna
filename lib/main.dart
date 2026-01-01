@@ -1,7 +1,6 @@
 import 'package:daily_manna/bible_service.dart';
 import 'package:daily_manna/home_page.dart';
 import 'package:daily_manna/settings_service.dart';
-import 'package:daily_manna/verse_memorization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:daily_manna/audio_helper.dart';
 import 'package:daily_manna/bible_service.dart';
 import 'package:daily_manna/openrouter_service.dart';
 import 'package:daily_manna/passage_confirmation_dialog.dart';
@@ -23,14 +23,15 @@ class RecitationMode extends StatefulWidget {
 }
 
 class _RecitationModeState extends State<RecitationMode> {
-  late AudioRecorder _recorder;
-  late SettingsService _settingsService;
-  late WhisperService _whisperService;
-  late OpenRouterService _openRouterService;
+   late AudioRecorder _recorder;
+   late SettingsService _settingsService;
+   late WhisperService _whisperService;
+   late OpenRouterService _openRouterService;
 
-  bool _isRecording = false;
+   bool _isRecording = false;
    String? _recordingPath;
    List<int>? _audioBytes;
+   Stream<Uint8List>? _audioStream;
    PassageRangeRef _selectedRef = PassageRangeRef(
      bookId: '',
      startChapter: 1,
@@ -94,26 +95,22 @@ class _RecitationModeState extends State<RecitationMode> {
   Future<void> _startRecording() async {
     try {
       if (await _recorder.hasPermission()) {
-        String recordingPath;
-        
-        if (kIsWeb) {
-          // On web, use a simple path identifier
-          recordingPath = 'recitation_${DateTime.now().millisecondsSinceEpoch}.m4a';
-        } else {
-          // On mobile, use actual file path
-          final directory = await getApplicationDocumentsDirectory();
-          recordingPath =
-              '${directory.path}/recitation_${DateTime.now().millisecondsSinceEpoch}.m4a';
-        }
-        
-        _recordingPath = recordingPath;
-
-        final config = RecordConfig(
-          encoder: kIsWeb ? AudioEncoder.opus : AudioEncoder.aacLc,
+        final config = const RecordConfig(
+          encoder: AudioEncoder.pcm16bits,
           sampleRate: 16000,
         );
         
-        await _recorder.start(config, path: recordingPath);
+        if (kIsWeb) {
+          // On web, record to stream to get bytes directly
+          _audioStream = await _recorder.startStream(config);
+        } else {
+          // On mobile, record to file
+          final directory = await getApplicationDocumentsDirectory();
+          final recordingPath =
+              '${directory.path}/recitation_${DateTime.now().millisecondsSinceEpoch}.m4a';
+          _recordingPath = recordingPath;
+          await _recorder.start(config, path: recordingPath);
+        }
 
         setState(() => _isRecording = true);
       } else {
@@ -126,32 +123,48 @@ class _RecitationModeState extends State<RecitationMode> {
 
   Future<void> _stopRecording() async {
     try {
-      final audioPath = await _recorder.stop();
-      setState(() => _isRecording = false);
+      if (kIsWeb) {
+        // On web, collect stream data
+        await _recorder.stop();
+        setState(() => _isRecording = false);
 
-      // Get audio bytes for transcription
-      if (kIsWeb && audioPath != null) {
-        // On web, read the audio file from the path returned by recorder
-        try {
-          final bytes = await File(audioPath).readAsBytes();
-          _audioBytes = bytes;
-        } catch (e) {
-          _showError('Failed to read audio data: $e');
+        if (_audioStream == null) {
+          _showError('Failed to stop recording');
           return;
         }
-      } else if (!kIsWeb && _recordingPath != null) {
-        // On mobile, read from the file path we set earlier
-        try {
-          final bytes = await File(_recordingPath!).readAsBytes();
-          _audioBytes = bytes;
-        } catch (e) {
-          _showError('Failed to read audio file: $e');
+
+        final audioDataList = <List<int>>[];
+        await for (final chunk in _audioStream!) {
+          audioDataList.add(chunk);
+        }
+
+        if (audioDataList.isEmpty) {
+          _showError('No audio data recorded');
           return;
         }
-      }
 
-      if (_audioBytes != null) {
+        // Combine all chunks into single byte array
+        _audioBytes = Uint8List.fromList(
+          audioDataList.expand((chunk) => chunk).toList(),
+        );
         await _processRecording();
+      } else {
+        // On mobile, read from file
+        await _recorder.stop();
+        setState(() => _isRecording = false);
+
+        if (_recordingPath == null) {
+          _showError('Failed to stop recording');
+          return;
+        }
+
+        final bytes = await readAudioFile(_recordingPath!);
+        if (bytes != null) {
+          _audioBytes = bytes;
+          await _processRecording();
+        } else {
+          _showError('Failed to read audio file');
+        }
       }
     } catch (e) {
       _showError('Failed to stop recording: $e');
@@ -166,7 +179,7 @@ class _RecitationModeState extends State<RecitationMode> {
 
     try {
       // Transcribe audio
-      final filename = kIsWeb ? 'audio.wav' : 'audio.m4a';
+      final filename = 'audio.pcm';
       final transcribedText = await _whisperService.transcribeAudioBytes(audioBytes, filename);
       Navigator.pop(context); // Close loading dialog
 
@@ -238,6 +251,7 @@ class _RecitationModeState extends State<RecitationMode> {
             setState(() {
               _recordingPath = null;
               _audioBytes = null;
+              _audioStream = null;
             });
           },
         ),
