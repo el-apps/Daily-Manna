@@ -1,3 +1,4 @@
+import 'package:daily_manna/prompts.dart';
 import 'package:daily_manna/settings_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -22,40 +23,18 @@ class PassageRecognitionResult {
 
 class OpenRouterService {
   final SettingsService settingsService;
-  static const String _baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+  static const String _baseUrl =
+      'https://openrouter.ai/api/v1/chat/completions';
 
   OpenRouterService(this.settingsService);
 
-  Future<PassageRecognitionResult> recognizePassage(String transcribedText) async {
+  Future<PassageRecognitionResult> recognizePassage(
+    String transcribedText,
+  ) async {
     final apiKey = settingsService.getOpenRouterApiKey();
     if (apiKey == null || apiKey.isEmpty) {
       throw Exception('OpenRouter API key not configured');
     }
-
-    final prompt = '''You are a Bible passage recognition AI. Given the following transcribed text, identify which Bible passage(s) the person is reciting.
-
-Transcribed text:
-"$transcribedText"
-
-Respond ONLY with a valid JSON object in this format:
-{
-  "book": "Genesis",
-  "startChapter": 1,
-  "startVerse": 1,
-  "endChapter": 1,
-  "endVerse": 3
-}
-
-If the text appears to be from multiple passages, identify the primary one. If you cannot identify the passage, respond with:
-{
-  "book": null,
-  "startChapter": null,
-  "startVerse": null,
-  "endChapter": null,
-  "endVerse": null
-}
-
-Do not include any other text or explanation, only the JSON object.''';
 
     final response = await http.post(
       Uri.parse(_baseUrl),
@@ -64,12 +43,16 @@ Do not include any other text or explanation, only the JSON object.''';
         'Content-Type': 'application/json',
       },
       body: jsonEncode({
-        'model': 'gpt-3.5-turbo',
+        'model': 'openai/gpt-5-mini',
         'messages': [
           {
+            'role': 'system',
+            'content': Prompts.biblePassageRecognitionSystem,
+          },
+          {
             'role': 'user',
-            'content': prompt,
-          }
+            'content': 'Identify this Bible passage from the transcribed text:\n\n"$transcribedText"'
+          },
         ],
         'temperature': 0.3,
       }),
