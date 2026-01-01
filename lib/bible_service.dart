@@ -55,10 +55,7 @@ class BibleService {
   );
 
   String getRangeRefName(PassageRangeRef ref) {
-    final bookTitle = _booksMap.isNotEmpty 
-      ? (_booksMap[ref.bookId]?.title ?? 'Unknown')
-      : 'Unknown';
-    
+    final bookTitle = _booksMap[ref.bookId]?.title ?? 'Unknown';
     if (ref.endChapter == null || ref.endVerse == null) {
       return '$bookTitle ${ref.startChapter}:${ref.startVerse}';
     }
