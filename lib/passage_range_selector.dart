@@ -43,8 +43,12 @@ class PassageRangeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bibleService = context.read<BibleService>();
+    final title = ref.complete 
+      ? (bibleService.isLoaded ? bibleService.getRangeRefName(ref) : ref.display)
+      : 'Select passage';
+    
     return ListTile(
-      title: Text(ref.complete ? bibleService.getRangeRefName(ref) : 'Select passage'),
+      title: Text(title),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => _openSelectorDialog(context),
     );
