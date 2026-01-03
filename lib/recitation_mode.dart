@@ -245,55 +245,47 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   void _showRecitationResults(ScriptureRef ref, String transcribedText) {
-    _showLoadingDialog('Grading recitation...');
-
-    // Small delay to ensure dialog is visible
-    Future.delayed(Duration.zero, () async {
-      try {
-        final bibleService = context.read<BibleService>();
-        
-        // Get the actual verse
-        String actualVerse = '';
-        if (bibleService.hasVerse(ref)) {
-          actualVerse = bibleService.getVerse(
-            ref.bookId!,
-            ref.chapterNumber!,
-            ref.verseNumber!,
-          );
-        }
-
-        // Grade the recitation
-        final score = compareWordSequences(actualVerse, transcribedText);
-
-        if (!mounted) return;
-        Navigator.pop(context); // Close loading dialog
-
-        // Navigate to results page
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => RecitationResults(
-              ref: ref,
-              transcribedText: transcribedText,
-              score: score,
-              onReciteAgain: () {
-                Navigator.of(context).pop(); // Pop results page
-                setState(() {
-                  _audioBytes = null;
-                  _audioStream = null;
-                  _audioChunks.clear();
-                  _isConfirmingPassage = false;
-                  _recognitionResult = null;
-                  _transcribedText = '';
-                });
-              },
-            ),
-          ),
+    // Compute score synchronously and navigate immediately
+    try {
+      final bibleService = context.read<BibleService>();
+      
+      // Get the actual verse
+      String actualVerse = '';
+      if (bibleService.hasVerse(ref)) {
+        actualVerse = bibleService.getVerse(
+          ref.bookId!,
+          ref.chapterNumber!,
+          ref.verseNumber!,
         );
-      } catch (e) {
-        if (mounted) Navigator.pop(context);
-        _showError('Error grading recitation: $e');
       }
-    });
+
+      // Grade the recitation
+      final score = compareWordSequences(actualVerse, transcribedText);
+
+      // Navigate to results page
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => RecitationResults(
+            ref: ref,
+            transcribedText: transcribedText,
+            score: score,
+            onReciteAgain: () {
+              Navigator.of(context).pop(); // Pop results page
+              setState(() {
+                _audioBytes = null;
+                _audioStream = null;
+                _audioChunks.clear();
+                _isConfirmingPassage = false;
+                _recognitionResult = null;
+                _transcribedText = '';
+              });
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      _showError('Error grading recitation: $e');
+    }
   }
 
   void _showError(String message) {
