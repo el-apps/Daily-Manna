@@ -40,7 +40,7 @@ class _RecitationModeState extends State<RecitationMode> {
    List<int>? _audioBytes;
    Stream<Uint8List>? _audioStream;
    final List<List<int>> _audioChunks = [];
-   PassageRecognitionResult? _recognitionResult;
+   PassageRangeRef? _recognizedPassageRef;
    String _transcribedText = '';
    late PassageRangeRef _selectedPassageRef;
 
@@ -210,34 +210,25 @@ class _RecitationModeState extends State<RecitationMode> {
 
       // Recognize passage
       debugPrint('[RecitationMode] Calling passage recognition');
-      final recognitionResult = await _openRouterService.recognizePassage(
+      final recognizedRef = await _openRouterService.recognizePassage(
         transcribedText,
         availableBookIds: availableBookIds,
       );
-      debugPrint('[RecitationMode] Got recognition result: ${recognitionResult.book}');
 
       if (!mounted) return;
 
-      // Use bookId from result if available, otherwise fall back to looking up by book name
-      String bookId = recognitionResult.bookId ?? '';
-      if (bookId.isEmpty && recognitionResult.book != null && bibleService.books.isNotEmpty) {
-        final book = bibleService.books.firstWhere(
-          (b) => b.title.toLowerCase() == recognitionResult.book!.toLowerCase(),
-          orElse: () => bibleService.books.first,
-        );
-        bookId = book.id;
+      if (recognizedRef == null) {
+        debugPrint('[RecitationMode] Failed to recognize passage');
+        _showError('Could not recognize passage');
+        return;
       }
+
+      debugPrint('[RecitationMode] Got recognition result: ${recognizedRef.display}');
 
       setState(() {
         _isRecognizing = false;
-        _recognitionResult = recognitionResult;
-        _selectedPassageRef = PassageRangeRef(
-          bookId: bookId,
-          startChapter: recognitionResult.startChapter ?? 1,
-          startVerse: recognitionResult.startVerse ?? 1,
-          endChapter: recognitionResult.endChapter,
-          endVerse: recognitionResult.endVerse,
-        );
+        _recognizedPassageRef = recognizedRef;
+        _selectedPassageRef = recognizedRef;
         _isConfirmingPassage = true;
       });
     } catch (e) {
@@ -282,7 +273,7 @@ class _RecitationModeState extends State<RecitationMode> {
                 _audioStream = null;
                 _audioChunks.clear();
                 _isConfirmingPassage = false;
-                _recognitionResult = null;
+                _recognizedPassageRef = null;
                 _transcribedText = '';
               });
             },
@@ -358,7 +349,7 @@ class _RecitationModeState extends State<RecitationMode> {
   void _cancelConfirmation() {
     setState(() {
       _isConfirmingPassage = false;
-      _recognitionResult = null;
+      _recognizedPassageRef = null;
       _transcribedText = '';
       _audioBytes = null;
       _audioStream = null;
@@ -444,9 +435,7 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   Widget _buildConfirmationSection() {
-    final recognizedPassage = _recognitionResult?.book != null
-        ? '${_recognitionResult!.book} ${_recognitionResult!.startChapter}:${_recognitionResult!.startVerse}'
-        : 'Could not recognize passage';
+    final recognizedPassage = _recognizedPassageRef?.display ?? 'Could not recognize passage';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

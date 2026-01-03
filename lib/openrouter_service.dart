@@ -1,28 +1,9 @@
+import 'package:daily_manna/passage_range_selector.dart';
 import 'package:daily_manna/prompts.dart';
 import 'package:daily_manna/settings_service.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-
-class PassageRecognitionResult {
-  final String? book;
-  final String? bookId;
-  final int? startChapter;
-  final int? startVerse;
-  final int? endChapter;
-  final int? endVerse;
-  final String rawResponse;
-
-  PassageRecognitionResult({
-    required this.book,
-    this.bookId,
-    required this.startChapter,
-    required this.startVerse,
-    required this.endChapter,
-    required this.endVerse,
-    required this.rawResponse,
-  });
-}
 
 class OpenRouterService {
   final SettingsService settingsService;
@@ -31,7 +12,7 @@ class OpenRouterService {
 
   OpenRouterService(this.settingsService);
 
-  Future<PassageRecognitionResult> recognizePassage(
+  Future<PassageRangeRef?> recognizePassage(
     String transcribedText, {
     List<String>? availableBookIds,
   }) async {
@@ -105,18 +86,27 @@ class OpenRouterService {
       final Map<String, dynamic> parsedContent = jsonDecode(content);
       debugPrint('[RecognizePassage] Parsed JSON: $parsedContent');
 
-      final result = PassageRecognitionResult(
-        book: parsedContent['book'] as String?,
-        bookId: parsedContent['bookId'] as String?,
-        startChapter: parsedContent['startChapter'] as int?,
-        startVerse: parsedContent['startVerse'] as int?,
-        endChapter: parsedContent['endChapter'] as int?,
-        endVerse: parsedContent['endVerse'] as int?,
-        rawResponse: content,
+      final bookId = parsedContent['bookId'] as String?;
+      final startChapter = parsedContent['startChapter'] as int?;
+      final startVerse = parsedContent['startVerse'] as int?;
+      final endChapter = parsedContent['endChapter'] as int?;
+      final endVerse = parsedContent['endVerse'] as int?;
+
+      // Return null if essential fields are missing
+      if (bookId == null || startChapter == null || startVerse == null) {
+        debugPrint('[RecognizePassage] Missing essential fields, returning null');
+        return null;
+      }
+
+      final result = PassageRangeRef(
+        bookId: bookId,
+        startChapter: startChapter,
+        startVerse: startVerse,
+        endChapter: endChapter,
+        endVerse: endVerse,
       );
       
-      debugPrint('[RecognizePassage] Recognition result: book=${result.book}, '
-          'chapter=${result.startChapter}, verse=${result.startVerse}');
+      debugPrint('[RecognizePassage] Recognition result: ${result.display}');
       
       return result;
     } catch (e) {
