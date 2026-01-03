@@ -428,7 +428,22 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   Widget _buildConfirmationSection() {
-    final recognizedPassage = _recognizedPassageRef?.display ?? 'Could not recognize passage';
+    final bibleService = context.read<BibleService>();
+    
+    String recognizedPassageDisplay = 'Could not recognize passage';
+    if (_recognizedPassageRef != null) {
+      final book = bibleService.booksMap[_recognizedPassageRef!.bookId];
+      if (book != null) {
+        final ref = _recognizedPassageRef!;
+        if (ref.endChapter == null || ref.endVerse == null) {
+          recognizedPassageDisplay = '${book.title} ${ref.startChapter}:${ref.startVerse}';
+        } else if (ref.endChapter == ref.startChapter) {
+          recognizedPassageDisplay = '${book.title} ${ref.startChapter}:${ref.startVerse}-${ref.endVerse}';
+        } else {
+          recognizedPassageDisplay = '${book.title} ${ref.startChapter}:${ref.startVerse}-${ref.endChapter}:${ref.endVerse}';
+        }
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -453,7 +468,7 @@ class _RecitationModeState extends State<RecitationMode> {
               ),
               const SizedBox(height: 8),
               Text(
-                recognizedPassage,
+                recognizedPassageDisplay,
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
             ],
