@@ -34,13 +34,6 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveSettings() async {
-    if (_whisperController.text.isEmpty || _openRouterController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all API keys')),
-      );
-      return;
-    }
-
     await _settingsService.setWhisperApiKey(_whisperController.text);
     await _settingsService.setOpenRouterApiKey(_openRouterController.text);
 
