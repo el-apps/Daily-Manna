@@ -195,39 +195,52 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   void _showRecitationResults(ScriptureRef ref, String transcribedText) {
-    final bibleService = context.read<BibleService>();
-    
-    // Get the actual verse
-    String actualVerse = '';
-    if (bibleService.hasVerse(ref)) {
-      actualVerse = bibleService.getVerse(
-        ref.bookId!,
-        ref.chapterNumber!,
-        ref.verseNumber!,
-      );
-    }
+    _showLoadingDialog('Grading recitation...');
 
-    // Grade the recitation
-    final score = compareWordSequences(actualVerse, transcribedText);
+    // Small delay to ensure dialog is visible
+    Future.delayed(Duration.zero, () async {
+      try {
+        final bibleService = context.read<BibleService>();
+        
+        // Get the actual verse
+        String actualVerse = '';
+        if (bibleService.hasVerse(ref)) {
+          actualVerse = bibleService.getVerse(
+            ref.bookId!,
+            ref.chapterNumber!,
+            ref.verseNumber!,
+          );
+        }
 
-    // Navigate to results page
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => RecitationResults(
-          ref: ref,
-          transcribedText: transcribedText,
-          score: score,
-          onReciteAgain: () {
-            Navigator.of(context).pop(); // Pop results page
-            setState(() {
-              _audioBytes = null;
-              _audioStream = null;
-              _audioChunks.clear();
-            });
-          },
-        ),
-      ),
-    );
+        // Grade the recitation
+        final score = compareWordSequences(actualVerse, transcribedText);
+
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading dialog
+
+        // Navigate to results page
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => RecitationResults(
+              ref: ref,
+              transcribedText: transcribedText,
+              score: score,
+              onReciteAgain: () {
+                Navigator.of(context).pop(); // Pop results page
+                setState(() {
+                  _audioBytes = null;
+                  _audioStream = null;
+                  _audioChunks.clear();
+                });
+              },
+            ),
+          ),
+        );
+      } catch (e) {
+        if (mounted) Navigator.pop(context);
+        _showError('Error grading recitation: $e');
+      }
+    });
   }
 
   void _showLoadingDialog(String message) {
