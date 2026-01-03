@@ -135,8 +135,15 @@ class _RecitationModeState extends State<RecitationMode> {
         _audioChunks.expand((chunk) => chunk).toList(),
       );
       
+      debugPrint('[RecitationMode] Total PCM bytes: ${_audioBytes!.length}');
+      debugPrint('[RecitationMode] Expected duration at 16kHz: ${_audioBytes!.length / (16000 * 2)} seconds');
+      
       // Load audio for playback
-      final wavData = WavEncoder.encodePcm16ToWav(_audioBytes!.toList());
+      final wavData = WavEncoder.encodePcm16ToWav(
+        _audioBytes!.toList(),
+        sampleRate: 16000,
+      );
+      debugPrint('[RecitationMode] WAV file size: ${wavData.length} bytes');
       final audioSource = await createBytesAudioSource(wavData);
       await _audioPlayer.setAudioSource(audioSource);
       
@@ -157,7 +164,10 @@ class _RecitationModeState extends State<RecitationMode> {
     try {
       // Encode PCM to WAV format
       debugPrint('[RecitationMode] Encoding PCM to WAV');
-      final wavData = WavEncoder.encodePcm16ToWav(audioBytes.toList());
+      final wavData = WavEncoder.encodePcm16ToWav(
+        audioBytes.toList(),
+        sampleRate: 16000,
+      );
       debugPrint('[RecitationMode] WAV encoded, size: ${wavData.length} bytes');
       
       // Transcribe audio
