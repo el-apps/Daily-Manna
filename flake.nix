@@ -30,11 +30,11 @@
       {
         packages = {
           android-sdk = android.sdk.${system} (sdkPkgs: with sdkPkgs; [
-            build-tools-36-0-0
+            build-tools-34-0-0
             cmdline-tools-latest
             platform-tools
+            platforms-android-34
             platforms-android-36
-            ndk-26-1-10909125
             ndk-28-2-13676358
           ]);
         };
