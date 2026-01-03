@@ -258,18 +258,11 @@ class _RecitationModeState extends State<RecitationMode> {
       // Grade the recitation
       final score = compareWordSequences(actualPassage, transcribedText);
 
-      // Convert to ScriptureRef for results page (use start verse)
-      final ref = ScriptureRef(
-        bookId: passageRef.bookId,
-        chapterNumber: passageRef.startChapter,
-        verseNumber: passageRef.startVerse,
-      );
-
       // Navigate to results page
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => RecitationResults(
-            ref: ref,
+            ref: passageRef,
             transcribedText: transcribedText,
             score: score,
             onReciteAgain: () {

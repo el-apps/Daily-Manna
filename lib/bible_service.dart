@@ -72,7 +72,7 @@ class BibleService {
       }
     }
 
-    return verseTexts.join(' ');
+    return verseTexts.join('\n');
   }
 
   hasVerse(ScriptureRef ref) =>

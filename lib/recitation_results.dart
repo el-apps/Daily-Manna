@@ -1,10 +1,11 @@
 import 'package:daily_manna/bible_service.dart';
+import 'package:daily_manna/passage_range_selector.dart';
 import 'package:daily_manna/scripture_ref.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class RecitationResults extends StatefulWidget {
-  final ScriptureRef ref;
+  final PassageRangeRef ref;
   final String transcribedText;
   final double score;
   final VoidCallback onReciteAgain;
@@ -25,13 +26,13 @@ class _RecitationResultsState extends State<RecitationResults> {
   @override
   Widget build(BuildContext context) {
     final bibleService = context.read<BibleService>();
-    final actualVerse = bibleService.hasVerse(widget.ref)
-        ? bibleService.getVerse(
-            widget.ref.bookId!,
-            widget.ref.chapterNumber!,
-            widget.ref.verseNumber!,
-          )
-        : '';
+    final actualPassage = bibleService.getPassageRange(
+      widget.ref.bookId,
+      widget.ref.startChapter,
+      widget.ref.startVerse,
+      endChapter: widget.ref.endChapter,
+      endVerse: widget.ref.endVerse,
+    );
 
     final scorePercentage = (widget.score * 100).toStringAsFixed(1);
     final isCorrect = widget.score >= 0.6;
@@ -45,7 +46,7 @@ class _RecitationResultsState extends State<RecitationResults> {
           children: [
             // Passage reference
             Text(
-              '${widget.ref.bookId} ${widget.ref.chapterNumber}:${widget.ref.verseNumber}',
+              widget.ref.display,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 24),
@@ -93,9 +94,9 @@ class _RecitationResultsState extends State<RecitationResults> {
             ),
             const SizedBox(height: 24),
 
-            // Actual verse
+            // Actual passage
             Text(
-              'Original Verse:',
+              'Original Passage:',
               style: Theme.of(context).textTheme.labelLarge,
             ),
             const SizedBox(height: 8),
@@ -106,7 +107,7 @@ class _RecitationResultsState extends State<RecitationResults> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                actualVerse,
+                actualPassage,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
