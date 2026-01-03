@@ -36,6 +36,7 @@
             platforms-android-34
             platforms-android-36
             ndk-28-2-13676358
+            cmake-3-22-1
           ]);
         };
 

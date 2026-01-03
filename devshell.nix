@@ -25,6 +25,10 @@ devshell.mkShell {
       name = "JAVA_HOME";
       value = jdk.home;
     }
+    {
+      name = "GRADLE_OPTS";
+      value = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${android-sdk}/share/android-sdk/build-tools/34.0.0/aapt2";
+    }
   ];
   packages = [
     flutter

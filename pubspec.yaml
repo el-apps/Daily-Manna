@@ -20,7 +20,7 @@ dependencies:
   flutter_launcher_icons: ^0.14.4
   share_plus: ^11.1.0
   shared_preferences: ^2.3.3
-  record: ^5.1.0
+  record: ^6.1.2
   path_provider: ^2.1.4
   http: ^1.2.0
 
