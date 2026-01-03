@@ -38,7 +38,6 @@ class _RecitationModeState extends State<RecitationMode> {
     List<int>? _audioBytes;
     Stream<Uint8List>? _audioStream;
     final List<List<int>> _audioChunks = [];
-    ScriptureRangeRef? _recognizedPassageRef;
     String _transcribedText = '';
     late ScriptureRangeRef _selectedPassageRef;
 
@@ -226,7 +225,6 @@ class _RecitationModeState extends State<RecitationMode> {
 
       setState(() {
         _isRecognizing = false;
-        _recognizedPassageRef = recognizedRef;
         _selectedPassageRef = recognizedRef;
         _isConfirmingPassage = true;
       });
@@ -271,7 +269,6 @@ class _RecitationModeState extends State<RecitationMode> {
                 _audioStream = null;
                 _audioChunks.clear();
                 _isConfirmingPassage = false;
-                _recognizedPassageRef = null;
                 _transcribedText = '';
               });
             },
@@ -342,7 +339,6 @@ class _RecitationModeState extends State<RecitationMode> {
   void _cancelConfirmation() {
     setState(() {
       _isConfirmingPassage = false;
-      _recognizedPassageRef = null;
       _transcribedText = '';
       _audioBytes = null;
       _audioStream = null;
@@ -428,13 +424,6 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   Widget _buildConfirmationSection() {
-    final bibleService = context.read<BibleService>();
-    
-    String recognizedPassageDisplay = 'Could not recognize passage';
-    if (_recognizedPassageRef != null) {
-      recognizedPassageDisplay = bibleService.getRangeRefName(_recognizedPassageRef!);
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -443,33 +432,6 @@ class _RecitationModeState extends State<RecitationMode> {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 24),
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.grey.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Recognized:',
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                recognizedPassageDisplay,
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 32),
-        Text(
-          'Edit if needed:',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 16),
         PassageRangeSelector(
           ref: _selectedPassageRef,
           onSelected: (ref) {
