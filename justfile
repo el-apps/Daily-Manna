@@ -2,6 +2,10 @@
 default:
     @just --list
 
+# Enter nix dev shell (updates flake first)
+nix-shell:
+    nix flake update && nix develop
+
 # Clean build artifacts
 clean:
     flutter clean

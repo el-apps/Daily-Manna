@@ -64,8 +64,8 @@ class _PassageConfirmationDialogState extends State<PassageConfirmationDialog> {
       verseNumber: _selectedRef.startVerse,
     );
 
-    widget.onConfirm(ref);
     Navigator.of(context).pop();
+    widget.onConfirm(ref);
   }
 
   @override

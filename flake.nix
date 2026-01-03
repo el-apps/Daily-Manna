@@ -35,6 +35,7 @@
             platform-tools
             platforms-android-36
             ndk-26-1-10909125
+            ndk-28-2-13676358
           ]);
         };
 

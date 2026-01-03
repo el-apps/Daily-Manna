@@ -8,7 +8,13 @@ An app for building strong daily habits in interacting with the Word of God.
 A reproducible Nix flake is provided using [android-nixpkgs](https://github.com/tadfisher/android-nixpkgs):
 
 ```bash
-nix flake update              # Update flake inputs (optional)
+just nix-shell                # Enter the dev environment (updates flake first)
+```
+
+Or manually:
+
+```bash
+nix flake update              # Update flake inputs
 nix develop                   # Enter the dev environment
 ```
 
