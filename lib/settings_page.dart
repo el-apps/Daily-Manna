@@ -49,32 +49,35 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const SizedBox(height: 16),
-          Text(
-            'API Keys',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 24),
-          TextField(
-            controller: _whisperController,
-            decoration: const InputDecoration(
-              labelText: 'Whisper API Key',
-              hintText: 'Enter your OpenAI Whisper API key',
+      body: AutofillGroup(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            const SizedBox(height: 16),
+            Text(
+              'API Keys',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            obscureText: true,
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _openRouterController,
-            decoration: const InputDecoration(
-              labelText: 'OpenRouter API Key',
-              hintText: 'Enter your OpenRouter API key',
+            const SizedBox(height: 24),
+            TextField(
+              controller: _whisperController,
+              autofillHints: const [AutofillHints.password],
+              decoration: const InputDecoration(
+                labelText: 'Whisper API Key',
+                hintText: 'Enter your OpenAI Whisper API key',
+              ),
+              obscureText: true,
             ),
-            obscureText: true,
-          ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _openRouterController,
+              autofillHints: const [AutofillHints.password],
+              decoration: const InputDecoration(
+                labelText: 'OpenRouter API Key',
+                hintText: 'Enter your OpenRouter API key',
+              ),
+              obscureText: true,
+            ),
           const SizedBox(height: 32),
           FilledButton(
             onPressed: _saveSettings,
@@ -83,8 +86,9 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Text('Save Settings'),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
+          ],
+          ),
+          ),
+          );
+          }
+          }
