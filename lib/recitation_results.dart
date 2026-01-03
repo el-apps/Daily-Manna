@@ -33,9 +33,6 @@ class _RecitationResultsState extends State<RecitationResults> {
       endVerse: widget.ref.endVerse,
     );
 
-    final scorePercentage = (widget.score * 100).toStringAsFixed(1);
-    final isCorrect = widget.score >= 0.6;
-
     return Scaffold(
       appBar: AppBar(title: const Text('Recitation Results')),
       body: SingleChildScrollView(
@@ -47,49 +44,6 @@ class _RecitationResultsState extends State<RecitationResults> {
             Text(
               bibleService.getRangeRefName(widget.ref),
               style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 24),
-
-            // Score indicator
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: (isCorrect ? Colors.green : Colors.red)
-                    .withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isCorrect ? Colors.green : Colors.red,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    isCorrect ? Icons.check_circle : Icons.error,
-                    color: isCorrect ? Colors.green : Colors.red,
-                    size: 40,
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isCorrect ? 'Correct!' : 'Try Again',
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: isCorrect ? Colors.green : Colors.red,
-                                  ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Accuracy: $scorePercentage%',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
             ),
             const SizedBox(height: 24),
 
