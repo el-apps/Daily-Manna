@@ -89,23 +89,10 @@ class _RecitationResultsState extends State<RecitationResults> {
             LinearProgressIndicator(value: widget.score),
             const SizedBox(height: 24),
 
-            // Action buttons
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.tonal(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Back'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: widget.onReciteAgain,
-                    child: const Text('Recite Again'),
-                  ),
-                ),
-              ],
+            // Action button
+            FilledButton(
+              onPressed: widget.onReciteAgain,
+              child: const Text('Continue'),
             ),
           ],
         ),
