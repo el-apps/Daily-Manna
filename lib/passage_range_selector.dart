@@ -1,29 +1,11 @@
 import 'package:daily_manna/bible_service.dart';
-import 'package:flutter/foundation.dart';
+import 'package:daily_manna/scripture_range_ref.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-class PassageRangeRef {
-  final String bookId;
-  final int startChapter;
-  final int startVerse;
-  final int? endChapter;
-  final int? endVerse;
-
-  PassageRangeRef({
-    required this.bookId,
-    required this.startChapter,
-    required this.startVerse,
-    this.endChapter,
-    this.endVerse,
-  });
-
-  bool get complete => bookId.isNotEmpty && startChapter > 0 && startVerse > 0;
-}
-
 class PassageRangeSelector extends StatelessWidget {
-  final PassageRangeRef ref;
-  final Function(PassageRangeRef) onSelected;
+  final ScriptureRangeRef ref;
+  final Function(ScriptureRangeRef) onSelected;
 
   const PassageRangeSelector({
     super.key,
@@ -53,7 +35,7 @@ class PassageRangeSelector extends StatelessWidget {
   }
 
   void _openSelectorDialog(BuildContext context) async {
-    final selectedRef = await showDialog<PassageRangeRef>(
+    final selectedRef = await showDialog<ScriptureRangeRef>(
       context: context,
       builder: (context) => _SelectPassageRangeDialog(ref: ref),
     );
@@ -65,7 +47,7 @@ class PassageRangeSelector extends StatelessWidget {
 }
 
 class _SelectPassageRangeDialog extends StatefulWidget {
-  final PassageRangeRef ref;
+  final ScriptureRangeRef ref;
 
   const _SelectPassageRangeDialog({required this.ref});
 
@@ -75,7 +57,7 @@ class _SelectPassageRangeDialog extends StatefulWidget {
 }
 
 class _SelectPassageRangeDialogState extends State<_SelectPassageRangeDialog> {
-  late PassageRangeRef selected;
+  late ScriptureRangeRef selected;
 
   @override
   void initState() {
@@ -101,18 +83,18 @@ class _SelectPassageRangeDialogState extends State<_SelectPassageRangeDialog> {
               initialSelection: selected.bookId.isNotEmpty ? selected.bookId : null,
               label: const Text('Book'),
               dropdownMenuEntries: bibleService.books
-                  .map<DropdownMenuEntry<String>>(
-                    (book) =>
-                        DropdownMenuEntry(value: book.id, label: book.title),
-                  )
-                  .toList(),
-              onSelected: (bookId) => setState(
-                () => selected = PassageRangeRef(
-                  bookId: bookId ?? '',
-                  startChapter: 1,
-                  startVerse: 1,
-                ),
-              ),
+                   .map<DropdownMenuEntry<String>>(
+                     (book) =>
+                         DropdownMenuEntry(value: book.id, label: book.title),
+                   )
+                   .toList(),
+               onSelected: (bookId) => setState(
+                 () => selected = ScriptureRangeRef(
+                   bookId: bookId ?? '',
+                   startChapter: 1,
+                   startVerse: 1,
+                 ),
+               ),
             ),
 
             // Start verse selector
@@ -139,7 +121,7 @@ class _SelectPassageRangeDialogState extends State<_SelectPassageRangeDialog> {
                               )
                               .toList(),
                       onSelected: (chapterNumber) => setState(
-                        () => selected = PassageRangeRef(
+                        () => selected = ScriptureRangeRef(
                           bookId: selected.bookId,
                           startChapter: chapterNumber ?? 1,
                           startVerse: selected.startVerse,
@@ -167,7 +149,7 @@ class _SelectPassageRangeDialogState extends State<_SelectPassageRangeDialog> {
                               )
                               .toList(),
                       onSelected: (verseNumber) => setState(
-                        () => selected = PassageRangeRef(
+                        () => selected = ScriptureRangeRef(
                           bookId: selected.bookId,
                           startChapter: selected.startChapter,
                           startVerse: verseNumber ?? 1,
@@ -175,24 +157,24 @@ class _SelectPassageRangeDialogState extends State<_SelectPassageRangeDialog> {
                           endVerse: selected.endVerse ?? verseNumber,
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                      ),
+                      ),
+                      ],
+                      ),
+                      ],
 
-            // End verse selector
-            if (selected.bookId.isNotEmpty)
-              Text(
-                'End Verse',
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-            if (selected.bookId.isNotEmpty)
-              Row(
-                spacing: 8,
-                children: [
-                  Expanded(
-                    child: DropdownMenu(
+                      // End verse selector
+                      if (selected.bookId.isNotEmpty)
+                      Text(
+                      'End Verse',
+                      style: Theme.of(context).textTheme.labelMedium,
+                      ),
+                      if (selected.bookId.isNotEmpty)
+                      Row(
+                      spacing: 8,
+                      children: [
+                      Expanded(
+                      child: DropdownMenu(
                       expandedInsets: EdgeInsets.zero,
                       label: const Text('Chapter'),
                       initialSelection: selected.endChapter,
@@ -206,7 +188,7 @@ class _SelectPassageRangeDialogState extends State<_SelectPassageRangeDialog> {
                               )
                               .toList(),
                       onSelected: (chapterNumber) => setState(
-                        () => selected = PassageRangeRef(
+                        () => selected = ScriptureRangeRef(
                           bookId: selected.bookId,
                           startChapter: selected.startChapter,
                           startVerse: selected.startVerse,
@@ -235,7 +217,7 @@ class _SelectPassageRangeDialogState extends State<_SelectPassageRangeDialog> {
                           )
                           .toList(),
                       onSelected: (verseNumber) => setState(
-                        () => selected = PassageRangeRef(
+                        () => selected = ScriptureRangeRef(
                           bookId: selected.bookId,
                           startChapter: selected.startChapter,
                           startVerse: selected.startVerse,

@@ -1,11 +1,10 @@
 import 'package:daily_manna/bible_service.dart';
-import 'package:daily_manna/passage_range_selector.dart';
-import 'package:daily_manna/scripture_ref.dart';
+import 'package:daily_manna/scripture_range_ref.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class RecitationResults extends StatefulWidget {
-  final PassageRangeRef ref;
+  final ScriptureRangeRef ref;
   final String transcribedText;
   final double score;
   final VoidCallback onReciteAgain;

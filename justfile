@@ -12,7 +12,7 @@ clean:
 
 # Run code generation (freezed)
 gen:
-    dart run build_runner build --delete-conflicting-outputs
+    flutter pub run build_runner build --delete-conflicting-outputs
 
 # Format code
 format:

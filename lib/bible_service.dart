@@ -1,5 +1,5 @@
 import 'package:bible_parser_flutter/bible_parser_flutter.dart';
-import 'package:daily_manna/passage_range_selector.dart';
+import 'package:daily_manna/scripture_range_ref.dart';
 import 'package:daily_manna/scripture_ref.dart';
 import 'package:flutter/material.dart';
 
@@ -85,7 +85,7 @@ class BibleService {
     ref.verseNumber,
   );
 
-  String getRangeRefName(PassageRangeRef ref) {
+  String getRangeRefName(ScriptureRangeRef ref) {
     final bookTitle = _booksMap.isNotEmpty 
       ? (_booksMap[ref.bookId]?.title ?? 'Unknown')
       : 'Unknown';

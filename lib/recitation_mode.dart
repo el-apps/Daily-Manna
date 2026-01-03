@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 import 'package:daily_manna/bible_service.dart';
 import 'package:daily_manna/bytes_audio_source.dart';
@@ -7,7 +5,7 @@ import 'package:daily_manna/wav_encoder.dart';
 import 'package:daily_manna/openrouter_service.dart';
 import 'package:daily_manna/passage_range_selector.dart';
 import 'package:daily_manna/recitation_results.dart';
-import 'package:daily_manna/scripture_ref.dart';
+import 'package:daily_manna/scripture_range_ref.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/settings_service.dart';
 import 'package:daily_manna/whisper_service.dart';
@@ -32,17 +30,17 @@ class _RecitationModeState extends State<RecitationMode> {
    late OpenRouterService _openRouterService;
 
    bool _isRecording = false;
-   bool _isPlayingBack = false;
-   bool _isConfirmingPassage = false;
-   bool _isTranscribing = false;
-   bool _isRecognizing = false;
-   String _loadingMessage = '';
-   List<int>? _audioBytes;
-   Stream<Uint8List>? _audioStream;
-   final List<List<int>> _audioChunks = [];
-   PassageRangeRef? _recognizedPassageRef;
-   String _transcribedText = '';
-   late PassageRangeRef _selectedPassageRef;
+    bool _isPlayingBack = false;
+    bool _isConfirmingPassage = false;
+    bool _isTranscribing = false;
+    bool _isRecognizing = false;
+    String _loadingMessage = '';
+    List<int>? _audioBytes;
+    Stream<Uint8List>? _audioStream;
+    final List<List<int>> _audioChunks = [];
+    ScriptureRangeRef? _recognizedPassageRef;
+    String _transcribedText = '';
+    late ScriptureRangeRef _selectedPassageRef;
 
   @override
   void initState() {
@@ -52,10 +50,10 @@ class _RecitationModeState extends State<RecitationMode> {
     _settingsService = context.read<SettingsService>();
     _whisperService = WhisperService(_settingsService);
     _openRouterService = OpenRouterService(_settingsService);
-    _selectedPassageRef = PassageRangeRef(
-      bookId: '',
-      startChapter: 1,
-      startVerse: 1,
+    _selectedPassageRef = ScriptureRangeRef(
+     bookId: '',
+     startChapter: 1,
+     startVerse: 1,
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -242,7 +240,7 @@ class _RecitationModeState extends State<RecitationMode> {
     }
   }
 
-  void _showRecitationResults(PassageRangeRef passageRef, String transcribedText) {
+  void _showRecitationResults(ScriptureRangeRef passageRef, String transcribedText) {
     // Compute score synchronously and navigate immediately
     try {
       final bibleService = context.read<BibleService>();

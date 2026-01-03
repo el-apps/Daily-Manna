@@ -1,4 +1,4 @@
-import 'package:daily_manna/passage_range_selector.dart';
+import 'package:daily_manna/scripture_range_ref.dart';
 import 'package:daily_manna/prompts.dart';
 import 'package:daily_manna/settings_service.dart';
 import 'dart:convert';
@@ -12,7 +12,7 @@ class OpenRouterService {
 
   OpenRouterService(this.settingsService);
 
-  Future<PassageRangeRef?> recognizePassage(
+  Future<ScriptureRangeRef?> recognizePassage(
     String transcribedText, {
     List<String>? availableBookIds,
   }) async {
@@ -98,7 +98,7 @@ class OpenRouterService {
         return null;
       }
 
-      final result = PassageRangeRef(
+      final result = ScriptureRangeRef(
         bookId: bookId,
         startChapter: startChapter,
         startVerse: startVerse,
