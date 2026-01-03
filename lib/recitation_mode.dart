@@ -5,7 +5,7 @@ import 'package:daily_manna/bible_service.dart';
 import 'package:daily_manna/bytes_audio_source.dart';
 import 'package:daily_manna/wav_encoder.dart';
 import 'package:daily_manna/openrouter_service.dart';
-import 'package:daily_manna/passage_confirmation_dialog.dart';
+import 'package:daily_manna/passage_range_selector.dart';
 import 'package:daily_manna/recitation_results.dart';
 import 'package:daily_manna/scripture_ref.dart';
 import 'package:daily_manna/settings_page.dart';
@@ -33,9 +33,13 @@ class _RecitationModeState extends State<RecitationMode> {
 
    bool _isRecording = false;
    bool _isPlayingBack = false;
+   bool _isConfirmingPassage = false;
    List<int>? _audioBytes;
    Stream<Uint8List>? _audioStream;
    final List<List<int>> _audioChunks = [];
+   PassageRecognitionResult? _recognitionResult;
+   String _transcribedText = '';
+   late PassageRangeRef _selectedPassageRef;
 
   @override
   void initState() {
@@ -45,6 +49,11 @@ class _RecitationModeState extends State<RecitationMode> {
     _settingsService = context.read<SettingsService>();
     _whisperService = WhisperService(_settingsService);
     _openRouterService = OpenRouterService(_settingsService);
+    _selectedPassageRef = PassageRangeRef(
+      bookId: '',
+      startChapter: 1,
+      startVerse: 1,
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkApiKeys();
@@ -182,6 +191,7 @@ class _RecitationModeState extends State<RecitationMode> {
       if (!mounted) return;
 
       debugPrint('[RecitationMode] Got transcribed text: "$transcribedText"');
+      _transcribedText = transcribedText;
 
       _showLoadingDialog('Recognizing passage...');
 
@@ -193,21 +203,28 @@ class _RecitationModeState extends State<RecitationMode> {
 
       if (!mounted) return;
 
-      // Show confirmation page
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => PassageConfirmationDialog(
-            recognitionResult: recognitionResult,
-            transcribedText: transcribedText,
-            onConfirm: (ref) {
-              if (ref != null) {
-                debugPrint('[RecitationMode] User confirmed passage: ${ref.bookId}');
-                _showRecitationResults(ref, transcribedText);
-              }
-            },
-          ),
-        ),
-      );
+      // Initialize selected passage ref from recognition result
+      final bibleService = context.read<BibleService>();
+      String bookId = '';
+      if (recognitionResult.book != null && bibleService.books.isNotEmpty) {
+        final book = bibleService.books.firstWhere(
+          (b) => b.title.toLowerCase() == recognitionResult.book!.toLowerCase(),
+          orElse: () => bibleService.books.first,
+        );
+        bookId = book.id;
+      }
+
+      setState(() {
+        _recognitionResult = recognitionResult;
+        _selectedPassageRef = PassageRangeRef(
+          bookId: bookId,
+          startChapter: recognitionResult.startChapter ?? 1,
+          startVerse: recognitionResult.startVerse ?? 1,
+          endChapter: recognitionResult.endChapter,
+          endVerse: recognitionResult.endVerse,
+        );
+        _isConfirmingPassage = true;
+      });
     } catch (e) {
       debugPrint('[RecitationMode] Error in recording processing: $e');
       if (mounted) Navigator.pop(context); // Close loading dialog
@@ -252,6 +269,9 @@ class _RecitationModeState extends State<RecitationMode> {
                   _audioBytes = null;
                   _audioStream = null;
                   _audioChunks.clear();
+                  _isConfirmingPassage = false;
+                  _recognitionResult = null;
+                  _transcribedText = '';
                 });
               },
             ),
@@ -322,6 +342,36 @@ class _RecitationModeState extends State<RecitationMode> {
     });
   }
 
+  void _confirmPassage() {
+    if (!_selectedPassageRef.complete) {
+      _showError('Please select a valid passage');
+      return;
+    }
+
+    final ref = ScriptureRef(
+      bookId: _selectedPassageRef.bookId,
+      chapterNumber: _selectedPassageRef.startChapter,
+      verseNumber: _selectedPassageRef.startVerse,
+    );
+
+    debugPrint('[RecitationMode] User confirmed passage: ${ref.bookId}');
+    setState(() {
+      _isConfirmingPassage = false;
+    });
+    _showRecitationResults(ref, _transcribedText);
+  }
+
+  void _cancelConfirmation() {
+    setState(() {
+      _isConfirmingPassage = false;
+      _recognitionResult = null;
+      _transcribedText = '';
+      _audioBytes = null;
+      _audioStream = null;
+      _audioChunks.clear();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -331,7 +381,9 @@ class _RecitationModeState extends State<RecitationMode> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (!_isPlayingBack) ...[
+            if (_isConfirmingPassage)
+              _buildConfirmationSection()
+            else if (!_isPlayingBack) ...[
               // Recording section
               Container(
                 padding: const EdgeInsets.all(24),
@@ -366,6 +418,74 @@ class _RecitationModeState extends State<RecitationMode> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildConfirmationSection() {
+    final recognizedPassage = _recognitionResult?.book != null
+        ? '${_recognitionResult!.book} ${_recognitionResult!.startChapter}:${_recognitionResult!.startVerse}'
+        : 'Could not recognize passage';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Confirm Passage',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.grey.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Recognized:',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                recognizedPassage,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 32),
+        Text(
+          'Edit if needed:',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 16),
+        PassageRangeSelector(
+          ref: _selectedPassageRef,
+          onSelected: (ref) {
+            setState(() => _selectedPassageRef = ref);
+          },
+        ),
+        const SizedBox(height: 48),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _cancelConfirmation,
+                child: const Text('Cancel'),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: FilledButton(
+                onPressed: _confirmPassage,
+                child: const Text('Submit'),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
