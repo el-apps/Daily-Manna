@@ -98,7 +98,10 @@ class _RecitationModeState extends State<RecitationMode> {
         final config = const RecordConfig(
           encoder: AudioEncoder.pcm16bits,
           sampleRate: 16000,
+          numChannels: 1,
         );
+        
+        debugPrint('[RecitationMode] Recording config: sampleRate=${config.sampleRate}, numChannels=${config.numChannels}, encoder=${config.encoder}');
         
         // Clear previous chunks
         _audioChunks.clear();
@@ -109,6 +112,7 @@ class _RecitationModeState extends State<RecitationMode> {
         // Listen to stream and collect chunks
         _audioStream!.listen((chunk) {
           _audioChunks.add(chunk);
+          debugPrint('[RecitationMode] Received audio chunk: ${chunk.length} bytes');
         });
 
         setState(() => _isRecording = true);
