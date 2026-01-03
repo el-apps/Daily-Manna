@@ -6,12 +6,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-class PassageConfirmationDialog extends StatefulWidget {
+class PassageConfirmationPage extends StatefulWidget {
   final PassageRecognitionResult recognitionResult;
   final String transcribedText;
   final Function(ScriptureRef?) onConfirm;
 
-  const PassageConfirmationDialog({
+  const PassageConfirmationPage({
     super.key,
     required this.recognitionResult,
     required this.transcribedText,
@@ -19,11 +19,14 @@ class PassageConfirmationDialog extends StatefulWidget {
   });
 
   @override
-  State<PassageConfirmationDialog> createState() =>
-      _PassageConfirmationDialogState();
+  State<PassageConfirmationPage> createState() =>
+      _PassageConfirmationPageState();
 }
 
-class _PassageConfirmationDialogState extends State<PassageConfirmationDialog> {
+// Keep old dialog name for backwards compatibility
+typedef PassageConfirmationDialog = PassageConfirmationPage;
+
+class _PassageConfirmationPageState extends State<PassageConfirmationPage> {
   late PassageRangeRef _selectedRef;
 
   @override
@@ -87,55 +90,80 @@ class _PassageConfirmationDialogState extends State<PassageConfirmationDialog> {
     widget.onConfirm(ref);
   }
 
+  void _cancel() {
+    Navigator.of(context).pop();
+    widget.onConfirm(null);
+  }
+
   @override
   Widget build(BuildContext context) {
     final recognizedPassage = widget.recognitionResult.book != null
         ? '${widget.recognitionResult.book} ${widget.recognitionResult.startChapter}:${widget.recognitionResult.startVerse}'
         : 'Could not recognize passage';
 
-    return AlertDialog(
-      title: const Text('Confirm Passage'),
-      content: SingleChildScrollView(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Confirm Passage'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Recognized:',
-              style: Theme.of(context).textTheme.labelMedium,
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Recognized:',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    recognizedPassage,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              recognizedPassage,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 32),
             Text(
               'Edit if needed:',
-              style: Theme.of(context).textTheme.labelMedium,
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             PassageRangeSelector(
               ref: _selectedRef,
               onSelected: (ref) {
                 setState(() => _selectedRef = ref);
               },
             ),
+            const SizedBox(height: 48),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _cancel,
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _confirm,
+                    child: const Text('Confirm'),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _confirm,
-          child: const Text('Confirm'),
-        ),
-      ],
     );
   }
 }

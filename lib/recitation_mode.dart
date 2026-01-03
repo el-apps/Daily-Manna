@@ -193,18 +193,19 @@ class _RecitationModeState extends State<RecitationMode> {
 
       if (!mounted) return;
 
-      // Show confirmation dialog
-      showDialog(
-        context: context,
-        builder: (context) => PassageConfirmationDialog(
-          recognitionResult: recognitionResult,
-          transcribedText: transcribedText,
-          onConfirm: (ref) {
-            if (ref != null) {
-              debugPrint('[RecitationMode] User confirmed passage: ${ref.bookId}');
-              _showRecitationResults(ref, transcribedText);
-            }
-          },
+      // Show confirmation page
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => PassageConfirmationDialog(
+            recognitionResult: recognitionResult,
+            transcribedText: transcribedText,
+            onConfirm: (ref) {
+              if (ref != null) {
+                debugPrint('[RecitationMode] User confirmed passage: ${ref.bookId}');
+                _showRecitationResults(ref, transcribedText);
+              }
+            },
+          ),
         ),
       );
     } catch (e) {
