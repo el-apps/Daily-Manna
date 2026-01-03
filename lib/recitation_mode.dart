@@ -2,10 +2,10 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:daily_manna/bible_service.dart';
+import 'package:daily_manna/bytes_audio_source.dart';
 import 'package:daily_manna/wav_encoder.dart';
 import 'package:daily_manna/openrouter_service.dart';
 import 'package:daily_manna/passage_confirmation_dialog.dart';
-import 'package:daily_manna/passage_range_selector.dart';
 import 'package:daily_manna/recitation_results.dart';
 import 'package:daily_manna/scripture_ref.dart';
 import 'package:daily_manna/settings_page.dart';
@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 import 'package:word_tools/word_tools.dart';
+import 'package:just_audio/just_audio.dart';
 
 class RecitationMode extends StatefulWidget {
   const RecitationMode({super.key});
@@ -25,25 +26,22 @@ class RecitationMode extends StatefulWidget {
 
 class _RecitationModeState extends State<RecitationMode> {
    late AudioRecorder _recorder;
+   late AudioPlayer _audioPlayer;
    late SettingsService _settingsService;
    late WhisperService _whisperService;
    late OpenRouterService _openRouterService;
 
    bool _isRecording = false;
+   bool _isPlayingBack = false;
    List<int>? _audioBytes;
    Stream<Uint8List>? _audioStream;
    final List<List<int>> _audioChunks = [];
-   PassageRangeRef _selectedRef = PassageRangeRef(
-     bookId: '',
-     startChapter: 1,
-     startVerse: 1,
-   );
-   bool _useSelectedPassage = false;
 
   @override
   void initState() {
     super.initState();
     _recorder = AudioRecorder();
+    _audioPlayer = AudioPlayer();
     _settingsService = context.read<SettingsService>();
     _whisperService = WhisperService(_settingsService);
     _openRouterService = OpenRouterService(_settingsService);
@@ -56,6 +54,7 @@ class _RecitationModeState extends State<RecitationMode> {
   @override
   void dispose() {
     _recorder.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -135,7 +134,15 @@ class _RecitationModeState extends State<RecitationMode> {
       _audioBytes = Uint8List.fromList(
         _audioChunks.expand((chunk) => chunk).toList(),
       );
-      await _processRecording();
+      
+      // Load audio for playback
+      final wavData = WavEncoder.encodePcm16ToWav(_audioBytes!.toList());
+      await _audioPlayer.setAudioSource(
+        BytesAudioSource(wavData),
+      );
+      
+      // Show playback UI
+      setState(() => _isPlayingBack = true);
     } catch (e) {
       _showError('Failed to stop recording: $e');
     }
@@ -162,18 +169,6 @@ class _RecitationModeState extends State<RecitationMode> {
       if (!mounted) return;
 
       debugPrint('[RecitationMode] Got transcribed text: "$transcribedText"');
-
-      // If passage was pre-selected, skip recognition step
-      if (_useSelectedPassage && _selectedRef.complete) {
-        debugPrint('[RecitationMode] Using pre-selected passage');
-        final ref = ScriptureRef(
-          bookId: _selectedRef.bookId,
-          chapterNumber: _selectedRef.startChapter,
-          verseNumber: _selectedRef.startVerse,
-        );
-        _showRecitationResults(ref, transcribedText);
-        return;
-      }
 
       _showLoadingDialog('Recognizing passage...');
 
@@ -277,6 +272,42 @@ class _RecitationModeState extends State<RecitationMode> {
     );
   }
 
+  Future<void> _togglePlayback() async {
+    try {
+      if (_audioPlayer.playing) {
+        await _audioPlayer.pause();
+      } else {
+        await _audioPlayer.play();
+      }
+    } catch (e) {
+      _showError('Playback error: $e');
+    }
+  }
+
+  Future<void> _stopPlayback() async {
+    try {
+      await _audioPlayer.stop();
+    } catch (e) {
+      _showError('Error stopping playback: $e');
+    }
+  }
+
+  Future<void> _sendForTranscription() async {
+    await _stopPlayback();
+    setState(() => _isPlayingBack = false);
+    await _processRecording();
+  }
+
+  Future<void> _discardRecording() async {
+    await _stopPlayback();
+    setState(() {
+      _isPlayingBack = false;
+      _audioBytes = null;
+      _audioStream = null;
+      _audioChunks.clear();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -286,60 +317,161 @@ class _RecitationModeState extends State<RecitationMode> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Optional passage selector
-            Text(
-              'Select Passage (Optional)',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'If you know which passage you\'ll recite, select it here to skip automatic recognition.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            PassageRangeSelector(
-              ref: _selectedRef,
-              onSelected: (ref) {
-                setState(() {
-                  _selectedRef = ref;
-                  _useSelectedPassage = ref.complete;
-                });
-              },
-            ),
-            const SizedBox(height: 32),
-            // Recording section
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
+            if (!_isPlayingBack) ...[
+              // Recording section
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      _isRecording ? Icons.mic : Icons.mic_none,
+                      size: 80,
+                      color: _isRecording ? Colors.red : Colors.grey,
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      _isRecording ? 'Recording...' : 'Ready to recite',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 48),
+                    FilledButton.icon(
+                      onPressed: _isRecording ? _stopRecording : _startRecording,
+                      icon: Icon(_isRecording ? Icons.stop : Icons.mic),
+                      label: Text(_isRecording ? 'Stop Recording' : 'Start Recording'),
+                    ),
+                  ],
+                ),
               ),
-              child: Column(
-                children: [
-                  Icon(
-                    _isRecording ? Icons.mic : Icons.mic_none,
-                    size: 80,
-                    color: _isRecording ? Colors.red : Colors.grey,
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    _isRecording ? 'Recording...' : 'Ready to recite',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 48),
-                  FilledButton.icon(
-                    onPressed: _isRecording ? _stopRecording : _startRecording,
-                    icon: Icon(_isRecording ? Icons.stop : Icons.mic),
-                    label: Text(_isRecording ? 'Stop Recording' : 'Start Recording'),
-                  ),
-                ],
-              ),
-            ),
+            ] else
+              // Playback section
+              _buildPlaybackSection(),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildPlaybackSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Review Your Recording',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.grey.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.music_note,
+                size: 80,
+                color: Colors.blue,
+              ),
+              const SizedBox(height: 24),
+              StreamBuilder<PlayerState>(
+                stream: _audioPlayer.playerStateStream,
+                builder: (context, snapshot) {
+                  final playerState = snapshot.data;
+                  final isPlaying = playerState?.playing ?? false;
+
+                  return Column(
+                    children: [
+                      // Playback progress
+                      StreamBuilder<Duration?>(
+                        stream: _audioPlayer.positionStream,
+                        builder: (context, snapshot) {
+                          final position = snapshot.data ?? Duration.zero;
+                          final duration = _audioPlayer.duration ?? Duration.zero;
+                          
+                          return Column(
+                            children: [
+                              SliderTheme(
+                                data: SliderThemeData(
+                                  trackHeight: 4,
+                                ),
+                                child: Slider(
+                                  min: 0,
+                                  max: duration.inMilliseconds.toDouble(),
+                                  value: position.inMilliseconds.toDouble(),
+                                  onChanged: (value) {
+                                    _audioPlayer.seek(
+                                      Duration(milliseconds: value.toInt()),
+                                    );
+                                  },
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      _formatDuration(position),
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                    Text(
+                                      _formatDuration(duration),
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      // Play/Pause button
+                      FilledButton.icon(
+                        onPressed: _togglePlayback,
+                        icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
+                        label: Text(isPlaying ? 'Pause' : 'Play'),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 32),
+              // Action buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _discardRecording,
+                      icon: const Icon(Icons.delete),
+                      label: const Text('Discard'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _sendForTranscription,
+                      icon: const Icon(Icons.check),
+                      label: const Text('Send'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 }
