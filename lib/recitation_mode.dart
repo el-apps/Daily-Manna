@@ -34,6 +34,9 @@ class _RecitationModeState extends State<RecitationMode> {
    bool _isRecording = false;
    bool _isPlayingBack = false;
    bool _isConfirmingPassage = false;
+   bool _isTranscribing = false;
+   bool _isRecognizing = false;
+   String _loadingMessage = '';
    List<int>? _audioBytes;
    Stream<Uint8List>? _audioStream;
    final List<List<int>> _audioChunks = [];
@@ -172,7 +175,10 @@ class _RecitationModeState extends State<RecitationMode> {
     if (audioBytes == null) return;
 
     debugPrint('[RecitationMode] Starting audio processing');
-    _showLoadingDialog('Transcribing audio...');
+    setState(() {
+      _isTranscribing = true;
+      _loadingMessage = 'Transcribing audio...';
+    });
 
     try {
       // Encode PCM to WAV format
@@ -186,20 +192,22 @@ class _RecitationModeState extends State<RecitationMode> {
       // Transcribe audio
       debugPrint('[RecitationMode] Calling Whisper transcription');
       final transcribedText = await _whisperService.transcribeAudioBytes(wavData, 'audio.wav');
-      Navigator.pop(context); // Close loading dialog
 
       if (!mounted) return;
 
       debugPrint('[RecitationMode] Got transcribed text: "$transcribedText"');
       _transcribedText = transcribedText;
 
-      _showLoadingDialog('Recognizing passage...');
+      setState(() {
+        _isTranscribing = false;
+        _isRecognizing = true;
+        _loadingMessage = 'Recognizing passage...';
+      });
 
       // Recognize passage
       debugPrint('[RecitationMode] Calling passage recognition');
       final recognitionResult = await _openRouterService.recognizePassage(transcribedText);
       debugPrint('[RecitationMode] Got recognition result: ${recognitionResult.book}');
-      Navigator.pop(context); // Close loading dialog
 
       if (!mounted) return;
 
@@ -215,6 +223,7 @@ class _RecitationModeState extends State<RecitationMode> {
       }
 
       setState(() {
+        _isRecognizing = false;
         _recognitionResult = recognitionResult;
         _selectedPassageRef = PassageRangeRef(
           bookId: bookId,
@@ -227,7 +236,10 @@ class _RecitationModeState extends State<RecitationMode> {
       });
     } catch (e) {
       debugPrint('[RecitationMode] Error in recording processing: $e');
-      if (mounted) Navigator.pop(context); // Close loading dialog
+      setState(() {
+        _isTranscribing = false;
+        _isRecognizing = false;
+      });
       _showError('Error: $e');
     }
   }
@@ -282,22 +294,6 @@ class _RecitationModeState extends State<RecitationMode> {
         _showError('Error grading recitation: $e');
       }
     });
-  }
-
-  void _showLoadingDialog(String message) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        content: Row(
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(width: 16),
-            Text(message),
-          ],
-        ),
-      ),
-    );
   }
 
   void _showError(String message) {
@@ -381,7 +377,9 @@ class _RecitationModeState extends State<RecitationMode> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_isConfirmingPassage)
+            if (_isTranscribing || _isRecognizing)
+              _buildLoadingSection()
+            else if (_isConfirmingPassage)
               _buildConfirmationSection()
             else if (!_isPlayingBack) ...[
               // Recording section
@@ -418,6 +416,32 @@ class _RecitationModeState extends State<RecitationMode> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLoadingSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.grey.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 24),
+              Text(
+                _loadingMessage,
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
