@@ -223,7 +223,8 @@ class _RecitationModeState extends State<RecitationMode> {
         return;
       }
 
-      debugPrint('[RecitationMode] Got recognition result: ${recognizedRef.display}');
+      debugPrint('[RecitationMode] Got recognition result: bookId=${recognizedRef.bookId}, '
+          'chapter=${recognizedRef.startChapter}:${recognizedRef.startVerse}');
 
       setState(() {
         _isRecognizing = false;
@@ -332,7 +333,8 @@ class _RecitationModeState extends State<RecitationMode> {
       return;
     }
 
-    debugPrint('[RecitationMode] User confirmed passage: ${_selectedPassageRef.display}');
+    final bibleService = context.read<BibleService>();
+    debugPrint('[RecitationMode] User confirmed passage: ${bibleService.getRangeRefName(_selectedPassageRef)}');
     setState(() {
       _isConfirmingPassage = false;
     });

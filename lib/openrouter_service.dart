@@ -106,7 +106,8 @@ class OpenRouterService {
         endVerse: endVerse,
       );
       
-      debugPrint('[RecognizePassage] Recognition result: ${result.display}');
+      debugPrint('[RecognizePassage] Recognition result: bookId=${result.bookId}, '
+          'chapter=${result.startChapter}:${result.startVerse}');
       
       return result;
     } catch (e) {

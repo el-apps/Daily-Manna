@@ -18,16 +18,6 @@ class PassageRangeRef {
     this.endVerse,
   });
 
-  String get display {
-    if (endChapter == null || endVerse == null) {
-      return '$bookId $startChapter:$startVerse';
-    }
-    if (endChapter == startChapter) {
-      return '$bookId $startChapter:$startVerse-$endVerse';
-    }
-    return '$bookId $startChapter:$startVerse-$endChapter:$endVerse';
-  }
-
   bool get complete => bookId.isNotEmpty && startChapter > 0 && startVerse > 0;
 }
 
@@ -52,7 +42,7 @@ class PassageRangeSelector extends StatelessWidget {
       }
     } catch (e) {
       debugPrint('[PassageRangeSelector] Error getting range ref name: $e');
-      displayText = ref.display;
+      displayText = 'Select passage';
     }
     
     return ListTile(

@@ -46,7 +46,7 @@ class _RecitationResultsState extends State<RecitationResults> {
           children: [
             // Passage reference
             Text(
-              widget.ref.display,
+              bibleService.getRangeRefName(widget.ref),
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 24),
