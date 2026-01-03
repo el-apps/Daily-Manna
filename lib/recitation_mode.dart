@@ -241,23 +241,29 @@ class _RecitationModeState extends State<RecitationMode> {
     }
   }
 
-  void _showRecitationResults(ScriptureRef ref, String transcribedText) {
+  void _showRecitationResults(PassageRangeRef passageRef, String transcribedText) {
     // Compute score synchronously and navigate immediately
     try {
       final bibleService = context.read<BibleService>();
       
-      // Get the actual verse
-      String actualVerse = '';
-      if (bibleService.hasVerse(ref)) {
-        actualVerse = bibleService.getVerse(
-          ref.bookId!,
-          ref.chapterNumber!,
-          ref.verseNumber!,
-        );
-      }
+      // Get the actual passage (handles single verse or range)
+      String actualPassage = bibleService.getPassageRange(
+        passageRef.bookId,
+        passageRef.startChapter,
+        passageRef.startVerse,
+        endChapter: passageRef.endChapter,
+        endVerse: passageRef.endVerse,
+      );
 
       // Grade the recitation
-      final score = compareWordSequences(actualVerse, transcribedText);
+      final score = compareWordSequences(actualPassage, transcribedText);
+
+      // Convert to ScriptureRef for results page (use start verse)
+      final ref = ScriptureRef(
+        bookId: passageRef.bookId,
+        chapterNumber: passageRef.startChapter,
+        verseNumber: passageRef.startVerse,
+      );
 
       // Navigate to results page
       Navigator.of(context).push(
@@ -333,17 +339,11 @@ class _RecitationModeState extends State<RecitationMode> {
       return;
     }
 
-    final ref = ScriptureRef(
-      bookId: _selectedPassageRef.bookId,
-      chapterNumber: _selectedPassageRef.startChapter,
-      verseNumber: _selectedPassageRef.startVerse,
-    );
-
-    debugPrint('[RecitationMode] User confirmed passage: ${ref.bookId}');
+    debugPrint('[RecitationMode] User confirmed passage: ${_selectedPassageRef.display}');
     setState(() {
       _isConfirmingPassage = false;
     });
-    _showRecitationResults(ref, _transcribedText);
+    _showRecitationResults(_selectedPassageRef, _transcribedText);
   }
 
   void _cancelConfirmation() {
