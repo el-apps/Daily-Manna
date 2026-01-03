@@ -44,9 +44,16 @@ stop-web-prod:
 logs-web-prod:
     tail -f build/web/server.log
 
-# Run the app on Android
+# Run the app on Android (first device)
 android:
-    flutter run -d android
+    #!/usr/bin/env bash
+    device=$(flutter devices | grep android | awk -F'•' '{print $2}' | head -1 | xargs);
+    if [ -z "$device" ]; then
+      echo "No Android device found"
+      flutter devices
+      exit 1
+    fi
+    flutter run -d "$device"
 
 # Build Android APK
 build-apk-prod:

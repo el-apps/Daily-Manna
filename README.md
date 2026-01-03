@@ -5,17 +5,20 @@ An app for building strong daily habits in interacting with the Word of God.
 
 ### With Nix (NixOS)
 
-A `flake.nix` is provided for reproducible Flutter Android development:
+A reproducible Nix flake is provided using [android-nixpkgs](https://github.com/tadfisher/android-nixpkgs):
 
 ```bash
+nix flake update              # Update flake inputs (optional)
 nix develop                   # Enter the dev environment
 ```
 
 This provides:
 - Flutter (latest stable)
-- JDK 17
-- Android SDK (API 36, build tools 36.0.0 and 28.0.3, arm64-v8a)
+- JDK (default version)
+- Android SDK (API 36, build-tools-36.0.0)
 - NDK 26.1
+- Gradle
+- Git and Just for task automation
 - Proper environment variables (`ANDROID_HOME`, `ANDROID_SDK_ROOT`, `JAVA_HOME`)
 
 Once in the dev shell, run:
@@ -25,9 +28,11 @@ just android                  # Build and run on Android
 just build-apk-prod         # Build release APK
 just web                      # Run web version
 just test                     # Run tests
+just format                   # Format code
+just analyze                  # Analyze code
 ```
 
-For more details, see the [NixOS Flutter docs](https://nixos.wiki/wiki/Flutter).
+The flake uses [android-nixpkgs](https://github.com/tadfisher/android-nixpkgs) for reproducible Android SDK packaging, updated daily from Google's repositories.
 
 ### Without Nix
 
