@@ -137,9 +137,8 @@ class _RecitationModeState extends State<RecitationMode> {
       
       // Load audio for playback
       final wavData = WavEncoder.encodePcm16ToWav(_audioBytes!.toList());
-      await _audioPlayer.setAudioSource(
-        BytesAudioSource(wavData),
-      );
+      final audioSource = await createBytesAudioSource(wavData);
+      await _audioPlayer.setAudioSource(audioSource);
       
       // Show playback UI
       setState(() => _isPlayingBack = true);
