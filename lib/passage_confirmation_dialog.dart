@@ -2,6 +2,7 @@ import 'package:daily_manna/bible_service.dart';
 import 'package:daily_manna/openrouter_service.dart';
 import 'package:daily_manna/passage_range_selector.dart';
 import 'package:daily_manna/scripture_ref.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -31,14 +32,31 @@ class _PassageConfirmationDialogState extends State<PassageConfirmationDialog> {
     final result = widget.recognitionResult;
     final bibleService = context.read<BibleService>();
 
+    debugPrint('[PassageConfirmation] Initializing with result: '
+        'book=${result.book}, chapter=${result.startChapter}, verse=${result.startVerse}');
+    debugPrint('[PassageConfirmation] BibleService has ${bibleService.books.length} books');
+
     // Find book ID from book name
     String bookId = '';
-    if (result.book != null) {
+    if (result.book != null && bibleService.books.isNotEmpty) {
+      debugPrint('[PassageConfirmation] Looking for book: ${result.book}');
       final book = bibleService.books.firstWhere(
-        (b) => b.title.toLowerCase() == result.book!.toLowerCase(),
-        orElse: () => bibleService.books.first,
+        (b) {
+          final matches = b.title.toLowerCase() == result.book!.toLowerCase();
+          if (matches) {
+            debugPrint('[PassageConfirmation] Found matching book: ${b.title} (${b.id})');
+          }
+          return matches;
+        },
+        orElse: () {
+          debugPrint('[PassageConfirmation] No exact match found, using first book: ${bibleService.books.first.title}');
+          return bibleService.books.first;
+        },
       );
       bookId = book.id;
+      debugPrint('[PassageConfirmation] Selected bookId: $bookId');
+    } else {
+      debugPrint('[PassageConfirmation] Result.book is null or no books available');
     }
 
     _selectedRef = PassageRangeRef(
@@ -48,6 +66,7 @@ class _PassageConfirmationDialogState extends State<PassageConfirmationDialog> {
       endChapter: result.endChapter,
       endVerse: result.endVerse,
     );
+    debugPrint('[PassageConfirmation] Created PassageRangeRef: ${_selectedRef.display}');
   }
 
   void _confirm() {

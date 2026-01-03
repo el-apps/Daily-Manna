@@ -1,4 +1,5 @@
 import 'package:daily_manna/bible_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -43,8 +44,19 @@ class PassageRangeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bibleService = context.read<BibleService>();
+    
+    String displayText = 'Select passage';
+    try {
+      if (ref.complete) {
+        displayText = bibleService.getRangeRefName(ref);
+      }
+    } catch (e) {
+      debugPrint('[PassageRangeSelector] Error getting range ref name: $e');
+      displayText = ref.display;
+    }
+    
     return ListTile(
-      title: Text(ref.complete ? bibleService.getRangeRefName(ref) : 'Select passage'),
+      title: Text(displayText),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => _openSelectorDialog(context),
     );
