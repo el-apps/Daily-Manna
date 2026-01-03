@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:daily_manna/bible_service.dart';
 import 'package:daily_manna/wav_encoder.dart';
 import 'package:daily_manna/openrouter_service.dart';
@@ -144,20 +145,27 @@ class _RecitationModeState extends State<RecitationMode> {
     final audioBytes = _audioBytes;
     if (audioBytes == null) return;
 
+    debugPrint('[RecitationMode] Starting audio processing');
     _showLoadingDialog('Transcribing audio...');
 
     try {
       // Encode PCM to WAV format
+      debugPrint('[RecitationMode] Encoding PCM to WAV');
       final wavData = WavEncoder.encodePcm16ToWav(audioBytes.toList());
+      debugPrint('[RecitationMode] WAV encoded, size: ${wavData.length} bytes');
       
       // Transcribe audio
+      debugPrint('[RecitationMode] Calling Whisper transcription');
       final transcribedText = await _whisperService.transcribeAudioBytes(wavData, 'audio.wav');
       Navigator.pop(context); // Close loading dialog
 
       if (!mounted) return;
 
+      debugPrint('[RecitationMode] Got transcribed text: "$transcribedText"');
+
       // If passage was pre-selected, skip recognition step
       if (_useSelectedPassage && _selectedRef.complete) {
+        debugPrint('[RecitationMode] Using pre-selected passage');
         final ref = ScriptureRef(
           bookId: _selectedRef.bookId,
           chapterNumber: _selectedRef.startChapter,
@@ -170,7 +178,9 @@ class _RecitationModeState extends State<RecitationMode> {
       _showLoadingDialog('Recognizing passage...');
 
       // Recognize passage
+      debugPrint('[RecitationMode] Calling passage recognition');
       final recognitionResult = await _openRouterService.recognizePassage(transcribedText);
+      debugPrint('[RecitationMode] Got recognition result: ${recognitionResult.book}');
       Navigator.pop(context); // Close loading dialog
 
       if (!mounted) return;
@@ -183,12 +193,14 @@ class _RecitationModeState extends State<RecitationMode> {
           transcribedText: transcribedText,
           onConfirm: (ref) {
             if (ref != null) {
+              debugPrint('[RecitationMode] User confirmed passage: ${ref.bookId}');
               _showRecitationResults(ref, transcribedText);
             }
           },
         ),
       );
     } catch (e) {
+      debugPrint('[RecitationMode] Error in recording processing: $e');
       if (mounted) Navigator.pop(context); // Close loading dialog
       _showError('Error: $e');
     }
