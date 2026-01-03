@@ -204,17 +204,23 @@ class _RecitationModeState extends State<RecitationMode> {
         _loadingMessage = 'Recognizing passage...';
       });
 
+      // Get available book IDs for the LLM
+      final bibleService = context.read<BibleService>();
+      final availableBookIds = bibleService.books.map((b) => b.id).toList();
+
       // Recognize passage
       debugPrint('[RecitationMode] Calling passage recognition');
-      final recognitionResult = await _openRouterService.recognizePassage(transcribedText);
+      final recognitionResult = await _openRouterService.recognizePassage(
+        transcribedText,
+        availableBookIds: availableBookIds,
+      );
       debugPrint('[RecitationMode] Got recognition result: ${recognitionResult.book}');
 
       if (!mounted) return;
 
-      // Initialize selected passage ref from recognition result
-      final bibleService = context.read<BibleService>();
-      String bookId = '';
-      if (recognitionResult.book != null && bibleService.books.isNotEmpty) {
+      // Use bookId from result if available, otherwise fall back to looking up by book name
+      String bookId = recognitionResult.bookId ?? '';
+      if (bookId.isEmpty && recognitionResult.book != null && bibleService.books.isNotEmpty) {
         final book = bibleService.books.firstWhere(
           (b) => b.title.toLowerCase() == recognitionResult.book!.toLowerCase(),
           orElse: () => bibleService.books.first,

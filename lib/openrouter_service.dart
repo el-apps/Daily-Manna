@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 class PassageRecognitionResult {
   final String? book;
+  final String? bookId;
   final int? startChapter;
   final int? startVerse;
   final int? endChapter;
@@ -14,6 +15,7 @@ class PassageRecognitionResult {
 
   PassageRecognitionResult({
     required this.book,
+    this.bookId,
     required this.startChapter,
     required this.startVerse,
     required this.endChapter,
@@ -30,22 +32,28 @@ class OpenRouterService {
   OpenRouterService(this.settingsService);
 
   Future<PassageRecognitionResult> recognizePassage(
-    String transcribedText,
-  ) async {
+    String transcribedText, {
+    List<String>? availableBookIds,
+  }) async {
     debugPrint('[RecognizePassage] Starting passage recognition');
     debugPrint('[RecognizePassage] Transcribed text: "$transcribedText"');
+    debugPrint('[RecognizePassage] Available book IDs: $availableBookIds');
     
     final apiKey = settingsService.getOpenRouterApiKey();
     if (apiKey == null || apiKey.isEmpty) {
       throw Exception('OpenRouter API key not configured');
     }
 
+    final systemPrompt = availableBookIds != null && availableBookIds.isNotEmpty
+        ? Prompts.biblePassageRecognitionSystemWithBooks(availableBookIds)
+        : Prompts.biblePassageRecognitionSystem;
+
     final requestBody = {
       'model': 'openai/gpt-5-mini',
       'messages': [
         {
           'role': 'system',
-          'content': Prompts.biblePassageRecognitionSystem,
+          'content': systemPrompt,
         },
         {
           'role': 'user',
@@ -99,6 +107,7 @@ class OpenRouterService {
 
       final result = PassageRecognitionResult(
         book: parsedContent['book'] as String?,
+        bookId: parsedContent['bookId'] as String?,
         startChapter: parsedContent['startChapter'] as int?,
         startVerse: parsedContent['startVerse'] as int?,
         endChapter: parsedContent['endChapter'] as int?,
