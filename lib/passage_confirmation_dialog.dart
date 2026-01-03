@@ -156,7 +156,7 @@ class _PassageConfirmationPageState extends State<PassageConfirmationPage> {
                 Expanded(
                   child: FilledButton(
                     onPressed: _confirm,
-                    child: const Text('Confirm'),
+                    child: const Text('Submit'),
                   ),
                 ),
               ],

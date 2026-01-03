@@ -471,7 +471,7 @@ class _RecitationModeState extends State<RecitationMode> {
                     child: FilledButton.icon(
                       onPressed: _sendForTranscription,
                       icon: const Icon(Icons.check),
-                      label: const Text('Send'),
+                      label: const Text('Submit'),
                     ),
                   ),
                 ],
