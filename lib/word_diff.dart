@@ -1,12 +1,21 @@
+/// Internal class to track both original and normalized versions of a word
+class _Word {
+  final String original;    // with punctuation
+  final String normalized;  // lowercase, no punctuation
+
+  _Word({required this.original, required this.normalized});
+}
+
 /// Computes a word-level diff between original and transcribed text
 /// Uses Longest Common Subsequence (LCS) to find matching words
 /// Returns a flat list of DiffWord objects in original word order
+/// Preserves punctuation in output while ignoring it for comparisons
 List<DiffWord> computeWordDiff(String originalText, String transcribedText) {
-  // Normalize and split into words
-  final originalWords = _normalizeAndSplit(originalText);
-  final transcribedWords = _normalizeAndSplit(transcribedText);
+  // Normalize and split into words, preserving punctuation
+  final originalWords = _splitWithPunctuation(originalText);
+  final transcribedWords = _splitWithPunctuation(transcribedText);
   
-  // Find matching word indices using LCS
+  // Find matching word indices using LCS (compares normalized versions)
   final (originalIndices, transcribedIndices) = _findLCS(originalWords, transcribedWords);
   
   // Track which transcribed words have been matched
@@ -24,22 +33,22 @@ List<DiffWord> computeWordDiff(String originalText, String transcribedText) {
       // Insert any extra words that appeared between last match and this match
       for (int j = lastTranscribedIndex + 1; j < transcribedIndex; j++) {
         if (!matchedTranscribedSet.contains(j)) {
-          result.add(DiffWord(text: transcribedWords[j], status: DiffStatus.extra));
+          result.add(DiffWord(text: transcribedWords[j].original, status: DiffStatus.extra));
         }
       }
       
-      result.add(DiffWord(text: originalWords[i], status: DiffStatus.correct));
+      result.add(DiffWord(text: originalWords[i].original, status: DiffStatus.correct));
       lastTranscribedIndex = transcribedIndex;
     } else {
       // This word is not in the LCS - it's missing
-      result.add(DiffWord(text: originalWords[i], status: DiffStatus.missing));
+      result.add(DiffWord(text: originalWords[i].original, status: DiffStatus.missing));
     }
   }
   
   // Collect any remaining extra words at the end
   for (int i = lastTranscribedIndex + 1; i < transcribedWords.length; i++) {
     if (!matchedTranscribedSet.contains(i)) {
-      result.add(DiffWord(text: transcribedWords[i], status: DiffStatus.extra));
+      result.add(DiffWord(text: transcribedWords[i].original, status: DiffStatus.extra));
     }
   }
   
@@ -77,7 +86,7 @@ enum DiffStatus {
 /// Finds the Longest Common Subsequence of words
 /// When multiple LCS exist, prefers the one with earliest match positions
 /// Returns (originalIndices, transcribedIndices) - parallel lists of matching word positions
-(List<int>, List<int>) _findLCS(List<String> original, List<String> transcribed) {
+(List<int>, List<int>) _findLCS(List<_Word> original, List<_Word> transcribed) {
   final n = original.length;
   final m = transcribed.length;
   
@@ -88,7 +97,7 @@ enum DiffStatus {
   
   for (int i = 1; i <= n; i++) {
     for (int j = 1; j <= m; j++) {
-      final score = _computeWordSimilarity(original[i - 1], transcribed[j - 1]);
+      final score = _computeWordSimilarity(original[i - 1].normalized, transcribed[j - 1].normalized);
       if (score >= 0.9) {
         // Match found
         final (len, pos) = dp[i - 1][j - 1];
@@ -115,7 +124,7 @@ enum DiffStatus {
   int i = n;
   int j = m;
   while (i > 0 && j > 0) {
-    final score = _computeWordSimilarity(original[i - 1], transcribed[j - 1]);
+    final score = _computeWordSimilarity(original[i - 1].normalized, transcribed[j - 1].normalized);
     final (dpLen, _) = dp[i][j];
     final (upLen, _) = dp[i - 1][j];
     final (leftLen, _) = dp[i][j - 1];
@@ -144,28 +153,34 @@ enum DiffStatus {
   return (originalIndices.reversed.toList(), transcribedIndices.reversed.toList());
 }
 
-/// Normalizes text and splits into words, removing punctuation
-List<String> _normalizeAndSplit(String text) {
-  return text
-      .replaceAll(RegExp(r'[^\w\s]'), '') // Remove punctuation
+/// Splits text into words while preserving punctuation
+/// Returns _Word objects with both original (with punctuation) and normalized (without) versions
+List<_Word> _splitWithPunctuation(String text) {
+  final normalized = text
       .replaceAll(RegExp(r'\s+'), ' ')    // Normalize whitespace
-      .trim()
-      .split(' ')
-      .where((word) => word.isNotEmpty)
-      .toList();
+      .trim();
+  
+  final words = <_Word>[];
+  final wordPattern = RegExp(r'\S+'); // Match any non-whitespace sequence
+  
+  for (final match in wordPattern.allMatches(normalized)) {
+    final word = match.group(0)!;
+    final cleanedWord = word
+        .replaceAll(RegExp(r'[^\w]'), '') // Remove punctuation for normalization
+        .toLowerCase();
+    
+    if (cleanedWord.isNotEmpty) {
+      words.add(_Word(original: word, normalized: cleanedWord));
+    }
+  }
+  
+  return words;
 }
 
 /// Computes word similarity using Levenshtein distance
 /// Returns a score from 0.0 to 1.0, where 1.0 is identical
-/// Ignores punctuation and case
-double _computeWordSimilarity(String word1, String word2) {
-  final normalized1 = word1
-      .toLowerCase()
-      .replaceAll(RegExp(r'[^\w]'), '');
-  final normalized2 = word2
-      .toLowerCase()
-      .replaceAll(RegExp(r'[^\w]'), '');
-  
+/// Expects already-normalized input (lowercase, no punctuation)
+double _computeWordSimilarity(String normalized1, String normalized2) {
   if (normalized1 == normalized2) return 1.0;
   
   final maxLen = normalized1.length > normalized2.length

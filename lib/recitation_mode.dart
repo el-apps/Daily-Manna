@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:daily_manna/bible_service.dart';
+import 'package:daily_manna/ui/theme_card.dart';
 import 'package:daily_manna/bytes_audio_source.dart';
 import 'package:daily_manna/wav_encoder.dart';
 import 'package:daily_manna/openrouter_service.dart';
@@ -361,12 +362,7 @@ class _RecitationModeState extends State<RecitationMode> {
               _buildConfirmationSection()
             else if (!_isPlayingBack) ...[
               // Recording section
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
+              ThemeCard(
                 child: Column(
                   children: [
                     Icon(
@@ -398,28 +394,19 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   Widget _buildLoadingSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.grey.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(16),
+    return ThemeCard(
+      child: Column(
+        spacing: 24,
+        children: [
+          const SizedBox(height: 8),
+          const CircularProgressIndicator(),
+          Text(
+            _loadingMessage,
+            style: Theme.of(context).textTheme.titleMedium,
+            textAlign: TextAlign.center,
           ),
-          child: Column(
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 24),
-              Text(
-                _loadingMessage,
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -463,26 +450,21 @@ class _RecitationModeState extends State<RecitationMode> {
   Widget _buildPlaybackSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 16,
       children: [
         Text(
           'Review Your Recording',
           style: Theme.of(context).textTheme.titleLarge,
         ),
-        const SizedBox(height: 24),
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.grey.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(16),
-          ),
+        ThemeCard(
           child: Column(
+            spacing: 24,
             children: [
               Icon(
                 Icons.music_note,
                 size: 80,
                 color: Colors.blue,
               ),
-              const SizedBox(height: 24),
               StreamBuilder<PlayerState>(
                 stream: _audioPlayer.playerStateStream,
                 builder: (context, snapshot) {
@@ -490,6 +472,7 @@ class _RecitationModeState extends State<RecitationMode> {
                   final isPlaying = playerState?.playing ?? false;
 
                   return Column(
+                    spacing: 24,
                     children: [
                       // Playback progress
                       StreamBuilder<Duration?>(
@@ -499,6 +482,7 @@ class _RecitationModeState extends State<RecitationMode> {
                           final duration = _audioPlayer.duration ?? Duration.zero;
                           
                           return Column(
+                            spacing: 8,
                             children: [
                               SliderTheme(
                                 data: SliderThemeData(
@@ -535,7 +519,6 @@ class _RecitationModeState extends State<RecitationMode> {
                           );
                         },
                       ),
-                      const SizedBox(height: 24),
                       // Play/Pause button
                       FilledButton.icon(
                         onPressed: _togglePlayback,
@@ -546,9 +529,9 @@ class _RecitationModeState extends State<RecitationMode> {
                   );
                 },
               ),
-              const SizedBox(height: 32),
               // Action buttons
               Row(
+                spacing: 16,
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
@@ -557,7 +540,6 @@ class _RecitationModeState extends State<RecitationMode> {
                       label: const Text('Discard'),
                     ),
                   ),
-                  const SizedBox(width: 16),
                   Expanded(
                     child: FilledButton.icon(
                       onPressed: _sendForTranscription,

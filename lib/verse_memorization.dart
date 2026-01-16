@@ -60,8 +60,7 @@ class _VerseMemorizationState extends State<VerseMemorization> {
               VerseSelector(ref: _ref, onSelected: _selectRef),
               if (_result != Result.unknown && bibleService.hasVerse(_ref))
                 ThemeCard(
-                  backgroundColor: Colors.brown.withValues(alpha: 0.1),
-                  borderColor: Colors.brown,
+                  style: ThemeCardStyle.brown,
                   child: Text(
                     actualVerse,
                     style: Theme.of(context).textTheme.bodyLarge,
@@ -80,8 +79,7 @@ class _VerseMemorizationState extends State<VerseMemorization> {
                 ),
               if (_result != Result.unknown)
                 ThemeCard(
-                  backgroundColor: _result.color.withValues(alpha: 0.1),
-                  borderColor: _result.color,
+                  style: _getThemeCardStyle(_result),
                   child: Text(switch (_result) {
                     Result.learn => 'Practice the verse...',
                     Result.incorrect => 'Try again',
@@ -182,6 +180,19 @@ class _VerseMemorizationState extends State<VerseMemorization> {
     context: context,
     builder: (_) => ShareDialog(memorizationResults: _results),
   );
+
+  ThemeCardStyle _getThemeCardStyle(Result result) {
+    switch (result) {
+      case Result.learn:
+        return ThemeCardStyle.blue;
+      case Result.incorrect:
+        return ThemeCardStyle.red;
+      case Result.correct:
+        return ThemeCardStyle.green;
+      case Result.unknown:
+        return ThemeCardStyle.brown;
+    }
+  }
 }
 
 enum Result {
