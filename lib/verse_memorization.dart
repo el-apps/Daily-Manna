@@ -1,5 +1,6 @@
 import 'package:daily_manna/bible_service.dart';
 import 'package:daily_manna/practice_result.dart';
+import 'package:daily_manna/results_service.dart';
 import 'package:daily_manna/scripture_ref.dart';
 import 'package:daily_manna/share_dialog.dart';
 import 'package:daily_manna/ui/theme_card.dart';
@@ -164,21 +165,23 @@ class _VerseMemorizationState extends State<VerseMemorization> {
       print(_input);
     }
     _inputFocusNode.unfocus();
+    final resultsService = context.read<ResultsService>();
     setState(() {
       _attempts += 1;
       _score = compareWordSequences(actualVerse, _input);
       _result = _score >= 0.6 ? Result.correct : Result.incorrect;
       if (_result == Result.correct) {
-        _results.add(
-          MemorizationResult(ref: _ref, attempts: _attempts, score: _score),
-        );
+        final result =
+            MemorizationResult(ref: _ref, attempts: _attempts, score: _score);
+        _results.add(result);
+        resultsService.addMemorizationResult(result);
       }
     });
   }
 
   void _shareResults() => showDialog(
     context: context,
-    builder: (_) => ShareDialog(memorizationResults: _results),
+    builder: (_) => const ShareDialog(),
   );
 
   ThemeCardStyle _getThemeCardStyle(Result result) {

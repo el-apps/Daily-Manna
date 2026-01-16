@@ -1,5 +1,6 @@
 import 'package:daily_manna/bible_service.dart';
 import 'package:daily_manna/scripture_range_ref.dart';
+import 'package:daily_manna/share_dialog.dart';
 import 'package:word_tools/word_tools.dart';
 import 'package:daily_manna/ui/theme_card.dart';
 import 'package:flutter/material.dart';
@@ -46,7 +47,15 @@ class _RecitationResultsState extends State<RecitationResults> {
     final bibleService = context.read<BibleService>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Recitation Results')),
+      appBar: AppBar(
+        title: const Text('Recitation Results'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () => _shareResult(context),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
@@ -90,6 +99,11 @@ class _RecitationResultsState extends State<RecitationResults> {
       ),
     );
   }
+
+  void _shareResult(BuildContext context) => showDialog(
+    context: context,
+    builder: (_) => const ShareDialog(),
+  );
 }
 
 class DiffComparison extends StatefulWidget {

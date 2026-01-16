@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:daily_manna/bible_service.dart';
+import 'package:daily_manna/recitation_result.dart';
+import 'package:daily_manna/recitation_results.dart';
+import 'package:daily_manna/results_service.dart';
 import 'package:daily_manna/ui/theme_card.dart';
 import 'package:daily_manna/bytes_audio_source.dart';
 import 'package:daily_manna/wav_encoder.dart';
 import 'package:daily_manna/openrouter_service.dart';
 import 'package:daily_manna/passage_range_selector.dart';
-import 'package:daily_manna/recitation_results.dart';
 import 'package:daily_manna/scripture_range_ref.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/settings_service.dart';
@@ -259,6 +261,12 @@ class _RecitationModeState extends State<RecitationMode> {
 
       // Grade the recitation
       final score = compareWordSequences(actualPassage, transcribedText);
+
+      // Add result to service
+      final resultsService = context.read<ResultsService>();
+      resultsService.addRecitationResult(
+        RecitationResult(ref: passageRef, score: score),
+      );
 
       // Navigate to results page
       Navigator.of(context).push(

@@ -1,28 +1,32 @@
 import 'package:daily_manna/bible_service.dart';
-import 'package:daily_manna/practice_result.dart';
+import 'package:daily_manna/results_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ShareDialog extends StatelessWidget {
-  const ShareDialog({super.key, required this.memorizationResults});
-
-  // TODO: fetch these from the DB
-  final List<MemorizationResult> memorizationResults;
+  const ShareDialog({super.key});
 
   @override
   Widget build(BuildContext context) {
     final bibleService = context.read<BibleService>();
+    final resultsService = context.read<ResultsService>();
     final shareContent = [
       [
         'Memorization',
-        ...memorizationResults.map(
+        ...resultsService.memorizationResults.map(
           (result) =>
               '${result.scoreString} ${bibleService.getRefName(result.ref)}',
         ),
       ].join('\n'),
-      // TODO: add results from other parts of the app
-    ].where((section) => section.isNotEmpty).join('----------\n');
+      [
+        'Recitation',
+        ...resultsService.recitationResults.map(
+          (result) =>
+              '${bibleService.getRangeRefName(result.ref)} ${result.percentage}%',
+        ),
+      ].join('\n'),
+    ].where((section) => section.isNotEmpty).join('\n----------\n');
     return AlertDialog(
       title: Text('Share Your Progress'),
       content: Column(
@@ -52,7 +56,7 @@ class ShareDialog extends StatelessWidget {
     );
   }
 
-  _share(BuildContext context, String shareContent) async {
+  Future<void> _share(BuildContext context, String shareContent) async {
     await SharePlus.instance.share(
       ShareParams(text: 'Daily Manna Results\n\n$shareContent'),
     );
