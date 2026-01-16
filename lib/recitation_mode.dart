@@ -363,207 +363,187 @@ class _RecitationModeState extends State<RecitationMode> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: const Text('Recite')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (_isTranscribing || _isRecognizing)
-              _buildLoadingSection()
-            else if (_isConfirmingPassage)
-              _buildConfirmationSection()
-            else if (!_isPlayingBack) ...[
-              // Recording section
-              ThemeCard(
-                child: Column(
-                  children: [
-                    Icon(
-                      _isRecording ? Icons.mic : Icons.mic_none,
-                      size: 80,
-                      color: _isRecording ? Colors.red : Colors.grey,
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      _isRecording ? 'Recording...' : 'Ready to recite',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 48),
-                    FilledButton.icon(
-                      onPressed: _isRecording
-                          ? _stopRecording
-                          : _startRecording,
-                      icon: Icon(_isRecording ? Icons.stop : Icons.mic),
-                      label: Text(
-                        _isRecording ? 'Stop Recording' : 'Start Recording',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ] else
-              // Playback section
-              _buildPlaybackSection(),
-          ],
-        ),
-      ),
-    );
-
-  Widget _buildLoadingSection() => ThemeCard(
+    appBar: AppBar(title: const Text('Recite')),
+    body: SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
       child: Column(
-        spacing: 24,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 4),
-          const CircularProgressIndicator(),
-          Text(
-            _loadingMessage,
-            style: Theme.of(context).textTheme.titleMedium,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-
-  Widget _buildConfirmationSection() => Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('Confirm Passage', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 24),
-        PassageRangeSelector(
-          ref: _selectedPassageRef,
-          onSelected: (ref) {
-            setState(() => _selectedPassageRef = ref);
-          },
-        ),
-        const SizedBox(height: 48),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _cancelConfirmation,
-                child: const Text('Cancel'),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: FilledButton(
-                onPressed: _confirmPassage,
-                child: const Text('Submit'),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-
-  Widget _buildPlaybackSection() => Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: 16,
-      children: [
-        Text(
-          'Review Your Recording',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        ThemeCard(
-          child: Column(
-            spacing: 24,
-            children: [
-              Icon(Icons.music_note, size: 80, color: Colors.blue),
-              StreamBuilder<PlayerState>(
-                stream: _audioPlayer.playerStateStream,
-                builder: (context, snapshot) {
-                  final playerState = snapshot.data;
-                  final isPlaying = playerState?.playing ?? false;
-
-                  return Column(
-                    spacing: 24,
-                    children: [
-                      // Playback progress
-                      StreamBuilder<Duration?>(
-                        stream: _audioPlayer.positionStream,
-                        builder: (context, snapshot) {
-                          final position = snapshot.data ?? Duration.zero;
-                          final duration =
-                              _audioPlayer.duration ?? Duration.zero;
-
-                          return Column(
-                            spacing: 8,
-                            children: [
-                              SliderTheme(
-                                data: SliderThemeData(trackHeight: 4),
-                                child: Slider(
-                                  min: 0,
-                                  max: duration.inMilliseconds.toDouble(),
-                                  value: position.inMilliseconds.toDouble(),
-                                  onChanged: (value) {
-                                    _audioPlayer.seek(
-                                      Duration(milliseconds: value.toInt()),
-                                    );
-                                  },
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      _formatDuration(position),
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodySmall,
-                                    ),
-                                    Text(
-                                      _formatDuration(duration),
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodySmall,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                      // Play/Pause button
-                      FilledButton.icon(
-                        onPressed: _togglePlayback,
-                        icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
-                        label: Text(isPlaying ? 'Pause' : 'Play'),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              // Action buttons
-              Row(
-                spacing: 16,
+          if (_isTranscribing || _isRecognizing)
+            _buildLoadingSection()
+          else if (_isConfirmingPassage)
+            _buildConfirmationSection()
+          else if (!_isPlayingBack) ...[
+            // Recording section
+            ThemeCard(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _discardRecording,
-                      icon: const Icon(Icons.delete),
-                      label: const Text('Discard'),
-                    ),
+                  Icon(
+                    _isRecording ? Icons.mic : Icons.mic_none,
+                    size: 80,
+                    color: _isRecording ? Colors.red : Colors.grey,
                   ),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _sendForTranscription,
-                      icon: const Icon(Icons.check),
-                      label: const Text('Submit'),
+                  const SizedBox(height: 24),
+                  Text(
+                    _isRecording ? 'Recording...' : 'Ready to recite',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 48),
+                  FilledButton.icon(
+                    onPressed: _isRecording ? _stopRecording : _startRecording,
+                    icon: Icon(_isRecording ? Icons.stop : Icons.mic),
+                    label: Text(
+                      _isRecording ? 'Stop Recording' : 'Start Recording',
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ] else
+            // Playback section
+            _buildPlaybackSection(),
+        ],
+      ),
+    ),
+  );
+
+  Widget _buildLoadingSection() => ThemeCard(
+    child: Column(
+      spacing: 24,
+      children: [
+        const SizedBox(height: 4),
+        const CircularProgressIndicator(),
+        Text(
+          _loadingMessage,
+          style: Theme.of(context).textTheme.titleMedium,
+          textAlign: TextAlign.center,
         ),
       ],
-    );
+    ),
+  );
+
+  Widget _buildConfirmationSection() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text('Confirm Passage', style: Theme.of(context).textTheme.titleLarge),
+      const SizedBox(height: 24),
+      PassageRangeSelector(
+        ref: _selectedPassageRef,
+        onSelected: (ref) {
+          setState(() => _selectedPassageRef = ref);
+        },
+      ),
+      const SizedBox(height: 48),
+      Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _cancelConfirmation,
+              child: const Text('Cancel'),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: FilledButton(
+              onPressed: _confirmPassage,
+              child: const Text('Submit'),
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+
+  Widget _buildPlaybackSection() => ThemeCard(
+    child: Column(
+      spacing: 24,
+      children: [
+        Icon(Icons.music_note, size: 80, color: Colors.blue),
+        StreamBuilder<PlayerState>(
+          stream: _audioPlayer.playerStateStream,
+          builder: (context, snapshot) {
+            final playerState = snapshot.data;
+            final isPlaying = playerState?.playing ?? false;
+
+            return Column(
+              spacing: 24,
+              children: [
+                // Playback progress
+                StreamBuilder<Duration?>(
+                  stream: _audioPlayer.positionStream,
+                  builder: (context, snapshot) {
+                    final position = snapshot.data ?? Duration.zero;
+                    final duration = _audioPlayer.duration ?? Duration.zero;
+
+                    return Column(
+                      spacing: 8,
+                      children: [
+                        SliderTheme(
+                          data: SliderThemeData(trackHeight: 4),
+                          child: Slider(
+                            min: 0,
+                            max: duration.inMilliseconds.toDouble(),
+                            value: position.inMilliseconds.toDouble(),
+                            onChanged: (value) {
+                              _audioPlayer.seek(
+                                Duration(milliseconds: value.toInt()),
+                              );
+                            },
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _formatDuration(position),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              Text(
+                                _formatDuration(duration),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                // Play/Pause button
+                FilledButton.icon(
+                  onPressed: _togglePlayback,
+                  icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
+                  label: Text(isPlaying ? 'Pause' : 'Play'),
+                ),
+              ],
+            );
+          },
+        ),
+        // Action buttons
+        Row(
+          spacing: 16,
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _discardRecording,
+                icon: const Icon(Icons.delete),
+                label: const Text('Discard'),
+              ),
+            ),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _sendForTranscription,
+                icon: const Icon(Icons.check),
+                label: const Text('Submit'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
 
   String _formatDuration(Duration duration) {
     final minutes = duration.inMinutes;

@@ -23,7 +23,7 @@ class ShareDialog extends StatelessWidget {
         'Recitation',
         ...resultsService.recitationResults.map(
           (result) =>
-              '${bibleService.getRangeRefName(result.ref)} ${result.percentage}%',
+              '${result.starDisplay} ${bibleService.getRangeRefName(result.ref)}',
         ),
       ].join('\n'),
     ].where((section) => section.isNotEmpty).join('\n----------\n');

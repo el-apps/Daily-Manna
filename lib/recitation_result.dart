@@ -5,5 +5,17 @@ class RecitationResult {
   final ScriptureRangeRef ref;
   final double score;
 
-  int get percentage => (score * 100).toInt();
+  int get starRating => (score / 0.2).round().clamp(0, 5);
+
+  String get starDisplay => _buildStarDisplay(starRating);
+
+  static String _buildStarDisplay(int rating) {
+    const fullStar = '⭐';
+    const emptyStar = '☆';
+
+    final fullCount = rating.clamp(0, 5);
+    final emptyCount = 5 - fullCount;
+
+    return fullStar * fullCount + emptyStar * emptyCount;
+  }
 }
