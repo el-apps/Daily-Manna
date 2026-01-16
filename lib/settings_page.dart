@@ -38,26 +38,22 @@ class _SettingsPageState extends State<SettingsPage> {
     await _settingsService.setOpenRouterApiKey(_openRouterController.text);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Settings saved')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Settings saved')));
       Navigator.of(context).pop();
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+  Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: AutofillGroup(
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
             const SizedBox(height: 16),
-            Text(
-              'API Keys',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('API Keys', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 24),
             TextField(
               controller: _whisperController,
@@ -78,17 +74,16 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               obscureText: true,
             ),
-          const SizedBox(height: 32),
-          FilledButton(
-            onPressed: _saveSettings,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text('Save Settings'),
+            const SizedBox(height: 32),
+            FilledButton(
+              onPressed: _saveSettings,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text('Save Settings'),
+              ),
             ),
-          ),
           ],
-          ),
-          ),
-          );
-          }
-          }
+        ),
+      ),
+    );
+}

@@ -56,7 +56,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
               ),
               home: HomePage(),
             ),
-            )
+          )
         : Center(child: CircularProgressIndicator()),
   );
 }

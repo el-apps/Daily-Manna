@@ -73,7 +73,7 @@ class _VerseMemorizationState extends State<VerseMemorization> {
                   maxLines: 5,
                   decoration: InputDecoration(
                     hintText:
-                        "Enter the verse here. Voice input is recommended!",
+                        'Enter the verse here. Voice input is recommended!',
                   ),
                   onChanged: (String value) => setState(() => _input = value),
                 ),

@@ -24,23 +24,23 @@ class RecitationMode extends StatefulWidget {
 }
 
 class _RecitationModeState extends State<RecitationMode> {
-   late AudioRecorder _recorder;
-   late AudioPlayer _audioPlayer;
-   late SettingsService _settingsService;
-   late WhisperService _whisperService;
-   late OpenRouterService _openRouterService;
+  late AudioRecorder _recorder;
+  late AudioPlayer _audioPlayer;
+  late SettingsService _settingsService;
+  late WhisperService _whisperService;
+  late OpenRouterService _openRouterService;
 
-   bool _isRecording = false;
-    bool _isPlayingBack = false;
-    bool _isConfirmingPassage = false;
-    bool _isTranscribing = false;
-    bool _isRecognizing = false;
-    String _loadingMessage = '';
-    List<int>? _audioBytes;
-    Stream<Uint8List>? _audioStream;
-    final List<List<int>> _audioChunks = [];
-    String _transcribedText = '';
-    late ScriptureRangeRef _selectedPassageRef;
+  bool _isRecording = false;
+  bool _isPlayingBack = false;
+  bool _isConfirmingPassage = false;
+  bool _isTranscribing = false;
+  bool _isRecognizing = false;
+  String _loadingMessage = '';
+  List<int>? _audioBytes;
+  Stream<Uint8List>? _audioStream;
+  final List<List<int>> _audioChunks = [];
+  String _transcribedText = '';
+  late ScriptureRangeRef _selectedPassageRef;
 
   @override
   void initState() {
@@ -51,9 +51,9 @@ class _RecitationModeState extends State<RecitationMode> {
     _whisperService = WhisperService(_settingsService);
     _openRouterService = OpenRouterService(_settingsService);
     _selectedPassageRef = ScriptureRangeRef(
-     bookId: '',
-     startChapter: 1,
-     startVerse: 1,
+      bookId: '',
+      startChapter: 1,
+      startVerse: 1,
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -74,6 +74,13 @@ class _RecitationModeState extends State<RecitationMode> {
     }
   }
 
+  void _handleError(String message, {String? context}) {
+    if (context != null) {
+      debugPrint('[RecitationMode] Error ($context): $message');
+    }
+    _showError(message);
+  }
+
   void _showMissingKeysError() {
     showDialog(
       context: context,
@@ -91,9 +98,9 @@ class _RecitationModeState extends State<RecitationMode> {
           FilledButton(
             onPressed: () {
               Navigator.of(context).pop(); // Close dialog
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SettingsPage()),
-              );
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const SettingsPage()));
             },
             child: const Text('Go to Settings'),
           ),
@@ -110,19 +117,23 @@ class _RecitationModeState extends State<RecitationMode> {
           sampleRate: 16000,
           numChannels: 1,
         );
-        
-        debugPrint('[RecitationMode] Recording config: sampleRate=${config.sampleRate}, numChannels=${config.numChannels}, encoder=${config.encoder}');
-        
+
+        debugPrint(
+          '[RecitationMode] Recording config: sampleRate=${config.sampleRate}, numChannels=${config.numChannels}, encoder=${config.encoder}',
+        );
+
         // Clear previous chunks
         _audioChunks.clear();
-        
+
         // Record to stream on all platforms
         _audioStream = await _recorder.startStream(config);
-        
+
         // Listen to stream and collect chunks
         _audioStream!.listen((chunk) {
           _audioChunks.add(chunk);
-          debugPrint('[RecitationMode] Received audio chunk: ${chunk.length} bytes');
+          debugPrint(
+            '[RecitationMode] Received audio chunk: ${chunk.length} bytes',
+          );
         });
 
         setState(() => _isRecording = true);
@@ -148,10 +159,12 @@ class _RecitationModeState extends State<RecitationMode> {
       _audioBytes = Uint8List.fromList(
         _audioChunks.expand((chunk) => chunk).toList(),
       );
-      
+
       debugPrint('[RecitationMode] Total PCM bytes: ${_audioBytes!.length}');
-      debugPrint('[RecitationMode] Expected duration at 16kHz: ${_audioBytes!.length / (16000 * 2)} seconds');
-      
+      debugPrint(
+        '[RecitationMode] Expected duration at 16kHz: ${_audioBytes!.length / (16000 * 2)} seconds',
+      );
+
       // Load audio for playback
       final wavData = WavEncoder.encodePcm16ToWav(
         _audioBytes!.toList(),
@@ -160,7 +173,7 @@ class _RecitationModeState extends State<RecitationMode> {
       debugPrint('[RecitationMode] WAV file size: ${wavData.length} bytes');
       final audioSource = await createBytesAudioSource(wavData);
       await _audioPlayer.setAudioSource(audioSource);
-      
+
       // Show playback UI
       setState(() => _isPlayingBack = true);
     } catch (e) {
@@ -172,28 +185,23 @@ class _RecitationModeState extends State<RecitationMode> {
     final audioBytes = _audioBytes;
     if (audioBytes == null) return;
 
-    debugPrint('[RecitationMode] Starting audio processing');
     setState(() {
       _isTranscribing = true;
       _loadingMessage = 'Transcribing audio...';
     });
 
     try {
-      // Encode PCM to WAV format
-      debugPrint('[RecitationMode] Encoding PCM to WAV');
       final wavData = WavEncoder.encodePcm16ToWav(
         audioBytes.toList(),
         sampleRate: 16000,
       );
-      debugPrint('[RecitationMode] WAV encoded, size: ${wavData.length} bytes');
-      
-      // Transcribe audio
-      debugPrint('[RecitationMode] Calling Whisper transcription');
-      final transcribedText = await _whisperService.transcribeAudioBytes(wavData, 'audio.wav');
+
+      final transcribedText = await _whisperService.transcribeAudioBytes(
+        wavData,
+        'audio.wav',
+      );
 
       if (!mounted) return;
-
-      debugPrint('[RecitationMode] Got transcribed text: "$transcribedText"');
       _transcribedText = transcribedText;
 
       setState(() {
@@ -202,27 +210,18 @@ class _RecitationModeState extends State<RecitationMode> {
         _loadingMessage = 'Recognizing passage...';
       });
 
-      // Get available book IDs for the LLM
       final bibleService = context.read<BibleService>();
-      final availableBookIds = bibleService.books.map((b) => b.id).toList();
-
-      // Recognize passage
-      debugPrint('[RecitationMode] Calling passage recognition');
       final recognizedRef = await _openRouterService.recognizePassage(
         transcribedText,
-        availableBookIds: availableBookIds,
+        availableBookIds: bibleService.books.map((b) => b.id).toList(),
       );
 
       if (!mounted) return;
 
       if (recognizedRef == null) {
-        debugPrint('[RecitationMode] Failed to recognize passage');
-        _showError('Could not recognize passage');
+        _handleError('Could not recognize passage from your recitation.');
         return;
       }
-
-      debugPrint('[RecitationMode] Got recognition result: bookId=${recognizedRef.bookId}, '
-          'chapter=${recognizedRef.startChapter}:${recognizedRef.startVerse}');
 
       setState(() {
         _isRecognizing = false;
@@ -230,20 +229,25 @@ class _RecitationModeState extends State<RecitationMode> {
         _isConfirmingPassage = true;
       });
     } catch (e) {
-      debugPrint('[RecitationMode] Error in recording processing: $e');
+      if (!mounted) return;
       setState(() {
         _isTranscribing = false;
         _isRecognizing = false;
       });
-      _showError('Error: $e');
+      _handleError(
+        'Something went wrong processing your recitation. Please try again.',
+      );
     }
   }
 
-  void _showRecitationResults(ScriptureRangeRef passageRef, String transcribedText) {
+  void _showRecitationResults(
+    ScriptureRangeRef passageRef,
+    String transcribedText,
+  ) {
     // Compute score synchronously and navigate immediately
     try {
       final bibleService = context.read<BibleService>();
-      
+
       // Get the actual passage (handles single verse or range)
       String actualPassage = bibleService.getPassageRange(
         passageRef.bookId,
@@ -282,9 +286,9 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _togglePlayback() async {
@@ -330,7 +334,9 @@ class _RecitationModeState extends State<RecitationMode> {
     }
 
     final bibleService = context.read<BibleService>();
-    debugPrint('[RecitationMode] User confirmed passage: ${bibleService.getRangeRefName(_selectedPassageRef)}');
+    debugPrint(
+      '[RecitationMode] User confirmed passage: ${bibleService.getRangeRefName(_selectedPassageRef)}',
+    );
     setState(() {
       _isConfirmingPassage = false;
     });
@@ -348,8 +354,7 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+  Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: const Text('Recite')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -377,9 +382,13 @@ class _RecitationModeState extends State<RecitationMode> {
                     ),
                     const SizedBox(height: 48),
                     FilledButton.icon(
-                      onPressed: _isRecording ? _stopRecording : _startRecording,
+                      onPressed: _isRecording
+                          ? _stopRecording
+                          : _startRecording,
                       icon: Icon(_isRecording ? Icons.stop : Icons.mic),
-                      label: Text(_isRecording ? 'Stop Recording' : 'Start Recording'),
+                      label: Text(
+                        _isRecording ? 'Stop Recording' : 'Start Recording',
+                      ),
                     ),
                   ],
                 ),
@@ -391,14 +400,12 @@ class _RecitationModeState extends State<RecitationMode> {
         ),
       ),
     );
-  }
 
-  Widget _buildLoadingSection() {
-    return ThemeCard(
+  Widget _buildLoadingSection() => ThemeCard(
       child: Column(
         spacing: 24,
         children: [
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           const CircularProgressIndicator(),
           Text(
             _loadingMessage,
@@ -408,16 +415,11 @@ class _RecitationModeState extends State<RecitationMode> {
         ],
       ),
     );
-  }
 
-  Widget _buildConfirmationSection() {
-    return Column(
+  Widget _buildConfirmationSection() => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Confirm Passage',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
+        Text('Confirm Passage', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 24),
         PassageRangeSelector(
           ref: _selectedPassageRef,
@@ -445,10 +447,8 @@ class _RecitationModeState extends State<RecitationMode> {
         ),
       ],
     );
-  }
 
-  Widget _buildPlaybackSection() {
-    return Column(
+  Widget _buildPlaybackSection() => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 16,
       children: [
@@ -460,11 +460,7 @@ class _RecitationModeState extends State<RecitationMode> {
           child: Column(
             spacing: 24,
             children: [
-              Icon(
-                Icons.music_note,
-                size: 80,
-                color: Colors.blue,
-              ),
+              Icon(Icons.music_note, size: 80, color: Colors.blue),
               StreamBuilder<PlayerState>(
                 stream: _audioPlayer.playerStateStream,
                 builder: (context, snapshot) {
@@ -479,15 +475,14 @@ class _RecitationModeState extends State<RecitationMode> {
                         stream: _audioPlayer.positionStream,
                         builder: (context, snapshot) {
                           final position = snapshot.data ?? Duration.zero;
-                          final duration = _audioPlayer.duration ?? Duration.zero;
-                          
+                          final duration =
+                              _audioPlayer.duration ?? Duration.zero;
+
                           return Column(
                             spacing: 8,
                             children: [
                               SliderTheme(
-                                data: SliderThemeData(
-                                  trackHeight: 4,
-                                ),
+                                data: SliderThemeData(trackHeight: 4),
                                 child: Slider(
                                   min: 0,
                                   max: duration.inMilliseconds.toDouble(),
@@ -500,17 +495,24 @@ class _RecitationModeState extends State<RecitationMode> {
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       _formatDuration(position),
-                                      style: Theme.of(context).textTheme.bodySmall,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall,
                                     ),
                                     Text(
                                       _formatDuration(duration),
-                                      style: Theme.of(context).textTheme.bodySmall,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall,
                                     ),
                                   ],
                                 ),
@@ -554,7 +556,6 @@ class _RecitationModeState extends State<RecitationMode> {
         ),
       ],
     );
-  }
 
   String _formatDuration(Duration duration) {
     final minutes = duration.inMinutes;

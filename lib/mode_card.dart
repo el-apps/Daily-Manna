@@ -21,10 +21,7 @@ class ModeCard extends StatelessWidget {
           vertical: 16,
           horizontal: 24,
         ),
-        leading: Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        leading: Text(title, style: Theme.of(context).textTheme.titleMedium),
         trailing: Icon(icon),
         onTap: onTap,
       ),

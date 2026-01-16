@@ -10,17 +10,13 @@ class SettingsService {
     _prefs = await SharedPreferences.getInstance();
   }
 
-  String? getWhisperApiKey() {
-    return _prefs.getString(_whisperKeyKey);
-  }
+  String? getWhisperApiKey() => _prefs.getString(_whisperKeyKey);
 
   Future<void> setWhisperApiKey(String key) async {
     await _prefs.setString(_whisperKeyKey, key);
   }
 
-  String? getOpenRouterApiKey() {
-    return _prefs.getString(_openRouterKeyKey);
-  }
+  String? getOpenRouterApiKey() => _prefs.getString(_openRouterKeyKey);
 
   Future<void> setOpenRouterApiKey(String key) async {
     await _prefs.setString(_openRouterKeyKey, key);
@@ -35,6 +31,11 @@ class SettingsService {
   }
 
   bool hasRequiredKeys() {
-    return getWhisperApiKey() != null && getOpenRouterApiKey() != null;
+    final whisper = getWhisperApiKey();
+    final openRouter = getOpenRouterApiKey();
+    return whisper != null &&
+        whisper.isNotEmpty &&
+        openRouter != null &&
+        openRouter.isNotEmpty;
   }
 }

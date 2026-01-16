@@ -14,6 +14,10 @@ gen:
 format:
     dart format lib test
 
+# Fix lints automatically
+fix:
+    dart fix --apply lib
+
 # Analyze code
 analyze:
     flutter analyze

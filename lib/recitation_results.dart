@@ -77,7 +77,7 @@ class _RecitationResultsState extends State<RecitationResults> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 spacing: 12,
                 children: [
-                  LinearProgressIndicator(value: widget.score),
+                  LinearProgressIndicator(value: widget.score.clamp(0.0, 1.0)),
                   FilledButton(
                     onPressed: widget.onReciteAgain,
                     child: const Text('Continue'),
@@ -90,16 +90,12 @@ class _RecitationResultsState extends State<RecitationResults> {
       ),
     );
   }
-
 }
 
 class DiffComparison extends StatefulWidget {
   final List<DiffWord> diff;
 
-  const DiffComparison({
-    super.key,
-    required this.diff,
-  });
+  const DiffComparison({super.key, required this.diff});
 
   @override
   State<DiffComparison> createState() => _DiffComparisonState();
@@ -153,27 +149,26 @@ class MinimalLegend extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
+  Widget build(BuildContext context) => Center(
       child: Wrap(
         alignment: WrapAlignment.center,
         spacing: 12,
         runSpacing: 4,
         children: [
           _LegendColor(
-            color: Colors.green,
+            color: _getPrimaryColor(DiffStatus.correct),
             label: 'Correct',
             isVisible: visibleStatuses.contains(DiffStatus.correct),
             onTap: () => onToggle(DiffStatus.correct),
           ),
           _LegendColor(
-            color: Colors.red,
+            color: _getPrimaryColor(DiffStatus.missing),
             label: 'Missing',
             isVisible: visibleStatuses.contains(DiffStatus.missing),
             onTap: () => onToggle(DiffStatus.missing),
           ),
           _LegendColor(
-            color: Colors.orange,
+            color: _getPrimaryColor(DiffStatus.extra),
             label: 'Extra',
             isVisible: visibleStatuses.contains(DiffStatus.extra),
             onTap: () => onToggle(DiffStatus.extra),
@@ -181,7 +176,6 @@ class MinimalLegend extends StatelessWidget {
         ],
       ),
     );
-  }
 }
 
 class _LegendColor extends StatelessWidget {
@@ -198,8 +192,7 @@ class _LegendColor extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
+  Widget build(BuildContext context) => GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Padding(
@@ -224,25 +217,18 @@ class _LegendColor extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+              Text(label, style: Theme.of(context).textTheme.bodySmall),
             ],
           ),
         ),
       ),
     );
-  }
 }
 
 class DiffPassageSection extends StatelessWidget {
   final List<DiffWord> diff;
 
-  const DiffPassageSection({
-    super.key,
-    required this.diff,
-  });
+  const DiffPassageSection({super.key, required this.diff});
 
   @override
   Widget build(BuildContext context) {
@@ -252,16 +238,14 @@ class DiffPassageSection extends StatelessWidget {
     return ThemeCard(
       child: RichText(
         text: TextSpan(
-          children: [
-            for (final group in groups) _buildSpan(group, baseStyle),
-          ],
+          children: [for (final group in groups) _buildSpan(group, baseStyle)],
         ),
       ),
     );
   }
 
   TextSpan _buildSpan(_WordGroup group, TextStyle? baseStyle) {
-    final (bgColor, borderColor, textColor) = _getColors(group.status);
+    final (bgColor, textColor) = _getColors(group.status);
     final text = group.words.map((w) => w.text).join(' ');
     final label = group.words[0].displayLabel;
 
@@ -274,47 +258,23 @@ class DiffPassageSection extends StatelessWidget {
     );
   }
 
-  (Color bgColor, Color borderColor, Color textColor) _getColors(DiffStatus status) {
-    switch (status) {
-      case DiffStatus.correct:
-        return (
-          Colors.green.withValues(alpha: 0.25),
-          Colors.green.shade700,
-          Colors.green.shade100,
-        );
-      case DiffStatus.missing:
-        return (
-          Colors.red.withValues(alpha: 0.25),
-          Colors.red.shade700,
-          Colors.red.shade100,
-        );
-      case DiffStatus.extra:
-        return (
-          Colors.orange.withValues(alpha: 0.25),
-          Colors.orange.shade700,
-          Colors.orange.shade100,
-        );
-    }
+  (Color bgColor, Color textColor) _getColors(DiffStatus status) {
+    final primary = _getPrimaryColor(status);
+    return (primary.withValues(alpha: 0.25), primary.shade100);
   }
 
   List<_WordGroup> _groupConsecutiveByStatus(List<DiffWord> words) {
     if (words.isEmpty) return [];
 
     final groups = <_WordGroup>[];
-    var currentGroup = _WordGroup(
-      status: words[0].status,
-      words: [words[0]],
-    );
+    var currentGroup = _WordGroup(status: words[0].status, words: [words[0]]);
 
     for (int i = 1; i < words.length; i++) {
       if (words[i].status == currentGroup.status) {
         currentGroup.words.add(words[i]);
       } else {
         groups.add(currentGroup);
-        currentGroup = _WordGroup(
-          status: words[i].status,
-          words: [words[i]],
-        );
+        currentGroup = _WordGroup(status: words[i].status, words: [words[i]]);
       }
     }
     groups.add(currentGroup);
@@ -329,3 +289,9 @@ class _WordGroup {
 
   _WordGroup({required this.status, required this.words});
 }
+
+MaterialColor _getPrimaryColor(DiffStatus status) => switch (status) {
+    DiffStatus.correct => Colors.green,
+    DiffStatus.missing => Colors.red,
+    DiffStatus.extra => Colors.yellow,
+  };

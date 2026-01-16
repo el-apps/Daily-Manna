@@ -81,19 +81,12 @@ class WavEncoder {
     return wavData.toList();
   }
 
-  static List<int> _int32ToBytes(int value) {
-    return [
+  static List<int> _int32ToBytes(int value) => [
       value & 0xFF,
       (value >> 8) & 0xFF,
       (value >> 16) & 0xFF,
       (value >> 24) & 0xFF,
     ];
-  }
 
-  static List<int> _int16ToBytes(int value) {
-    return [
-      value & 0xFF,
-      (value >> 8) & 0xFF,
-    ];
-  }
+  static List<int> _int16ToBytes(int value) => [value & 0xFF, (value >> 8) & 0xFF];
 }

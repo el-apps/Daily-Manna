@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum ThemeCardStyle {
-  neutral,
-  brown,
-  blue,
-  green,
-  red,
-}
+enum ThemeCardStyle { neutral, brown, blue, green, red }
 
 /// A reusable card widget with consistent styling across the app.
 /// Used for displaying content blocks with background, border, and padding.
@@ -42,25 +36,13 @@ class ThemeCard extends StatelessWidget {
           Colors.grey.withValues(alpha: 0.3),
         );
       case ThemeCardStyle.brown:
-        return (
-          Colors.brown.withValues(alpha: 0.1),
-          Colors.brown,
-        );
+        return (Colors.brown.withValues(alpha: 0.1), Colors.brown);
       case ThemeCardStyle.blue:
-        return (
-          Colors.blue.withValues(alpha: 0.1),
-          Colors.blue,
-        );
+        return (Colors.blue.withValues(alpha: 0.1), Colors.blue);
       case ThemeCardStyle.green:
-        return (
-          Colors.green.withValues(alpha: 0.1),
-          Colors.green,
-        );
+        return (Colors.green.withValues(alpha: 0.1), Colors.green);
       case ThemeCardStyle.red:
-        return (
-          Colors.red.withValues(alpha: 0.1),
-          Colors.red,
-        );
+        return (Colors.red.withValues(alpha: 0.1), Colors.red);
     }
   }
 }

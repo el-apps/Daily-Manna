@@ -25,9 +25,7 @@ class BibleService {
     _isLoaded = true;
   }
 
-  List<Chapter> getChapters(String bookId) {
-    return _booksMap[bookId]?.chapters ?? [];
-  }
+  List<Chapter> getChapters(String bookId) => _booksMap[bookId]?.chapters ?? [];
 
   List<Verse> getVerses(String bookId, int chapterNumber) {
     if (chapterNumber < 1 || chapterNumber > getChapters(bookId).length) {
@@ -44,8 +42,13 @@ class BibleService {
     return getVerses(bookId, chapterNumber)[verseNumber - 1].text.trim();
   }
 
-  String getPassageRange(String bookId, int startChapter, int startVerse,
-      {int? endChapter, int? endVerse}) {
+  String getPassageRange(
+    String bookId,
+    int startChapter,
+    int startVerse, {
+    int? endChapter,
+    int? endVerse,
+  }) {
     // If no end specified, just return the single verse
     if (endChapter == null || endVerse == null) {
       return getVerse(bookId, startChapter, startVerse);
@@ -86,10 +89,10 @@ class BibleService {
   );
 
   String getRangeRefName(ScriptureRangeRef ref) {
-    final bookTitle = _booksMap.isNotEmpty 
-      ? (_booksMap[ref.bookId]?.title ?? 'Unknown')
-      : 'Unknown';
-    
+    final bookTitle = _booksMap.isNotEmpty
+        ? (_booksMap[ref.bookId]?.title ?? 'Unknown')
+        : 'Unknown';
+
     if (ref.endChapter == null || ref.endVerse == null) {
       return '$bookTitle ${ref.startChapter}:${ref.startVerse}';
     }

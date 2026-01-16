@@ -19,7 +19,7 @@ class OpenRouterService {
     debugPrint('[RecognizePassage] Starting passage recognition');
     debugPrint('[RecognizePassage] Transcribed text: "$transcribedText"');
     debugPrint('[RecognizePassage] Available book IDs: $availableBookIds');
-    
+
     final apiKey = settingsService.getOpenRouterApiKey();
     if (apiKey == null || apiKey.isEmpty) {
       throw Exception('OpenRouter API key not configured');
@@ -32,18 +32,17 @@ class OpenRouterService {
     final requestBody = {
       'model': 'openai/gpt-5-mini',
       'messages': [
-        {
-          'role': 'system',
-          'content': systemPrompt,
-        },
+        {'role': 'system', 'content': systemPrompt},
         {
           'role': 'user',
-          'content': 'Identify this Bible passage from the transcribed text:\n\n"$transcribedText"'
+          'content':
+              'Identify this Bible passage from the transcribed text:\n\n"$transcribedText"',
         },
       ],
       'temperature': 0.3,
+      'response_format': {'type': 'json_object'},
     };
-    
+
     debugPrint('[RecognizePassage] Sending request to OpenRouter');
     final response = await http.post(
       Uri.parse(_baseUrl),
@@ -78,23 +77,19 @@ class OpenRouterService {
 
     final String content =
         responseBody['choices'][0]['message']['content'] as String;
-    
+
     debugPrint('[RecognizePassage] LLM response content: "$content"');
 
-    // Parse the JSON response from the LLM
     try {
-      final Map<String, dynamic> parsedContent = jsonDecode(content);
+      final parsedContent = jsonDecode(content) as Map<String, dynamic>;
       debugPrint('[RecognizePassage] Parsed JSON: $parsedContent');
 
       final bookId = parsedContent['bookId'] as String?;
       final startChapter = parsedContent['startChapter'] as int?;
       final startVerse = parsedContent['startVerse'] as int?;
-      final endChapter = parsedContent['endChapter'] as int?;
-      final endVerse = parsedContent['endVerse'] as int?;
 
-      // Return null if essential fields are missing
       if (bookId == null || startChapter == null || startVerse == null) {
-        debugPrint('[RecognizePassage] Missing essential fields, returning null');
+        debugPrint('[RecognizePassage] Missing essential fields');
         return null;
       }
 
@@ -102,17 +97,18 @@ class OpenRouterService {
         bookId: bookId,
         startChapter: startChapter,
         startVerse: startVerse,
-        endChapter: endChapter,
-        endVerse: endVerse,
+        endChapter: parsedContent['endChapter'] as int?,
+        endVerse: parsedContent['endVerse'] as int?,
       );
-      
-      debugPrint('[RecognizePassage] Recognition result: bookId=${result.bookId}, '
-          'chapter=${result.startChapter}:${result.startVerse}');
-      
+
+      debugPrint(
+        '[RecognizePassage] Recognition result: ${result.bookId} '
+        '${result.startChapter}:${result.startVerse}',
+      );
       return result;
     } catch (e) {
-      debugPrint('[RecognizePassage] Failed to parse JSON: $e');
-      throw Exception('Failed to parse passage recognition response: $e');
+      debugPrint('[RecognizePassage] Failed to parse response: $e');
+      throw Exception('Failed to parse passage recognition. Please try again.');
     }
   }
 }

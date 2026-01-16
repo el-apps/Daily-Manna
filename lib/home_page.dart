@@ -13,8 +13,7 @@ class HomePage extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+  Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: Text('Daily Manna')),
       body: ListView(
         children: [
@@ -31,22 +30,21 @@ class HomePage extends StatelessWidget {
             ModeCard(
               title: feature.title,
               icon: feature.icon,
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => feature.widget),
-              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => feature.widget)),
             ),
           ModeCard(
             title: 'Settings',
             icon: Icons.settings,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SettingsPage()),
-            ),
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const SettingsPage())),
           ),
           const ListTile(leading: Text('More features coming soon!')),
         ],
       ),
     );
-  }
 }
 
 typedef Feature = ({String title, IconData icon, Widget widget});
