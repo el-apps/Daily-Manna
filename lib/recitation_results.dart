@@ -80,7 +80,7 @@ class _RecitationResultsState extends State<RecitationResults> {
 }
 
 class DiffComparison extends StatelessWidget {
-  final WordDiff diff;
+  final List<DiffWord> diff;
 
   const DiffComparison({
     super.key,
@@ -92,67 +92,38 @@ class DiffComparison extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const DiffLegend(),
-        const SizedBox(height: 24),
-        DiffPassageSection(
-          label: 'Original Passage:',
-          words: diff.original,
-        ),
-        const SizedBox(height: 24),
-        DiffPassageSection(
-          label: 'Your Recitation:',
-          words: diff.transcribed,
-        ),
+        const MinimalLegend(),
+        const SizedBox(height: 16),
+        DiffPassageSection(diff: diff),
       ],
     );
   }
 }
 
-class DiffLegend extends StatelessWidget {
-  const DiffLegend({super.key});
+class MinimalLegend extends StatelessWidget {
+  const MinimalLegend({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Legend:',
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
-          const SizedBox(height: 8),
-          const Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            children: [
-              LegendItem(label: '✓', text: 'Correct', color: Colors.green),
-              LegendItem(label: '−', text: 'Missing', color: Colors.red),
-              LegendItem(label: '+', text: 'Extra', color: Colors.orange),
-            ],
-          ),
-        ],
-      ),
+    return Wrap(
+      spacing: 16,
+      runSpacing: 8,
+      children: [
+        _LegendColor(color: Colors.green, label: 'Correct'),
+        _LegendColor(color: Colors.red, label: 'Missing'),
+        _LegendColor(color: Colors.orange, label: 'Extra'),
+      ],
     );
   }
 }
 
-class LegendItem extends StatelessWidget {
-  final String label;
-  final String text;
+class _LegendColor extends StatelessWidget {
   final Color color;
+  final String label;
 
-  const LegendItem({
-    super.key,
-    required this.label,
-    required this.text,
+  const _LegendColor({
     required this.color,
+    required this.label,
   });
 
   @override
@@ -161,26 +132,17 @@ class LegendItem extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 24,
-          height: 24,
+          width: 16,
+          height: 16,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.2),
-            border: Border.all(color: color, width: 2),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
+            color: color.withValues(alpha: 0.3),
+            border: Border.all(color: color, width: 1.5),
+            borderRadius: BorderRadius.circular(2),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
         Text(
-          text,
+          label,
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
@@ -189,13 +151,11 @@ class LegendItem extends StatelessWidget {
 }
 
 class DiffPassageSection extends StatelessWidget {
-  final String label;
-  final List<DiffWord> words;
+  final List<DiffWord> diff;
 
   const DiffPassageSection({
     super.key,
-    required this.label,
-    required this.words,
+    required this.diff,
   });
 
   @override
@@ -203,11 +163,6 @@ class DiffPassageSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelLarge,
-        ),
-        const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -219,7 +174,8 @@ class DiffPassageSection extends StatelessWidget {
             spacing: 4,
             runSpacing: 4,
             children: [
-              for (final word in words) DiffWordWidget(word: word),
+              for (final word in diff)
+                DiffWordWidget(word: word),
             ],
           ),
         ),
@@ -241,7 +197,7 @@ class DiffWordWidget extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bgColor,
-        border: Border.all(color: borderColor, width: 1.5),
+        border: Border.all(color: borderColor, width: 2),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
@@ -251,7 +207,7 @@ class DiffWordWidget extends StatelessWidget {
           Text(
             word.displayLabel,
             style: TextStyle(
-              color: borderColor,
+              color: textColor,
               fontWeight: FontWeight.bold,
               fontSize: 11,
             ),
@@ -261,6 +217,7 @@ class DiffWordWidget extends StatelessWidget {
             style: TextStyle(
               color: textColor,
               fontSize: 14,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -272,27 +229,21 @@ class DiffWordWidget extends StatelessWidget {
     switch (word.status) {
       case DiffStatus.correct:
         return (
-          Colors.green.withValues(alpha: 0.15),
-          Colors.green,
-          Colors.green.shade900,
+          Colors.green.withValues(alpha: 0.25),
+          Colors.green.shade700,
+          Colors.green.shade100,
         );
       case DiffStatus.missing:
         return (
-          Colors.red.withValues(alpha: 0.15),
-          Colors.red,
-          Colors.red.shade900,
+          Colors.red.withValues(alpha: 0.25),
+          Colors.red.shade700,
+          Colors.red.shade100,
         );
       case DiffStatus.extra:
         return (
-          Colors.orange.withValues(alpha: 0.15),
-          Colors.orange,
-          Colors.orange.shade900,
-        );
-      case DiffStatus.substituted:
-        return (
-          Colors.yellow.withValues(alpha: 0.15),
-          Colors.yellow.shade700,
-          Colors.yellow.shade900,
+          Colors.orange.withValues(alpha: 0.25),
+          Colors.orange.shade700,
+          Colors.orange.shade100,
         );
     }
   }

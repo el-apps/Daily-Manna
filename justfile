@@ -2,10 +2,6 @@
 default:
     @just --list
 
-# Enter nix dev shell (updates flake first)
-nix-shell:
-    nix flake update && nix develop
-
 # Clean build artifacts
 clean:
     flutter clean
@@ -49,7 +45,7 @@ logs-web-prod:
     tail -f build/web/server.log
 
 # Run the app on Android (first device)
-android:
+run-android:
     #!/usr/bin/env bash
     device=$(flutter devices | grep android | awk -F'•' '{print $2}' | head -1 | xargs);
     if [ -z "$device" ]; then
@@ -58,6 +54,10 @@ android:
       exit 1
     fi
     flutter run -d "$device"
+
+# Run the app on Android through nix shell
+run-android-nix:
+    nix develop -c "just run-android"
 
 # Build Android APK
 build-apk-prod:
