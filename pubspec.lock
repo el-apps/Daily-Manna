@@ -953,11 +953,11 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "v0.2.0"
-      resolved-ref: "2b826c8d43a78d0d45e654e82c22ffdba60521ea"
+      ref: "v0.3.0"
+      resolved-ref: "3170d7eada7b9915b2214308689fb15191d116f9"
       url: "https://github.com/el-apps/word_tools.git"
     source: git
-    version: "0.2.0+3"
+    version: "0.3.0+4"
   xdg_directories:
     dependency: transitive
     description:
