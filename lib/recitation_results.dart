@@ -46,40 +46,53 @@ class _RecitationResultsState extends State<RecitationResults> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Recitation Results')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Passage reference
-            Text(
-              bibleService.getRangeRefName(widget.ref),
-              style: Theme.of(context).textTheme.titleLarge,
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Passage reference
+                  Text(
+                    bibleService.getRangeRefName(widget.ref),
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Comparison with diff highlighting
+                  DiffComparison(diff: _diff),
+                ],
+              ),
             ),
-            const SizedBox(height: 24),
-
-            // Comparison with diff highlighting
-            DiffComparison(diff: _diff),
-            const SizedBox(height: 32),
-
-            // Progress bar
-            LinearProgressIndicator(value: widget.score),
-            const SizedBox(height: 24),
-
-            // Action button
-            FilledButton(
-              onPressed: widget.onReciteAgain,
-              child: const Text('Continue'),
+          ),
+          // Fixed footer with progress bar and button
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  LinearProgressIndicator(value: widget.score),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: widget.onReciteAgain,
+                    child: const Text('Continue'),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
 }
 
-class DiffComparison extends StatelessWidget {
+class DiffComparison extends StatefulWidget {
   final List<DiffWord> diff;
 
   const DiffComparison({
@@ -88,31 +101,84 @@ class DiffComparison extends StatelessWidget {
   });
 
   @override
+  State<DiffComparison> createState() => _DiffComparisonState();
+}
+
+class _DiffComparisonState extends State<DiffComparison> {
+  final Set<DiffStatus> _visibleStatuses = {
+    DiffStatus.correct,
+    DiffStatus.missing,
+    DiffStatus.extra,
+  };
+
+  void _toggleVisibility(DiffStatus status) {
+    setState(() {
+      if (_visibleStatuses.contains(status)) {
+        _visibleStatuses.remove(status);
+      } else {
+        _visibleStatuses.add(status);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final filteredDiff = widget.diff
+        .where((word) => _visibleStatuses.contains(word.status))
+        .toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const MinimalLegend(),
-        const SizedBox(height: 16),
-        DiffPassageSection(diff: diff),
+        MinimalLegend(
+          visibleStatuses: _visibleStatuses,
+          onToggle: _toggleVisibility,
+        ),
+        const SizedBox(height: 8),
+        DiffPassageSection(diff: filteredDiff),
       ],
     );
   }
 }
 
 class MinimalLegend extends StatelessWidget {
-  const MinimalLegend({super.key});
+  final Set<DiffStatus> visibleStatuses;
+  final Function(DiffStatus) onToggle;
+
+  const MinimalLegend({
+    super.key,
+    required this.visibleStatuses,
+    required this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 16,
-      runSpacing: 8,
-      children: [
-        _LegendColor(color: Colors.green, label: 'Correct'),
-        _LegendColor(color: Colors.red, label: 'Missing'),
-        _LegendColor(color: Colors.orange, label: 'Extra'),
-      ],
+    return Center(
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 12,
+        runSpacing: 4,
+        children: [
+          _LegendColor(
+            color: Colors.green,
+            label: 'Correct',
+            isVisible: visibleStatuses.contains(DiffStatus.correct),
+            onTap: () => onToggle(DiffStatus.correct),
+          ),
+          _LegendColor(
+            color: Colors.red,
+            label: 'Missing',
+            isVisible: visibleStatuses.contains(DiffStatus.missing),
+            onTap: () => onToggle(DiffStatus.missing),
+          ),
+          _LegendColor(
+            color: Colors.orange,
+            label: 'Extra',
+            isVisible: visibleStatuses.contains(DiffStatus.extra),
+            onTap: () => onToggle(DiffStatus.extra),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -120,32 +186,47 @@ class MinimalLegend extends StatelessWidget {
 class _LegendColor extends StatelessWidget {
   final Color color;
   final String label;
+  final bool isVisible;
+  final VoidCallback onTap;
 
   const _LegendColor({
     required this.color,
     required this.label,
+    required this.isVisible,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.3),
-            border: Border.all(color: color, width: 1.5),
-            borderRadius: BorderRadius.circular(2),
-          ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Opacity(
+        opacity: isVisible ? 1.0 : 0.4,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: isVisible
+                    ? color.withValues(alpha: 0.3)
+                    : Colors.grey.withValues(alpha: 0.2),
+                border: Border.all(
+                  color: isVisible ? color : Colors.grey,
+                  width: 1.5,
+                ),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
         ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
+      ),
     );
   }
 }
@@ -160,73 +241,47 @@ class DiffPassageSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final groups = _groupConsecutiveByStatus(diff);
+    final baseStyle = Theme.of(context).textTheme.bodyLarge;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             color: Colors.grey.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
           ),
-          child: Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            children: [
-              for (final word in diff)
-                DiffWordWidget(word: word),
-            ],
+          child: RichText(
+            text: TextSpan(
+              children: [
+                for (final group in groups) _buildSpan(group, baseStyle),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
-}
 
-class DiffWordWidget extends StatelessWidget {
-  final DiffWord word;
+  TextSpan _buildSpan(_WordGroup group, TextStyle? baseStyle) {
+    final (bgColor, borderColor, textColor) = _getColors(group.status);
+    final text = group.words.map((w) => w.text).join(' ');
+    final label = group.words[0].displayLabel;
 
-  const DiffWordWidget({super.key, required this.word});
-
-  @override
-  Widget build(BuildContext context) {
-    final (bgColor, borderColor, textColor) = _getColors();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        border: Border.all(color: borderColor, width: 2),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 4,
-        children: [
-          Text(
-            word.displayLabel,
-            style: TextStyle(
-              color: textColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 11,
-            ),
-          ),
-          Text(
-            word.text,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+    return TextSpan(
+      text: '$label $text ',
+      style: (baseStyle ?? const TextStyle()).copyWith(
+        color: textColor,
+        backgroundColor: bgColor,
       ),
     );
   }
 
-  (Color bgColor, Color borderColor, Color textColor) _getColors() {
-    switch (word.status) {
+  (Color bgColor, Color borderColor, Color textColor) _getColors(DiffStatus status) {
+    switch (status) {
       case DiffStatus.correct:
         return (
           Colors.green.withValues(alpha: 0.25),
@@ -247,4 +302,36 @@ class DiffWordWidget extends StatelessWidget {
         );
     }
   }
+
+  List<_WordGroup> _groupConsecutiveByStatus(List<DiffWord> words) {
+    if (words.isEmpty) return [];
+
+    final groups = <_WordGroup>[];
+    var currentGroup = _WordGroup(
+      status: words[0].status,
+      words: [words[0]],
+    );
+
+    for (int i = 1; i < words.length; i++) {
+      if (words[i].status == currentGroup.status) {
+        currentGroup.words.add(words[i]);
+      } else {
+        groups.add(currentGroup);
+        currentGroup = _WordGroup(
+          status: words[i].status,
+          words: [words[i]],
+        );
+      }
+    }
+    groups.add(currentGroup);
+
+    return groups;
+  }
+}
+
+class _WordGroup {
+  final DiffStatus status;
+  final List<DiffWord> words;
+
+  _WordGroup({required this.status, required this.words});
 }
