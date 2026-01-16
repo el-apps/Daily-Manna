@@ -1,5 +1,5 @@
-import 'package:daily_manna/bible_service.dart';
-import 'package:daily_manna/scripture_range_ref.dart';
+import 'package:daily_manna/services/bible_service.dart';
+import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

@@ -1,6 +1,6 @@
 import 'package:bible_parser_flutter/bible_parser_flutter.dart';
-import 'package:daily_manna/scripture_range_ref.dart';
-import 'package:daily_manna/scripture_ref.dart';
+import 'package:daily_manna/models/scripture_range_ref.dart';
+import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:flutter/material.dart';
 
 class BibleService {

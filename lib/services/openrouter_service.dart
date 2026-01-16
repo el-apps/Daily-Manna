@@ -1,6 +1,6 @@
-import 'package:daily_manna/scripture_range_ref.dart';
+import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/prompts.dart';
-import 'package:daily_manna/settings_service.dart';
+import 'package:daily_manna/services/settings_service.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;

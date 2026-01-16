@@ -1,5 +1,5 @@
-import 'package:daily_manna/practice_result.dart';
-import 'package:daily_manna/recitation_result.dart';
+import 'package:daily_manna/ui/memorization/practice_result.dart';
+import 'package:daily_manna/models/recitation_result.dart';
 
 class ResultsService {
   final List<MemorizationResult> _memorizationResults = [];

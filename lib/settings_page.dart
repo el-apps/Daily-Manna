@@ -1,4 +1,4 @@
-import 'package:daily_manna/settings_service.dart';
+import 'package:daily_manna/services/settings_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

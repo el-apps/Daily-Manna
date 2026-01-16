@@ -1,5 +1,5 @@
-import 'package:daily_manna/recitation_result.dart';
-import 'package:daily_manna/scripture_range_ref.dart';
+import 'package:daily_manna/models/recitation_result.dart';
+import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

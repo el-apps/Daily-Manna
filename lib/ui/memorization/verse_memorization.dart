@@ -1,10 +1,10 @@
-import 'package:daily_manna/bible_service.dart';
-import 'package:daily_manna/practice_result.dart';
-import 'package:daily_manna/results_service.dart';
-import 'package:daily_manna/scripture_ref.dart';
+import 'package:daily_manna/services/bible_service.dart';
+import 'package:daily_manna/ui/memorization/practice_result.dart';
+import 'package:daily_manna/services/results_service.dart';
+import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/share_dialog.dart';
 import 'package:daily_manna/ui/theme_card.dart';
-import 'package:daily_manna/verse_selector.dart';
+import 'package:daily_manna/ui/memorization/verse_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

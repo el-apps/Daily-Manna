@@ -1,17 +1,18 @@
 import 'package:flutter/foundation.dart';
-import 'package:daily_manna/bible_service.dart';
-import 'package:daily_manna/recitation_result.dart';
-import 'package:daily_manna/recitation_results.dart';
-import 'package:daily_manna/results_service.dart';
+import 'package:daily_manna/services/bible_service.dart';
+import 'package:daily_manna/models/recitation_result.dart';
+import 'package:daily_manna/ui/recitation/results/recitation_results.dart';
+import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/ui/theme_card.dart';
 import 'package:daily_manna/bytes_audio_source.dart';
 import 'package:daily_manna/wav_encoder.dart';
-import 'package:daily_manna/openrouter_service.dart';
-import 'package:daily_manna/passage_range_selector.dart';
-import 'package:daily_manna/scripture_range_ref.dart';
+import 'package:daily_manna/services/openrouter_service.dart';
+import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/settings_page.dart';
-import 'package:daily_manna/settings_service.dart';
-import 'package:daily_manna/whisper_service.dart';
+import 'package:daily_manna/services/settings_service.dart';
+import 'package:daily_manna/services/whisper_service.dart';
+import 'package:daily_manna/ui/recitation/recitation_playback_section.dart';
+import 'package:daily_manna/ui/recitation/recitation_confirmation_section.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
@@ -372,7 +373,14 @@ class _RecitationModeState extends State<RecitationMode> {
           if (_isTranscribing || _isRecognizing)
             _buildLoadingSection()
           else if (_isConfirmingPassage)
-            _buildConfirmationSection()
+            RecitationConfirmationSection(
+              passageRef: _selectedPassageRef,
+              onPassageSelected: (ref) {
+                setState(() => _selectedPassageRef = ref);
+              },
+              onConfirm: _confirmPassage,
+              onCancel: _cancelConfirmation,
+            )
           else if (!_isPlayingBack) ...[
             // Recording section
             ThemeCard(
@@ -400,8 +408,13 @@ class _RecitationModeState extends State<RecitationMode> {
               ),
             ),
           ] else
-            // Playback section
-            _buildPlaybackSection(),
+            RecitationPlaybackSection(
+              audioPlayer: _audioPlayer,
+              onTogglePlayback: _togglePlayback,
+              onStopPlayback: _stopPlayback,
+              onDiscard: _discardRecording,
+              onSubmit: _sendForTranscription,
+            ),
         ],
       ),
     ),
@@ -422,132 +435,5 @@ class _RecitationModeState extends State<RecitationMode> {
     ),
   );
 
-  Widget _buildConfirmationSection() => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Text('Confirm Passage', style: Theme.of(context).textTheme.titleLarge),
-      const SizedBox(height: 24),
-      PassageRangeSelector(
-        ref: _selectedPassageRef,
-        onSelected: (ref) {
-          setState(() => _selectedPassageRef = ref);
-        },
-      ),
-      const SizedBox(height: 48),
-      Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: _cancelConfirmation,
-              child: const Text('Cancel'),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: FilledButton(
-              onPressed: _confirmPassage,
-              child: const Text('Submit'),
-            ),
-          ),
-        ],
-      ),
-    ],
-  );
 
-  Widget _buildPlaybackSection() => ThemeCard(
-    child: Column(
-      spacing: 24,
-      children: [
-        Icon(Icons.music_note, size: 80, color: Colors.blue),
-        StreamBuilder<PlayerState>(
-          stream: _audioPlayer.playerStateStream,
-          builder: (context, snapshot) {
-            final playerState = snapshot.data;
-            final isPlaying = playerState?.playing ?? false;
-
-            return Column(
-              spacing: 24,
-              children: [
-                // Playback progress
-                StreamBuilder<Duration?>(
-                  stream: _audioPlayer.positionStream,
-                  builder: (context, snapshot) {
-                    final position = snapshot.data ?? Duration.zero;
-                    final duration = _audioPlayer.duration ?? Duration.zero;
-
-                    return Column(
-                      spacing: 8,
-                      children: [
-                        SliderTheme(
-                          data: SliderThemeData(trackHeight: 4),
-                          child: Slider(
-                            min: 0,
-                            max: duration.inMilliseconds.toDouble(),
-                            value: position.inMilliseconds.toDouble(),
-                            onChanged: (value) {
-                              _audioPlayer.seek(
-                                Duration(milliseconds: value.toInt()),
-                              );
-                            },
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _formatDuration(position),
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                              Text(
-                                _formatDuration(duration),
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-                // Play/Pause button
-                FilledButton.icon(
-                  onPressed: _togglePlayback,
-                  icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
-                  label: Text(isPlaying ? 'Pause' : 'Play'),
-                ),
-              ],
-            );
-          },
-        ),
-        // Action buttons
-        Row(
-          spacing: 16,
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _discardRecording,
-                icon: const Icon(Icons.delete),
-                label: const Text('Discard'),
-              ),
-            ),
-            Expanded(
-              child: FilledButton.icon(
-                onPressed: _sendForTranscription,
-                icon: const Icon(Icons.check),
-                label: const Text('Submit'),
-              ),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
-  }
 }
