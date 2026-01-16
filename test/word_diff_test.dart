@@ -99,5 +99,110 @@ All things were made by him; and without him was not any thing made that was mad
             reason: 'Verse 3 word ${i - 25} should be correct');
       }
     });
+
+    test('transposed adjacent words', () {
+      const original = 'In the beginning was the Word';
+      const transcribed = 'In the beginning was Word the';
+
+      final diff = computeWordDiff(original, transcribed);
+
+      expect(diff.length, 7);
+      expect(diff[0].text, 'In');
+      expect(diff[0].status, DiffStatus.correct);
+      expect(diff[1].text, 'the');
+      expect(diff[1].status, DiffStatus.correct);
+      expect(diff[2].text, 'beginning');
+      expect(diff[2].status, DiffStatus.correct);
+      expect(diff[3].text, 'was');
+      expect(diff[3].status, DiffStatus.correct);
+      expect(diff[4].text, 'Word');
+      expect(diff[4].status, DiffStatus.extra);
+      expect(diff[5].text, 'the');
+      expect(diff[5].status, DiffStatus.correct);
+      expect(diff[6].text, 'Word');
+      expect(diff[6].status, DiffStatus.missing);
+    });
+
+    test('transposed non-adjacent words', () {
+      const original = 'In the beginning was the Word';
+      const transcribed = 'Word the beginning was the In';
+
+      final diff = computeWordDiff(original, transcribed);
+
+      expect(diff.length, 8);
+      expect(diff[0].text, 'In');
+      expect(diff[0].status, DiffStatus.missing);
+      expect(diff[1].text, 'Word');
+      expect(diff[1].status, DiffStatus.extra);
+      expect(diff[2].text, 'the');
+      expect(diff[2].status, DiffStatus.correct);
+      expect(diff[3].text, 'beginning');
+      expect(diff[3].status, DiffStatus.correct);
+      expect(diff[4].text, 'was');
+      expect(diff[4].status, DiffStatus.correct);
+      expect(diff[5].text, 'the');
+      expect(diff[5].status, DiffStatus.correct);
+      expect(diff[6].text, 'Word');
+      expect(diff[6].status, DiffStatus.missing);
+      expect(diff[7].text, 'In');
+      expect(diff[7].status, DiffStatus.extra);
+    });
+
+    test('synonym substitution (God → Lord)', () {
+      const original = 'and the Word was with God';
+      const transcribed = 'and the Word was with Lord';
+
+      final diff = computeWordDiff(original, transcribed);
+
+      expect(diff.length, 7);
+      expect(diff[0].text, 'and');
+      expect(diff[0].status, DiffStatus.correct);
+      expect(diff[1].text, 'the');
+      expect(diff[1].status, DiffStatus.correct);
+      expect(diff[2].text, 'Word');
+      expect(diff[2].status, DiffStatus.correct);
+      expect(diff[3].text, 'was');
+      expect(diff[3].status, DiffStatus.correct);
+      expect(diff[4].text, 'with');
+      expect(diff[4].status, DiffStatus.correct);
+      expect(diff[5].text, 'God');
+      expect(diff[5].status, DiffStatus.missing);
+      expect(diff[6].text, 'Lord');
+      expect(diff[6].status, DiffStatus.extra);
+    });
+
+    test('phrase reordering within verse', () {
+      const original = 'and the Word was with God and the Word was God';
+      // User mixes up: puts "was God" before "was with God"
+      const transcribed = 'and the Word was God and the Word was with God';
+
+      final diff = computeWordDiff(original, transcribed);
+
+      expect(diff.length, 12);
+      expect(diff[0].text, 'and');
+      expect(diff[0].status, DiffStatus.correct);
+      expect(diff[1].text, 'the');
+      expect(diff[1].status, DiffStatus.correct);
+      expect(diff[2].text, 'Word');
+      expect(diff[2].status, DiffStatus.correct);
+      expect(diff[3].text, 'was');
+      expect(diff[3].status, DiffStatus.correct);
+      expect(diff[4].text, 'with');
+      expect(diff[4].status, DiffStatus.missing);
+      expect(diff[5].text, 'God');
+      expect(diff[5].status, DiffStatus.correct);
+      expect(diff[6].text, 'and');
+      expect(diff[6].status, DiffStatus.correct);
+      expect(diff[7].text, 'the');
+      expect(diff[7].status, DiffStatus.correct);
+      expect(diff[8].text, 'Word');
+      expect(diff[8].status, DiffStatus.correct);
+      expect(diff[9].text, 'was');
+      expect(diff[9].status, DiffStatus.correct);
+      expect(diff[10].text, 'with');
+      expect(diff[10].status, DiffStatus.extra);
+      expect(diff[11].text, 'God');
+      expect(diff[11].status, DiffStatus.correct);
+    });
   });
 }
