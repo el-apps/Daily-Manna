@@ -77,6 +77,24 @@ Use conventional commit format:
 
 Include scope when relevant: `fix(web):`, `feat(android):`
 
+### Code Organization
+
+Organize code by importance: public APIs first, then supporting code.
+
+**File structure:**
+1. **Main functions/classes** at the top (e.g., `computeWordDiff()`, `MyWidget`)
+2. **Data classes** next (e.g., `WordDiff`, `DiffWord`)
+3. **Enums and constants** 
+4. **Helper functions** at the bottom (e.g., `_normalizeAndSplit()`)
+
+**Within classes, apply the same principle:**
+1. **Public methods** (e.g., `build()`, `initState()`)
+2. **Methods called by public methods**
+3. **Helper methods** called by those methods
+4. **Private utility methods** at the bottom
+
+This makes the most important code visible first when opening a file.
+
 ### Code Generation
 
 After modifying any `@freezed` annotated classes, run:
