@@ -2,6 +2,7 @@ import 'package:daily_manna/bible_service.dart';
 import 'package:daily_manna/practice_result.dart';
 import 'package:daily_manna/scripture_ref.dart';
 import 'package:daily_manna/share_dialog.dart';
+import 'package:daily_manna/ui/theme_card.dart';
 import 'package:daily_manna/verse_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -58,13 +59,9 @@ class _VerseMemorizationState extends State<VerseMemorization> {
             children: [
               VerseSelector(ref: _ref, onSelected: _selectRef),
               if (_result != Result.unknown && bibleService.hasVerse(_ref))
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.brown.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.brown),
-                  ),
+                ThemeCard(
+                  backgroundColor: Colors.brown.withValues(alpha: 0.1),
+                  borderColor: Colors.brown,
                   child: Text(
                     actualVerse,
                     style: Theme.of(context).textTheme.bodyLarge,
@@ -82,13 +79,9 @@ class _VerseMemorizationState extends State<VerseMemorization> {
                   onChanged: (String value) => setState(() => _input = value),
                 ),
               if (_result != Result.unknown)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: _result.color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: _result.color),
-                  ),
+                ThemeCard(
+                  backgroundColor: _result.color.withValues(alpha: 0.1),
+                  borderColor: _result.color,
                   child: Text(switch (_result) {
                     Result.learn => 'Practice the verse...',
                     Result.incorrect => 'Try again',

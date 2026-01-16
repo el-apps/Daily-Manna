@@ -1,6 +1,7 @@
 import 'package:daily_manna/bible_service.dart';
 import 'package:daily_manna/scripture_range_ref.dart';
 import 'package:daily_manna/word_diff.dart';
+import 'package:daily_manna/ui/theme_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -50,16 +51,16 @@ class _RecitationResultsState extends State<RecitationResults> {
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 16,
                 children: [
                   // Passage reference
                   Text(
                     bibleService.getRangeRefName(widget.ref),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  const SizedBox(height: 12),
 
                   // Comparison with diff highlighting
                   DiffComparison(diff: _diff),
@@ -71,12 +72,12 @@ class _RecitationResultsState extends State<RecitationResults> {
           SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: 12,
                 children: [
                   LinearProgressIndicator(value: widget.score),
-                  const SizedBox(height: 12),
                   FilledButton(
                     onPressed: widget.onReciteAgain,
                     child: const Text('Continue'),
@@ -129,12 +130,12 @@ class _DiffComparisonState extends State<DiffComparison> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 16,
       children: [
         MinimalLegend(
           visibleStatuses: _visibleStatuses,
           onToggle: _toggleVisibility,
         ),
-        const SizedBox(height: 8),
         DiffPassageSection(diff: filteredDiff),
       ],
     );
@@ -200,31 +201,35 @@ class _LegendColor extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Opacity(
-        opacity: isVisible ? 1.0 : 0.4,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                color: isVisible
-                    ? color.withValues(alpha: 0.3)
-                    : Colors.grey.withValues(alpha: 0.2),
-                border: Border.all(
-                  color: isVisible ? color : Colors.grey,
-                  width: 1.5,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Opacity(
+          opacity: isVisible ? 1.0 : 0.4,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 16,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: isVisible
+                      ? color.withValues(alpha: 0.3)
+                      : Colors.grey.withValues(alpha: 0.2),
+                  border: Border.all(
+                    color: isVisible ? color : Colors.grey,
+                    width: 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                borderRadius: BorderRadius.circular(2),
               ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -244,25 +249,14 @@ class DiffPassageSection extends StatelessWidget {
     final groups = _groupConsecutiveByStatus(diff);
     final baseStyle = Theme.of(context).textTheme.bodyLarge;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Colors.grey.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-          ),
-          child: RichText(
-            text: TextSpan(
-              children: [
-                for (final group in groups) _buildSpan(group, baseStyle),
-              ],
-            ),
-          ),
+    return ThemeCard(
+      child: RichText(
+        text: TextSpan(
+          children: [
+            for (final group in groups) _buildSpan(group, baseStyle),
+          ],
         ),
-      ],
+      ),
     );
   }
 
