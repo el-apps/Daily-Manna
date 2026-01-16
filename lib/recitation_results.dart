@@ -24,7 +24,7 @@ class RecitationResults extends StatefulWidget {
 
 class _RecitationResultsState extends State<RecitationResults> {
   late final String _actualPassage;
-  late final WordDiff _diff;
+  late final List<DiffWord> _diff;
 
   @override
   void initState() {
