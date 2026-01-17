@@ -227,14 +227,20 @@ if (ref.complete) { /* all fields are set */ }
 
 ### Widget Creation and Organization
 
-**Prefer separate widgets over helper methods.** Widgets are more composable, testable, and reusable than helper methods. Extract a widget if:
+**Always prefer separate widgets over helper methods.** This is essential for Flutter's rendering performance:
 
-- Subtree represents a **distinct UI concept** (e.g., `RecordingCard`, `LoadingSection`)
-- Subtree is **reused** in multiple places
-- Subtree has its own **parameters or state management**
-- Subtree is more than a few lines (or just for clarity)
+- Helper methods return new widget instances on every parent rebuild, bypassing Flutter's widget tree diffing
+- Actual Widget classes allow the framework to compare widgets for equality and skip unnecessary rebuilds
+- The widget tree structure enables the framework's efficient diff algorithm and rendering optimizations
 
-Even small, single-use subtrees should be widgets for consistency and future extensibility.
+Extract a widget if it:
+
+- Represents a **distinct UI concept** (e.g., `RecordingCard`, `LoadingSection`)
+- Is **reused** in multiple places
+- Has its own **parameters or state management**
+- Is more than a few lines (or just for clarity)
+
+Even small, single-use subtrees should be widgets for consistency, testability, and performance.
 
 **Widget file organization:**
 
