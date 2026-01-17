@@ -1,11 +1,11 @@
-import 'package:daily_manna/services/bible_service.dart';
-import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/recitation_result.dart';
+import 'package:daily_manna/models/scripture_range_ref.dart';
+import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
-import 'package:word_tools/word_tools.dart';
 import 'package:daily_manna/ui/theme_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:word_tools/word_tools.dart';
 
 class RecitationResults extends StatefulWidget {
   final ScriptureRangeRef ref;

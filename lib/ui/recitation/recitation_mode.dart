@@ -1,27 +1,27 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
-import 'package:daily_manna/services/bible_service.dart';
-import 'package:daily_manna/models/recitation_result.dart';
-import 'package:daily_manna/ui/recitation/results/recitation_results.dart';
-import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/bytes_audio_source.dart';
-import 'package:daily_manna/wav_encoder.dart';
-import 'package:daily_manna/services/openrouter_service.dart';
+import 'package:daily_manna/models/recitation_result.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
-import 'package:daily_manna/settings_page.dart';
+import 'package:daily_manna/services/bible_service.dart';
+import 'package:daily_manna/services/openrouter_service.dart';
+import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/settings_service.dart';
 import 'package:daily_manna/services/whisper_service.dart';
+import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
-import 'package:daily_manna/ui/recitation/recitation_playback_section.dart';
-import 'package:daily_manna/ui/recitation/recitation_confirmation_section.dart';
-import 'package:daily_manna/ui/recitation/recording_card.dart';
 import 'package:daily_manna/ui/loading_section.dart';
+import 'package:daily_manna/ui/recitation/recitation_confirmation_section.dart';
+import 'package:daily_manna/ui/recitation/recitation_playback_section.dart';
+import 'package:daily_manna/ui/recitation/recitation_results.dart';
+import 'package:daily_manna/ui/recitation/recording_card.dart';
+import 'package:daily_manna/wav_encoder.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 import 'package:word_tools/word_tools.dart';
-import 'package:just_audio/just_audio.dart';
 
 enum RecitationStep { idle, recording, playback, processing, confirming }
 
