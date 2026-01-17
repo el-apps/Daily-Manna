@@ -267,11 +267,7 @@ class _RecitationModeState extends State<RecitationMode> {
           ? 'OpenRouter API key is not configured. Please update it in Settings, then try again.'
           : 'Something went wrong processing your recitation. Check Settings > Logs for details.';
 
-      _handleError(
-        msg,
-        context: 'processing',
-        errorDetails: '$e\n$st',
-      );
+      _handleError(msg, context: 'processing', errorDetails: '$e\n$st');
     }
   }
 

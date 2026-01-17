@@ -15,11 +15,11 @@ class OpenRouterService {
   OpenRouterService(this.settingsService);
 
   Map<String, String> _getHeaders(String apiKey) => {
-        'Authorization': 'Bearer $apiKey',
-        'Content-Type': 'application/json',
-        'HTTP-Referer': _appUrl,
-        'X-Title': _appTitle,
-      };
+    'Authorization': 'Bearer $apiKey',
+    'Content-Type': 'application/json',
+    'HTTP-Referer': _appUrl,
+    'X-Title': _appTitle,
+  };
 
   Future<String> transcribeAudio(List<int> audioBytes, String filename) async {
     debugPrint('[OpenRouter Audio] Starting transcription');
@@ -27,7 +27,9 @@ class OpenRouterService {
 
     final apiKey = settingsService.getOpenRouterApiKey();
     if (apiKey == null || apiKey.isEmpty) {
-      throw Exception('OpenRouter API key not configured. The default API key may not have been set at build time. Please check your configuration and try again.');
+      throw Exception(
+        'OpenRouter API key not configured. The default API key may not have been set at build time. Please check your configuration and try again.',
+      );
     }
 
     // Base64 encode audio
@@ -42,10 +44,7 @@ class OpenRouterService {
     final requestBody = {
       'model': 'openai/gpt-4o-audio-preview',
       'messages': [
-        {
-          'role': 'system',
-          'content': Prompts.bibleAudioTranscriptionSystem,
-        },
+        {'role': 'system', 'content': Prompts.bibleAudioTranscriptionSystem},
         {
           'role': 'user',
           'content': [
@@ -113,8 +112,7 @@ class OpenRouterService {
     } else if (messageContent is List) {
       // Multimodal response: find the text block
       final textBlock = messageContent.cast<Map<String, dynamic>>().firstWhere(
-        (block) =>
-            block['type'] == 'output_text' || block['type'] == 'text',
+        (block) => block['type'] == 'output_text' || block['type'] == 'text',
         orElse: () => <String, dynamic>{},
       );
 

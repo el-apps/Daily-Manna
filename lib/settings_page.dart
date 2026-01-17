@@ -1,9 +1,14 @@
+import 'dart:async';
+
+import 'package:flutter/gestures.dart';
 import 'package:daily_manna/services/error_logger_service.dart';
+import 'package:daily_manna/services/settings_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/theme_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -21,18 +26,20 @@ class SettingsPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _ApiKeySection(),
+            const SizedBox(height: 16),
             if (logs.isNotEmpty)
               ThemeCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Error Logs — For Debugging (${logs.length})',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Error Logs — For Debugging (${logs.length})',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
                         Row(
                           children: [
                             IconButton(
@@ -63,8 +70,7 @@ class SettingsPage extends StatelessWidget {
                                     title: const Text('Clear Logs?'),
                                     actions: [
                                       TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(ctx),
+                                        onPressed: () => Navigator.pop(ctx),
                                         child: const Text('Cancel'),
                                       ),
                                       FilledButton(
@@ -111,9 +117,9 @@ class SettingsPage extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     child: Text(
                       'No errors logged',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                     ),
                   ),
                 ),
@@ -123,4 +129,156 @@ class SettingsPage extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ApiKeySection extends StatefulWidget {
+  const _ApiKeySection();
+
+  @override
+  State<_ApiKeySection> createState() => _ApiKeySectionState();
+}
+
+class _ApiKeySectionState extends State<_ApiKeySection> {
+  late SettingsService _settingsService;
+  bool _hasApiKey = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _settingsService = context.read<SettingsService>();
+    _checkApiKeyStatus();
+  }
+
+  void _checkApiKeyStatus() {
+    setState(() {
+      final key = _settingsService.getOpenRouterApiKey();
+      _hasApiKey = key != null && key.isNotEmpty;
+    });
+  }
+
+  void _showApiKeyDialog() {
+    final controller = TextEditingController();
+    final currentContext = context;
+    showDialog(
+      context: currentContext,
+      builder: (ctx) => _ApiKeyDialog(
+        controller: controller,
+        settingsService: _settingsService,
+        onSave: (key) {
+          Navigator.pop(ctx);
+          _settingsService
+              .setOpenRouterApiKey(key)
+              .then((_) async {
+                if (!mounted) return;
+                _checkApiKeyStatus();
+                unawaited(
+                  Future.microtask(() {
+                    // ignore: use_build_context_synchronously
+                    ScaffoldMessenger.of(currentContext).showSnackBar(
+                      const SnackBar(content: Text('API key saved')),
+                    );
+                  }),
+                );
+              })
+              .catchError((_) {
+                // Ignore errors, already handled in service
+              });
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => ThemeCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'API Configuration',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'OpenRouter API Key',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _hasApiKey ? '✓ Configured' : '✗ Not configured',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: _hasApiKey ? Colors.green : Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            FilledButton.tonal(
+              onPressed: _showApiKeyDialog,
+              child: const Text('Set Key'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        RichText(
+          text: TextSpan(
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+            children: [
+              const TextSpan(text: 'Get your key from '),
+              TextSpan(
+                text: 'https://openrouter.ai/keys',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.blue,
+                  decoration: TextDecoration.underline,
+                ),
+                recognizer: TapGestureRecognizer()
+                  ..onTap = () =>
+                      launchUrl(Uri.parse('https://openrouter.ai/keys')),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ApiKeyDialog extends StatelessWidget {
+  final TextEditingController controller;
+  final SettingsService settingsService;
+  final void Function(String key) onSave;
+
+  const _ApiKeyDialog({
+    required this.controller,
+    required this.settingsService,
+    required this.onSave,
+  });
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Set OpenRouter API Key'),
+    content: TextField(
+      autofillHints: [AutofillHints.password],
+      controller: controller,
+      obscureText: true,
+      decoration: const InputDecoration(hintText: 'Paste your API key here'),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      FilledButton(
+        onPressed: () => onSave(controller.text),
+        child: const Text('Save'),
+      ),
+    ],
+  );
 }
