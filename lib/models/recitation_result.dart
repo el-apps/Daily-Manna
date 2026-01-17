@@ -8,7 +8,7 @@ class RecitationResult {
   final ScriptureRangeRef ref;
   final double score;
 
-  int get starRating => (score / 0.2).round().clamp(0, 5);
+  int get starRating => scoreToStars(score);
 
   String get starDisplay => _buildStarDisplay(starRating);
 
