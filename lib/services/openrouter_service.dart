@@ -80,11 +80,34 @@ class OpenRouterService {
       throw Exception('No response from OpenRouter');
     }
 
-    final String content =
-        responseBody['choices'][0]['message']['content'] as String;
+    final choice = (responseBody['choices'] as List).first;
+    final messageContent = choice['message']['content'];
 
-    debugPrint('[OpenRouter Audio] Transcribed text: "$content"');
-    return content;
+    String transcript;
+    if (messageContent is String) {
+      // Text-only models or simple string response
+      transcript = messageContent;
+    } else if (messageContent is List) {
+      // Multimodal response: find the text block
+      final textBlock = messageContent.cast<Map<String, dynamic>>().firstWhere(
+        (block) =>
+            block['type'] == 'output_text' || block['type'] == 'text',
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (textBlock.isEmpty) {
+        throw Exception('No text content found in OpenRouter audio response');
+      }
+
+      transcript = textBlock['text'] as String;
+    } else {
+      throw Exception(
+        'Unexpected content format in OpenRouter audio response: ${messageContent.runtimeType}',
+      );
+    }
+
+    debugPrint('[OpenRouter Audio] Transcribed text: "$transcript"');
+    return transcript;
   }
 
   String _getAudioFormat(String filename) {
