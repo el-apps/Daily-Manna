@@ -176,6 +176,11 @@ Format and transform data in service classes, not widgets. Example: `ResultsServ
 2. Widgets with parameters → `final` fields
 3. Stateful → keep state in `State` class, not widget class
 
+**Widget naming:**
+
+- Use `_PrivateWidget` prefix for internal-only widgets (used only in their own file or within a parent widget)
+- Public widgets (reusable or imported elsewhere) have no underscore: `PublicWidget`
+
 ### Page Structure
 
 **Always use `AppScaffold` (not `Scaffold` directly).** It provides consistent AppBar and share button. Set `showShareButton: false` only on Settings page.
