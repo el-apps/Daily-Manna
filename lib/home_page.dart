@@ -16,7 +16,6 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AppScaffold(
     title: 'Daily Manna',
-    showShareButton: false,
     body: ListView(
       children: [
         Padding(

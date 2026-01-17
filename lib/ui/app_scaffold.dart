@@ -2,8 +2,6 @@ import 'package:daily_manna/share_dialog.dart';
 import 'package:flutter/material.dart';
 
 /// A scaffold wrapper that provides consistent AppBar and share button across the app.
-///
-/// The share button is available on all screens except Settings.
 class AppScaffold extends StatelessWidget {
   final String title;
   final Widget body;
@@ -31,8 +29,10 @@ class AppScaffold extends StatelessWidget {
         if (showShareButton)
           IconButton(
             icon: const Icon(Icons.share),
-            onPressed: () =>
-                showDialog(context: context, builder: (_) => const ShareDialog()),
+            onPressed: () => showDialog(
+              context: context,
+              builder: (_) => const ShareDialog(),
+            ),
           ),
       ],
     ),
