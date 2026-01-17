@@ -213,6 +213,10 @@ Always show helpful feedback when data is empty. Don't leave views blank.
 
 Examples: "No results to share yet", loading indicators, error messages.
 
+## Releases
+
+Update version in `pubspec.yaml`, push to `main` to trigger automatic workflow: creates git tag, builds APK, and creates GitHub Release.
+
 ## Web Support
 
 Flask web support enabled. Custom Python server with CORS headers.
