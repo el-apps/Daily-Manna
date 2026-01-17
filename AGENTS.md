@@ -18,21 +18,54 @@ Daily Manna is a Flutter application for building strong daily habits in interac
 
 ```
 lib/
-├── main.dart              # App entry point and root widget
-├── home_page.dart         # Main home screen with feature cards
-├── bible_service.dart     # Bible parsing and verse retrieval service
-├── verse_memorization.dart # Core memorization practice feature
-├── verse_selector.dart    # UI for selecting book/chapter/verse
-├── scripture_ref.dart     # Freezed model for scripture references
-├── scripture_ref.freezed.dart # Generated freezed code
-├── practice_result.dart   # Memorization result tracking
-└── share_dialog.dart      # Share progress with others
+├── main.dart                    # App entry point and root widget
+├── home_page.dart               # Main home screen with feature cards
+├── settings_page.dart           # App settings (API keys)
+├── share_dialog.dart            # Share progress with others
+├── prompts.dart                 # LLM prompts for passage recognition
+│
+├── models/                      # Freezed data classes
+│   ├── scripture_ref.dart       # Single verse reference
+│   ├── scripture_range_ref.dart # Verse range reference
+│   ├── recitation_result.dart   # Recitation session result
+│   ├── result_item.dart         # Result display item
+│   └── result_section.dart      # Grouped results for sharing
+│
+├── services/                    # Business logic and integrations
+│   ├── bible_service.dart       # Bible parsing and verse retrieval
+│   ├── results_service.dart     # Results formatting and management
+│   ├── settings_service.dart    # Settings persistence
+│   ├── whisper_service.dart     # OpenAI Whisper speech-to-text
+│   └── openrouter_service.dart  # OpenRouter LLM for passage recognition
+│
+├── ui/
+│   ├── theme_card.dart          # Themed container widget
+│   ├── mode_card.dart           # Home page feature card
+│   │
+│   ├── memorization/             # Verse memorization mode
+│   │   ├── verse_memorization.dart  # Core memorization practice
+│   │   ├── verse_selector.dart      # UI for selecting verses
+│   │   └── practice_result.dart     # Result display
+│   │
+│   └── recitation/              # Recitation/audio practice mode
+│       ├── recitation_mode.dart  # Main recitation UI
+│       ├── recitation_playback_section.dart  # Audio playback controls
+│       ├── recitation_confirmation_section.dart # Passage confirmation
+│       └── results/
+│           ├── recitation_results.dart    # Results display page
+│           ├── diff_comparison.dart       # Word-by-word diff view
+│           ├── diff_legend.dart           # Legend for diff colors
+│           └── diff_colors.dart           # Color utilities for diff
+│
+├── bytes_audio_source.dart      # Audio source from byte array
+├── wav_encoder.dart             # PCM to WAV encoding
+└── passage_range_selector.dart  # Reusable passage range selector
 
 assets/
-└── kjv.xml               # King James Version Bible data (~5MB)
+└── kjv.xml                      # King James Version Bible data (~5MB)
 
-web/                       # Flutter web support files
-android/                   # Android platform files
+web/                             # Flutter web support files
+android/                         # Android platform files
 ```
 
 ## Key Commands
@@ -234,6 +267,9 @@ just build-web
 - Web version uses CanvasKit renderer by default (requires WebGL)
 - The `share_plus` package handles sharing on both mobile and web
 - Memorization scoring uses `word_tools` package for text comparison
+- Recitation mode uses OpenAI Whisper API for speech-to-text transcription
+- Passage recognition uses OpenRouter LLM API to identify Bible passages from text
+- Audio recording uses PCM 16-bit at 16kHz, encoded to WAV for transmission
 
 ## TODO Items
 
