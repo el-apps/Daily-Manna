@@ -3,8 +3,6 @@ import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:word_tools/word_tools.dart';
 import 'package:daily_manna/ui/theme_card.dart';
-import 'package:daily_manna/ui/recitation/results/diff_legend.dart';
-import 'package:daily_manna/ui/recitation/results/diff_colors.dart' as _;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -45,30 +43,74 @@ class _RecitationResultsState extends State<RecitationResults> {
   }
 
   @override
+  Widget build(BuildContext context) => _DiffViewWrapper(
+        ref: widget.ref,
+        diff: _diff,
+        score: widget.score,
+        onReciteAgain: widget.onReciteAgain,
+      );
+}
+
+class _DiffViewWrapper extends StatefulWidget {
+  final ScriptureRangeRef ref;
+  final List<DiffWord> diff;
+  final double score;
+  final VoidCallback onReciteAgain;
+
+  const _DiffViewWrapper({
+    required this.ref,
+    required this.diff,
+    required this.score,
+    required this.onReciteAgain,
+  });
+
+  @override
+  State<_DiffViewWrapper> createState() => _DiffViewWrapperState();
+}
+
+class _DiffViewWrapperState extends State<_DiffViewWrapper> {
+  bool _showExpected = true;
+
+  @override
   Widget build(BuildContext context) {
     final bibleService = context.read<BibleService>();
+    final filteredDiff = _filterDiff(widget.diff, _showExpected);
 
     return AppScaffold(
       title: 'Recitation Results',
       body: Column(
         children: [
+          // Fixed header
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 12,
+              children: [
+                // Passage reference
+                Text(
+                  bibleService.getRangeRefName(widget.ref),
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                // View toggle buttons
+                SegmentedButton<bool>(
+                  selected: {_showExpected},
+                  onSelectionChanged: (selected) {
+                    setState(() => _showExpected = selected.first);
+                  },
+                  segments: const [
+                    ButtonSegment(label: Text('Expected'), value: true),
+                    ButtonSegment(label: Text('Spoken'), value: false),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Scrollable content
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 16,
-                children: [
-                  // Passage reference
-                  Text(
-                    bibleService.getRangeRefName(widget.ref),
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-
-                  // Comparison with diff highlighting
-                  DiffComparison(diff: _diff),
-                ],
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: DiffPassageSection(diff: filteredDiff),
             ),
           ),
           // Fixed footer with progress bar and button
@@ -93,54 +135,25 @@ class _RecitationResultsState extends State<RecitationResults> {
       ),
     );
   }
-}
 
-class DiffComparison extends StatefulWidget {
-  final List<DiffWord> diff;
-
-  const DiffComparison({super.key, required this.diff});
-
-  @override
-  State<DiffComparison> createState() => _DiffComparisonState();
-}
-
-class _DiffComparisonState extends State<DiffComparison> {
-  final Set<DiffStatus> _visibleStatuses = {
-    DiffStatus.correct,
-    DiffStatus.missing,
-    DiffStatus.extra,
-  };
-
-  void _toggleVisibility(DiffStatus status) {
-    setState(() {
-      if (_visibleStatuses.contains(status)) {
-        _visibleStatuses.remove(status);
-      } else {
-        _visibleStatuses.add(status);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filteredDiff = widget.diff
-        .where((word) => _visibleStatuses.contains(word.status))
-        .toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: 16,
-      children: [
-        MinimalLegend(
-          visibleStatuses: _visibleStatuses,
-          onToggle: _toggleVisibility,
-        ),
-        DiffPassageSection(diff: filteredDiff),
-      ],
-    );
+  List<DiffWord> _filterDiff(List<DiffWord> diff, bool showExpected) {
+    if (showExpected) {
+      // Expected: show correct + missing
+      return diff
+          .where((word) =>
+              word.status == DiffStatus.correct ||
+              word.status == DiffStatus.missing)
+          .toList();
+    } else {
+      // Spoken: show correct + extra
+      return diff
+          .where((word) =>
+              word.status == DiffStatus.correct ||
+              word.status == DiffStatus.extra)
+          .toList();
+    }
   }
 }
-
 class DiffPassageSection extends StatelessWidget {
   final List<DiffWord> diff;
 
@@ -148,55 +161,42 @@ class DiffPassageSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final groups = _groupConsecutiveByStatus(diff);
     final baseStyle = Theme.of(context).textTheme.bodyLarge;
 
     return ThemeCard(
-      child: RichText(
-        text: TextSpan(
-          children: [for (final group in groups) _buildSpan(group, baseStyle)],
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: RichText(
+          text: TextSpan(
+            children: [for (final word in diff) _buildWordSpan(word, baseStyle)],
+          ),
         ),
       ),
     );
   }
 
-  TextSpan _buildSpan(_WordGroup group, TextStyle? baseStyle) {
-    final (bgColor, textColor) = group.status.colors;
-    final text = group.words.map((w) => w.text).join(' ');
-    final label = group.words[0].displayLabel;
+  TextSpan _buildWordSpan(DiffWord word, TextStyle? baseStyle) {
+    final baseTextStyle = baseStyle ?? const TextStyle();
 
-    return TextSpan(
-      text: '$label $text ',
-      style: (baseStyle ?? const TextStyle()).copyWith(
-        color: textColor,
-        backgroundColor: bgColor,
-      ),
-    );
+    return switch (word.status) {
+      DiffStatus.correct => TextSpan(
+            text: '${word.text} ',
+            style: baseTextStyle,
+          ),
+      DiffStatus.missing => TextSpan(
+            text: '${word.text} ',
+            style: baseTextStyle.copyWith(
+              color: Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+      DiffStatus.extra => TextSpan(
+            text: '${word.text} ',
+            style: baseTextStyle.copyWith(
+              color: Colors.red,
+              decoration: TextDecoration.lineThrough,
+            ),
+          ),
+    };
   }
-
-  List<_WordGroup> _groupConsecutiveByStatus(List<DiffWord> words) {
-    if (words.isEmpty) return [];
-
-    final groups = <_WordGroup>[];
-    var currentGroup = _WordGroup(status: words[0].status, words: [words[0]]);
-
-    for (int i = 1; i < words.length; i++) {
-      if (words[i].status == currentGroup.status) {
-        currentGroup.words.add(words[i]);
-      } else {
-        groups.add(currentGroup);
-        currentGroup = _WordGroup(status: words[i].status, words: [words[i]]);
-      }
-    }
-    groups.add(currentGroup);
-
-    return groups;
-  }
-}
-
-class _WordGroup {
-  final DiffStatus status;
-  final List<DiffWord> words;
-
-  _WordGroup({required this.status, required this.words});
 }
