@@ -45,11 +45,11 @@ class _RecitationResultsState extends State<RecitationResults> {
 
   @override
   Widget build(BuildContext context) => _DiffViewWrapper(
-        ref: widget.ref,
-        diff: _diff,
-        score: widget.score,
-        onReciteAgain: widget.onReciteAgain,
-      );
+    ref: widget.ref,
+    diff: _diff,
+    score: widget.score,
+    onReciteAgain: widget.onReciteAgain,
+  );
 }
 
 class _DiffViewWrapper extends StatefulWidget {
@@ -113,7 +113,7 @@ class _DiffViewWrapperState extends State<_DiffViewWrapper> {
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: DiffPassageSection(diff: filteredDiff),
+              child: _DiffPassageSection(diff: filteredDiff),
             ),
           ),
           // Fixed footer with button
@@ -136,20 +136,25 @@ class _DiffViewWrapperState extends State<_DiffViewWrapper> {
     if (showExpected) {
       // Expected: show correct + missing
       return diff
-          .where((word) =>
-              word.status == DiffStatus.correct ||
-              word.status == DiffStatus.missing)
+          .where(
+            (word) =>
+                word.status == DiffStatus.correct ||
+                word.status == DiffStatus.missing,
+          )
           .toList();
     } else {
       // Spoken: show correct + extra
       return diff
-          .where((word) =>
-              word.status == DiffStatus.correct ||
-              word.status == DiffStatus.extra)
+          .where(
+            (word) =>
+                word.status == DiffStatus.correct ||
+                word.status == DiffStatus.extra,
+          )
           .toList();
     }
   }
 }
+
 class _StarRating extends StatelessWidget {
   final double score;
 
@@ -163,7 +168,10 @@ class _StarRating extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        ...List.generate(stars, (_) => const Icon(Icons.star, color: Colors.amber)),
+        ...List.generate(
+          stars,
+          (_) => const Icon(Icons.star, color: Colors.amber),
+        ),
         ...List.generate(
           emptyStars,
           (_) => const Icon(Icons.star_outline, color: Colors.amber),
@@ -173,10 +181,10 @@ class _StarRating extends StatelessWidget {
   }
 }
 
-class DiffPassageSection extends StatelessWidget {
+class _DiffPassageSection extends StatelessWidget {
   final List<DiffWord> diff;
 
-  const DiffPassageSection({super.key, required this.diff});
+  const _DiffPassageSection({required this.diff});
 
   @override
   Widget build(BuildContext context) {
@@ -187,7 +195,9 @@ class DiffPassageSection extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: RichText(
           text: TextSpan(
-            children: [for (final word in diff) _buildWordSpan(word, baseStyle)],
+            children: [
+              for (final word in diff) _buildWordSpan(word, baseStyle),
+            ],
           ),
         ),
       ),
@@ -199,23 +209,23 @@ class DiffPassageSection extends StatelessWidget {
 
     return switch (word.status) {
       DiffStatus.correct => TextSpan(
-            text: '${word.text} ',
-            style: baseTextStyle,
-          ),
+        text: '${word.text} ',
+        style: baseTextStyle,
+      ),
       DiffStatus.missing => TextSpan(
-            text: '${word.text} ',
-            style: baseTextStyle.copyWith(
-              color: Colors.red,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+        text: '${word.text} ',
+        style: baseTextStyle.copyWith(
+          color: Colors.red,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
       DiffStatus.extra => TextSpan(
-            text: '${word.text} ',
-            style: baseTextStyle.copyWith(
-              color: Colors.red,
-              decoration: TextDecoration.lineThrough,
-            ),
-          ),
+        text: '${word.text} ',
+        style: baseTextStyle.copyWith(
+          color: Colors.red,
+          decoration: TextDecoration.lineThrough,
+        ),
+      ),
     };
   }
 }
