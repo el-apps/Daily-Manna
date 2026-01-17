@@ -40,7 +40,10 @@ class RecitationPlaybackSection extends StatelessWidget {
                     final position = snapshot.data ?? Duration.zero;
                     final duration = audioPlayer.duration ?? Duration.zero;
                     final durationMs = duration.inMilliseconds.toDouble();
-                    final positionMs = position.inMilliseconds.toDouble().clamp(0.0, durationMs);
+                    final positionMs = position.inMilliseconds.toDouble().clamp(
+                      0.0,
+                      durationMs,
+                    );
 
                     return Column(
                       spacing: 8,

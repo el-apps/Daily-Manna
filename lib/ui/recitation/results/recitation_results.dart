@@ -206,17 +206,14 @@ class _DiffPassageSection extends StatelessWidget {
 
   TextSpan _buildWordSpan(DiffWord word, TextStyle? baseStyle) {
     final baseTextStyle = baseStyle ?? const TextStyle();
-    
+
     // Add horizontal spacing around highlighted words for visual padding
     // when using background color
     final highlightedText = ' ${word.text} ';
     final normalText = '${word.text} ';
 
     return switch (word.status) {
-      DiffStatus.correct => TextSpan(
-        text: normalText,
-        style: baseTextStyle,
-      ),
+      DiffStatus.correct => TextSpan(text: normalText, style: baseTextStyle),
       DiffStatus.missing || DiffStatus.extra => TextSpan(
         text: highlightedText,
         style: baseTextStyle.copyWith(
