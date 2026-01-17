@@ -23,25 +23,21 @@ class AppScaffold extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final actions = [
-      ...?appBarActions,
-      if (showShareButton)
-        IconButton(
-          icon: const Icon(Icons.share),
-          onPressed: () =>
-              showDialog(context: context, builder: (_) => const ShareDialog()),
-        ),
-    ];
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        actions: actions.isNotEmpty ? actions : null,
-      ),
-      body: body,
-      floatingActionButton: floatingActionButton,
-      backgroundColor: backgroundColor,
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: Text(title),
+      actions: [
+        ...?appBarActions,
+        if (showShareButton)
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () =>
+                showDialog(context: context, builder: (_) => const ShareDialog()),
+          ),
+      ],
+    ),
+    body: body,
+    floatingActionButton: floatingActionButton,
+    backgroundColor: backgroundColor,
+  );
 }
