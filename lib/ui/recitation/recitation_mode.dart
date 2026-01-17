@@ -218,6 +218,8 @@ class _RecitationModeState extends State<RecitationMode> {
 
       final bibleService = context.read<BibleService>();
       if (!bibleService.isLoaded) {
+        if (!mounted) return;
+        setState(() => _step = RecitationStep.playback);
         _handleError(
           'Bible data is still loading. Please try again in a moment.',
           context: 'recognition',
@@ -235,6 +237,8 @@ class _RecitationModeState extends State<RecitationMode> {
       if (!mounted) return;
 
       if (recognizedRef == null) {
+        if (!mounted) return;
+        setState(() => _step = RecitationStep.playback);
         _handleError(
           'Could not recognize passage from your recitation.',
           context: 'recognition',
