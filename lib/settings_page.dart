@@ -11,7 +11,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  late TextEditingController _whisperController;
   late TextEditingController _openRouterController;
   late SettingsService _settingsService;
 
@@ -19,9 +18,6 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _settingsService = context.read<SettingsService>();
-    _whisperController = TextEditingController(
-      text: _settingsService.getWhisperApiKey() ?? '',
-    );
     _openRouterController = TextEditingController(
       text: _settingsService.getOpenRouterApiKey() ?? '',
     );
@@ -29,13 +25,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   void dispose() {
-    _whisperController.dispose();
     _openRouterController.dispose();
     super.dispose();
   }
 
   Future<void> _saveSettings() async {
-    await _settingsService.setWhisperApiKey(_whisperController.text);
     await _settingsService.setOpenRouterApiKey(_openRouterController.text);
 
     if (mounted) {
@@ -57,16 +51,6 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 16),
           Text('API Keys', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 24),
-          TextField(
-            controller: _whisperController,
-            autofillHints: const [AutofillHints.password],
-            decoration: const InputDecoration(
-              labelText: 'Whisper API Key',
-              hintText: 'Enter your OpenAI Whisper API key',
-            ),
-            obscureText: true,
-          ),
-          const SizedBox(height: 16),
           TextField(
             controller: _openRouterController,
             autofillHints: const [AutofillHints.password],
