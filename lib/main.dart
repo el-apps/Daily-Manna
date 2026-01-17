@@ -1,5 +1,6 @@
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/home_page.dart';
+import 'package:daily_manna/services/error_logger_service.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/settings_service.dart';
 import 'package:flutter/material.dart';
@@ -20,6 +21,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
   late BibleService _bibleService;
   late SettingsService _settingsService;
   late ResultsService _resultsService;
+  late ErrorLoggerService _errorLoggerService;
   late Future _initFuture;
 
   @override
@@ -28,8 +30,10 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
     _bibleService = BibleService();
     _settingsService = SettingsService();
     _resultsService = ResultsService();
+    _errorLoggerService = ErrorLoggerService();
     _initFuture = Future.wait([
       _settingsService.init(),
+      _errorLoggerService.init(),
       _bibleService.load(context),
     ]);
   }
@@ -43,6 +47,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
               Provider.value(value: _bibleService),
               Provider.value(value: _settingsService),
               Provider.value(value: _resultsService),
+              Provider.value(value: _errorLoggerService),
             ],
             child: MaterialApp(
               title: 'Daily Manna',

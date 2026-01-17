@@ -27,7 +27,7 @@ class OpenRouterService {
 
     final apiKey = settingsService.getOpenRouterApiKey();
     if (apiKey == null || apiKey.isEmpty) {
-      throw Exception('OpenRouter API key not configured');
+      throw Exception('OpenRouter API key not configured. The default API key may not have been set at build time. Please check your configuration and try again.');
     }
 
     // Base64 encode audio
@@ -71,8 +71,22 @@ class OpenRouterService {
     debugPrint('[OpenRouter Audio] Response body: ${response.body}');
 
     if (response.statusCode != 200) {
+      String errorDetail = '${response.reasonPhrase}';
+      try {
+        final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
+        if (errorBody.containsKey('error')) {
+          final error = errorBody['error'];
+          if (error is Map && error.containsKey('message')) {
+            errorDetail = error['message'] as String;
+          } else if (error is String) {
+            errorDetail = error;
+          }
+        }
+      } catch (_) {
+        // Ignore JSON parse errors, use reasonPhrase
+      }
       throw Exception(
-        'Failed to transcribe audio: ${response.statusCode} ${response.reasonPhrase}',
+        'Failed to transcribe audio: ${response.statusCode} - $errorDetail',
       );
     }
 
@@ -183,8 +197,22 @@ class OpenRouterService {
     debugPrint('[RecognizePassage] Response body: ${response.body}');
 
     if (response.statusCode != 200) {
+      String errorDetail = '${response.reasonPhrase}';
+      try {
+        final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
+        if (errorBody.containsKey('error')) {
+          final error = errorBody['error'];
+          if (error is Map && error.containsKey('message')) {
+            errorDetail = error['message'] as String;
+          } else if (error is String) {
+            errorDetail = error;
+          }
+        }
+      } catch (_) {
+        // Ignore JSON parse errors, use reasonPhrase
+      }
       throw Exception(
-        'Failed to recognize passage: ${response.statusCode} ${response.reasonPhrase}',
+        'Failed to recognize passage: ${response.statusCode} - $errorDetail',
       );
     }
 

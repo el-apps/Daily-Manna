@@ -4,6 +4,7 @@ import 'package:daily_manna/bytes_audio_source.dart';
 import 'package:daily_manna/models/recitation_result.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
+import 'package:daily_manna/services/error_logger_service.dart';
 import 'package:daily_manna/services/openrouter_service.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/settings_service.dart';
@@ -260,19 +261,11 @@ class _RecitationModeState extends State<RecitationMode> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _step = RecitationStep.playback);
-
-      final msg = e.toString();
-      if (msg.contains('API key not configured')) {
-        _handleError(
-          'Your API key is missing or invalid. Please check Settings and try again.',
-          context: 'processing',
-        );
-      } else {
-        _handleError(
-          'Something went wrong processing your recitation. Please try again.',
-          context: 'processing',
-        );
-      }
+      _handleError(
+        'Something went wrong processing your recitation. Check Settings > Logs for details.',
+        context: 'processing',
+        errorDetails: e.toString(),
+      );
     }
   }
 
@@ -399,9 +392,17 @@ class _RecitationModeState extends State<RecitationMode> {
     _showError(message);
   }
 
-  void _handleError(String message, {String? context}) {
+  void _handleError(String message, {String? context, String? errorDetails}) {
     if (context != null) {
       debugPrint('[RecitationMode] Error ($context): $message');
+    }
+    if (errorDetails != null && mounted) {
+      try {
+        final errorLoggerService = this.context.read<ErrorLoggerService>();
+        errorLoggerService.logError(errorDetails, context: context);
+      } catch (_) {
+        // Ignore if logger service is not available
+      }
     }
     _showError(message);
   }
