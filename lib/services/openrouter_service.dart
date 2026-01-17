@@ -9,8 +9,6 @@ class OpenRouterService {
   final SettingsService settingsService;
   static const String _chatBaseUrl =
       'https://openrouter.ai/api/v1/chat/completions';
-  static const String _audioBaseUrl =
-      'https://openrouter.ai/api/v1/audio/transcriptions';
 
   OpenRouterService(this.settingsService);
 
@@ -26,16 +24,49 @@ class OpenRouterService {
       throw Exception('OpenRouter API key not configured');
     }
 
-    debugPrint('[OpenRouter Audio] Sending audio to API');
-    final request = http.MultipartRequest('POST', Uri.parse(_audioBaseUrl))
-      ..headers['Authorization'] = 'Bearer $apiKey'
-      ..fields['model'] = 'openai/gpt-4o-audio-preview'
-      ..files.add(
-        http.MultipartFile.fromBytes('file', audioBytes, filename: filename),
-      );
+    // Base64 encode audio
+    final base64Audio = base64Encode(audioBytes);
+    debugPrint('[OpenRouter Audio] Base64 encoded audio size: ${base64Audio.length} chars');
 
-    final response = await request.send().timeout(const Duration(seconds: 30));
+    // Determine audio format from filename
+    final audioFormat = _getAudioFormat(filename);
+
+    final requestBody = {
+      'model': 'openai/gpt-4o-audio-preview',
+      'messages': [
+        {
+          'role': 'user',
+          'content': [
+            {
+              'type': 'text',
+              'text': 'Please transcribe this audio file.',
+            },
+            {
+              'type': 'input_audio',
+              'input_audio': {
+                'data': base64Audio,
+                'format': audioFormat,
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    debugPrint('[OpenRouter Audio] Sending audio to chat API');
+    final response = await http
+        .post(
+          Uri.parse(_chatBaseUrl),
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(requestBody),
+        )
+        .timeout(const Duration(seconds: 60));
+
     debugPrint('[OpenRouter Audio] Response status: ${response.statusCode}');
+    debugPrint('[OpenRouter Audio] Response body: ${response.body}');
 
     if (response.statusCode != 200) {
       throw Exception(
@@ -43,21 +74,30 @@ class OpenRouterService {
       );
     }
 
-    final responseBody = await response.stream.bytesToString();
-    debugPrint('[OpenRouter Audio] Response body: $responseBody');
+    final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
 
-    final json = _parseJson(responseBody);
-
-    if (json case {'text': String text}) {
-      debugPrint('[OpenRouter Audio] Transcribed text: "$text"');
-      return text;
+    if (responseBody.containsKey('error')) {
+      final errorMsg = responseBody['error'];
+      debugPrint('[OpenRouter Audio] Error: $errorMsg');
+      throw Exception('OpenRouter audio error: $errorMsg');
     }
 
-    if (json case {'error': var error}) {
-      throw Exception('OpenRouter audio error: $error');
+    if (!responseBody.containsKey('choices') ||
+        (responseBody['choices'] as List).isEmpty) {
+      throw Exception('No response from OpenRouter');
     }
 
-    throw Exception('Unexpected response format from OpenRouter audio API');
+    final String content =
+        responseBody['choices'][0]['message']['content'] as String;
+
+    debugPrint('[OpenRouter Audio] Transcribed text: "$content"');
+    return content;
+  }
+
+  String _getAudioFormat(String filename) {
+    final ext = filename.split('.').last.toLowerCase();
+    const supportedFormats = ['wav', 'mp3', 'aiff', 'aac', 'ogg', 'flac', 'm4a', 'pcm16', 'pcm24'];
+    return supportedFormats.contains(ext) ? ext : 'wav';
   }
 
   Future<ScriptureRangeRef?> recognizePassage(
@@ -159,14 +199,6 @@ class OpenRouterService {
     } catch (e) {
       debugPrint('[RecognizePassage] Failed to parse response: $e');
       throw Exception('Failed to parse passage recognition. Please try again.');
-    }
-  }
-
-  Map<String, dynamic> _parseJson(String jsonString) {
-    try {
-      return jsonDecode(jsonString) as Map<String, dynamic>;
-    } catch (e) {
-      throw Exception('Failed to parse OpenRouter response: $e');
     }
   }
 }
