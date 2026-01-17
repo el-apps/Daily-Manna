@@ -40,7 +40,6 @@ class OpenRouterService {
         {
           'role': 'user',
           'content': [
-            {'type': 'text', 'text': 'Transcribe this Bible passage audio:'},
             {
               'type': 'input_audio',
               'input_audio': {'data': base64Audio, 'format': audioFormat},
