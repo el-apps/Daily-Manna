@@ -59,11 +59,13 @@ class OpenRouterService {
     final requestBody = {
       'model': 'openai/gpt-4o-audio-preview',
       'messages': [
-        {'role': 'system', 'content': Prompts.bibleAudioTranscriptionSystem},
+        {
+          'role': 'system',
+          'content': Prompts.bibleAudioTranscriptionSystem,
+        },
         {
           'role': 'user',
           'content': [
-            {'type': 'text', 'text': 'Please transcribe this audio file.'},
             {
               'type': 'input_audio',
               'input_audio': {'data': base64Audio, 'format': audioFormat},
