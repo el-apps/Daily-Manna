@@ -279,9 +279,7 @@ class _RecitationModeState extends State<RecitationMode> {
             onReciteAgain: () {
               Navigator.of(context).pop(); // Pop results page
               setState(() {
-                _audioBytes = null;
-                _audioStream = null;
-                _audioChunks.clear();
+                _clearAudio();
                 _isConfirmingPassage = false;
                 _transcribedText = '';
               });
@@ -292,6 +290,12 @@ class _RecitationModeState extends State<RecitationMode> {
     } catch (e) {
       _showError('Error grading recitation: $e');
     }
+  }
+
+  void _clearAudio() {
+    _audioBytes = null;
+    _audioStream = null;
+    _audioChunks.clear();
   }
 
   void _showError(String message) {
@@ -330,9 +334,7 @@ class _RecitationModeState extends State<RecitationMode> {
     await _stopPlayback();
     setState(() {
       _isPlayingBack = false;
-      _audioBytes = null;
-      _audioStream = null;
-      _audioChunks.clear();
+      _clearAudio();
     });
   }
 
@@ -356,9 +358,7 @@ class _RecitationModeState extends State<RecitationMode> {
     setState(() {
       _isConfirmingPassage = false;
       _transcribedText = '';
-      _audioBytes = null;
-      _audioStream = null;
-      _audioChunks.clear();
+      _clearAudio();
     });
   }
 
