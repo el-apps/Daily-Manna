@@ -23,7 +23,7 @@ import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 import 'package:word_tools/word_tools.dart';
 
-enum RecitationStep { idle, recording, playback, processing, confirming }
+enum RecitationStep { idle, recording, playback, processing, scriptureReference }
 
 class RecitationMode extends StatefulWidget {
   const RecitationMode({super.key});
@@ -85,7 +85,7 @@ class _RecitationModeState extends State<RecitationMode> {
             RecitationStep.processing => LoadingSection(
               message: _loadingMessage,
             ),
-            RecitationStep.confirming => RecitationConfirmationSection(
+            RecitationStep.scriptureReference => RecitationConfirmationSection(
               passageRef: _selectedPassageRef,
               onPassageSelected: (ref) {
                 setState(() => _selectedPassageRef = ref);
@@ -239,9 +239,9 @@ class _RecitationModeState extends State<RecitationMode> {
 
       if (recognizedRef == null) {
         if (!mounted) return;
-        setState(() => _step = RecitationStep.playback);
+        setState(() => _step = RecitationStep.scriptureReference);
         _handleError(
-          'Could not recognize passage from your recitation.',
+          'Could not recognize passage from your recitation. Please enter it manually.',
           context: 'recognition',
         );
         return;
@@ -249,7 +249,7 @@ class _RecitationModeState extends State<RecitationMode> {
 
       setState(() {
         _selectedPassageRef = recognizedRef;
-        _step = RecitationStep.confirming;
+        _step = RecitationStep.scriptureReference;
       });
     } on TimeoutException catch (e, st) {
       if (!mounted) return;
