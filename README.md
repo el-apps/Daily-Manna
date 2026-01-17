@@ -8,12 +8,6 @@ An app for building strong daily habits in interacting with the Word of God.
 A reproducible Nix flake is provided using [android-nixpkgs](https://github.com/tadfisher/android-nixpkgs):
 
 ```bash
-just nix-shell                # Enter the dev environment (updates flake first)
-```
-
-Or manually:
-
-```bash
 nix flake update              # Update flake inputs
 nix develop                   # Enter the dev environment
 ```
@@ -30,8 +24,8 @@ This provides:
 Once in the dev shell, run:
 
 ```bash
-just android                  # Build and run on Android
-just build-apk-prod         # Build release APK
+just run-android              # Build and run on Android
+just build-apk-prod          # Build release APK
 just web                      # Run web version
 just test                     # Run tests
 just format                   # Format code
