@@ -41,6 +41,7 @@ lib/
 ├── ui/
 │   ├── theme_card.dart          # Themed container widget
 │   ├── mode_card.dart           # Home page feature card
+│   ├── loading_section.dart     # Loading indicator widget (reusable)
 │   │
 │   ├── memorization/             # Verse memorization mode
 │   │   ├── verse_memorization.dart  # Core memorization practice
@@ -49,6 +50,7 @@ lib/
 │   │
 │   └── recitation/              # Recitation/audio practice mode
 │       ├── recitation_mode.dart  # Main recitation UI
+│       ├── recording_card.dart   # Recording UI card
 │       ├── recitation_playback_section.dart  # Audio playback controls
 │       ├── recitation_confirmation_section.dart # Passage confirmation
 │       └── results/
@@ -222,6 +224,54 @@ Use the `ScriptureRef` freezed class:
 final ref = ScriptureRef(bookId: 'Gen', chapterNumber: 1, verseNumber: 1);
 if (ref.complete) { /* all fields are set */ }
 ```
+
+### Widget Creation and Organization
+
+**When to extract a widget:**
+
+- Subtree is **reused** in multiple places (or could be in the future)
+- Subtree is **complex** (more than ~30 lines) and has its own logic
+- Subtree represents a **distinct UI concept** (e.g., `RecordingCard`, `LoadingSection`)
+- Subtree needs **independent state management**
+
+Don't extract purely for organization; use helper methods for small, single-use subtrees.
+
+**Widget file organization:**
+
+- **Shared widgets** (reusable across features): `lib/ui/widget_name.dart`
+- **Feature-specific widgets**: `lib/ui/feature_name/widget_name.dart`
+- **Sections/containers**: `lib/ui/feature_name/*_section.dart`
+- **Results/dialogs/pages**: Place with the feature that uses them
+
+Example:
+
+```
+lib/ui/
+├── loading_section.dart         # Shared: used across app
+├── theme_card.dart              # Shared: reusable container
+├── recitation/
+│   ├── recitation_mode.dart      # Main feature
+│   ├── recording_card.dart       # Specific to recitation
+│   ├── recitation_playback_section.dart
+│   └── results/
+│       ├── recitation_results.dart
+│       ├── diff_comparison.dart
+│       └── diff_legend.dart
+```
+
+**Widget structure:**
+
+1. Simple, stateless widgets use expression body:
+   ```dart
+   class MyWidget extends StatelessWidget {
+     @override
+     Widget build(BuildContext context) => Container(...);
+   }
+   ```
+
+2. Widgets with parameters: accept them as `final` fields, use in `build()`
+
+3. Stateful widgets: keep state in `State` class, not the widget class itself
 
 ## Web Support
 
