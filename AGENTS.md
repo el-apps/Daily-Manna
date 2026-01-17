@@ -215,7 +215,7 @@ Examples: "No results to share yet", loading indicators, error messages.
 
 ## Releases
 
-Update version in `pubspec.yaml`, push to `main` to trigger automatic workflow: creates git tag, builds APK, and creates GitHub Release.
+Update version in `pubspec.yaml`, merge to `main` to trigger automatic workflow: creates git tag, builds APK, and creates GitHub Release.
 
 ## Web Support
 
