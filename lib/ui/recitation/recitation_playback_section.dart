@@ -39,23 +39,26 @@ class RecitationPlaybackSection extends StatelessWidget {
                   builder: (context, snapshot) {
                     final position = snapshot.data ?? Duration.zero;
                     final duration = audioPlayer.duration ?? Duration.zero;
+                    final durationMs = duration.inMilliseconds.toDouble();
+                    final positionMs = position.inMilliseconds.toDouble().clamp(0.0, durationMs);
 
                     return Column(
                       spacing: 8,
                       children: [
-                        SliderTheme(
-                          data: SliderThemeData(trackHeight: 4),
-                          child: Slider(
-                            min: 0,
-                            max: duration.inMilliseconds.toDouble(),
-                            value: position.inMilliseconds.toDouble(),
-                            onChanged: (value) {
-                              audioPlayer.seek(
-                                Duration(milliseconds: value.toInt()),
-                              );
-                            },
+                        if (durationMs > 0)
+                          SliderTheme(
+                            data: SliderThemeData(trackHeight: 4),
+                            child: Slider(
+                              min: 0,
+                              max: durationMs,
+                              value: positionMs,
+                              onChanged: (double value) {
+                                audioPlayer.seek(
+                                  Duration(milliseconds: value.toInt()),
+                                );
+                              },
+                            ),
                           ),
-                        ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: Row(
