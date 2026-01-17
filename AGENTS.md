@@ -177,30 +177,13 @@ Format and transform data in service classes, not widgets. Example: `ResultsServ
 
 ### Page Structure
 
-Every page in the app must use **`AppScaffold`** for consistent AppBar and share button functionality.
-
-```dart
-AppScaffold(
-  title: 'Page Title',
-  showShareButton: true,  // Set to false on Settings page
-  body: YourPageContent(),
-)
-```
-
-`AppScaffold` provides:
-- Consistent `AppBar` with title
-- Share button (for all pages except Settings)
-- Support for additional app bar actions via `appBarActions` parameter
-- Optional FAB and custom background color
-
-Do **not** use `Scaffold` directly. Always wrap with `AppScaffold`.
+**Always use `AppScaffold` (not `Scaffold` directly).** It provides consistent AppBar and share button. Set `showShareButton: false` only on Settings page.
 
 ### Adding New Features
 
 1. Create feature widget in `lib/`
 2. Register in `features` list in `home_page.dart`
-3. Features display as cards on home screen
-4. Use `AppScaffold` for page structure
+3. Use `AppScaffold` for page structure
 
 ### Data Access Patterns
 
