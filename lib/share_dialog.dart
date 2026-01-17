@@ -81,7 +81,7 @@ class ShareDialog extends StatelessWidget {
             ...section.items.map((item) => '${item.score} ${item.reference}'),
           ].join('\n'),
         )
-        .join('\n\n----------\n\n');
+        .join('\n\n');
 
     await SharePlus.instance.share(
       ShareParams(text: 'Daily Manna Results\n\n$shareContent'),
