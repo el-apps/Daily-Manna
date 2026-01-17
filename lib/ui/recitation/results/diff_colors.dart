@@ -8,8 +8,6 @@ extension DiffStatusColors on DiffStatus {
     DiffStatus.extra => Colors.yellow,
   };
 
-  (Color bgColor, Color textColor) get colors => (
-    primaryColor.withValues(alpha: 0.25),
-    primaryColor.shade100,
-  );
+  (Color bgColor, Color textColor) get colors =>
+      (primaryColor.withValues(alpha: 0.25), primaryColor.shade100);
 }

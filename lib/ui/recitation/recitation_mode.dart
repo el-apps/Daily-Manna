@@ -12,6 +12,7 @@ import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/services/settings_service.dart';
 import 'package:daily_manna/services/whisper_service.dart';
+import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/recitation/recitation_playback_section.dart';
 import 'package:daily_manna/ui/recitation/recitation_confirmation_section.dart';
 import 'package:daily_manna/ui/recitation/recording_card.dart';
@@ -22,13 +23,7 @@ import 'package:record/record.dart';
 import 'package:word_tools/word_tools.dart';
 import 'package:just_audio/just_audio.dart';
 
-enum RecitationStep {
-  idle,
-  recording,
-  playback,
-  processing,
-  confirming,
-}
+enum RecitationStep { idle, recording, playback, processing, confirming }
 
 class RecitationMode extends StatefulWidget {
   const RecitationMode({super.key});
@@ -180,13 +175,10 @@ class _RecitationModeState extends State<RecitationMode> {
 
       // Encode to WAV once and reuse for playback and transcription
       _wavData = Uint8List.fromList(
-        WavEncoder.encodePcm16ToWav(
-          _audioBytes!.toList(),
-          sampleRate: 16000,
-        ),
+        WavEncoder.encodePcm16ToWav(_audioBytes!.toList(), sampleRate: 16000),
       );
       debugPrint('[RecitationMode] WAV file size: ${_wavData!.length} bytes');
-      
+
       final audioSource = await createBytesAudioSource(_wavData!);
       await _audioPlayer.setAudioSource(audioSource);
 
@@ -200,14 +192,15 @@ class _RecitationModeState extends State<RecitationMode> {
 
   Future<void> _processRecording() async {
     if (!mounted) return;
-    
+
     setState(() {
       _step = RecitationStep.processing;
       _loadingMessage = 'Transcribing audio...';
     });
 
     try {
-      final wavData = _wavData ??
+      final wavData =
+          _wavData ??
           Uint8List.fromList(
             WavEncoder.encodePcm16ToWav(
               _audioBytes!.toList(),
@@ -338,8 +331,9 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _safeShowError(String message) {
@@ -405,15 +399,17 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Recite')),
+  Widget build(BuildContext context) => AppScaffold(
+    title: 'Recite',
     body: SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           switch (_step) {
-            RecitationStep.processing => LoadingSection(message: _loadingMessage),
+            RecitationStep.processing => LoadingSection(
+              message: _loadingMessage,
+            ),
             RecitationStep.confirming => RecitationConfirmationSection(
               passageRef: _selectedPassageRef,
               onPassageSelected: (ref) {
@@ -429,19 +425,17 @@ class _RecitationModeState extends State<RecitationMode> {
               onDiscard: _discardRecording,
               onSubmit: _sendForTranscription,
             ),
-            RecitationStep.idle || RecitationStep.recording =>
-              RecordingCard(
-                state: _step == RecitationStep.recording
-                    ? RecordingState.recording
-                    : RecordingState.idle,
-                onToggle: _step == RecitationStep.recording
-                    ? _stopRecording
-                    : _startRecording,
-              ),
+            RecitationStep.idle || RecitationStep.recording => RecordingCard(
+              state: _step == RecitationStep.recording
+                  ? RecordingState.recording
+                  : RecordingState.idle,
+              onToggle: _step == RecitationStep.recording
+                  ? _stopRecording
+                  : _startRecording,
+            ),
           },
         ],
       ),
     ),
   );
-
 }

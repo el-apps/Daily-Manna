@@ -1,4 +1,5 @@
 import 'package:daily_manna/services/settings_service.dart';
+import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -46,8 +47,9 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Settings')),
+  Widget build(BuildContext context) => AppScaffold(
+    title: 'Settings',
+    showShareButton: false,
     body: AutofillGroup(
       child: ListView(
         padding: const EdgeInsets.all(16),

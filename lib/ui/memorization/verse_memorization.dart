@@ -2,7 +2,7 @@ import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/ui/memorization/practice_result.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
-import 'package:daily_manna/share_dialog.dart';
+import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/theme_card.dart';
 import 'package:daily_manna/ui/memorization/verse_selector.dart';
 import 'package:flutter/foundation.dart';
@@ -44,13 +44,8 @@ class _VerseMemorizationState extends State<VerseMemorization> {
             _ref.verseNumber!,
           )
         : '';
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Memorize'),
-        actions: [
-          IconButton(icon: Icon(Icons.share), onPressed: _shareResults),
-        ],
-      ),
+    return AppScaffold(
+      title: 'Memorize',
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -181,9 +176,6 @@ class _VerseMemorizationState extends State<VerseMemorization> {
       }
     });
   }
-
-  void _shareResults() =>
-      showDialog(context: context, builder: (_) => const ShareDialog());
 
   ThemeCardStyle _getThemeCardStyle(Result result) {
     switch (result) {

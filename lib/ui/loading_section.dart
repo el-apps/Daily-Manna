@@ -4,10 +4,7 @@ import 'package:flutter/material.dart';
 class LoadingSection extends StatelessWidget {
   final String message;
 
-  const LoadingSection({
-    super.key,
-    required this.message,
-  });
+  const LoadingSection({super.key, required this.message});
 
   @override
   Widget build(BuildContext context) => ThemeCard(

@@ -7,11 +7,7 @@ class RecordingCard extends StatelessWidget {
   final RecordingState state;
   final VoidCallback onToggle;
 
-  const RecordingCard({
-    super.key,
-    required this.state,
-    required this.onToggle,
-  });
+  const RecordingCard({super.key, required this.state, required this.onToggle});
 
   @override
   Widget build(BuildContext context) {
