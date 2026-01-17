@@ -1,7 +1,7 @@
 # Daily Manna - Agent Guidelines
 
 > **Note:** Essential information only. Keep context window lean.
-> **Updates to this file:** Concise prose only. Include code examples only when high-impact and necessary. No verbose explanations or multiple examples.
+> **Updates to this file:** Concise prose only. Include code examples only when high-impact and necessary. No verbose explanations, multiple examples, or unnecessary bulleted lists of benefits.
 
 ## Project Overview
 
