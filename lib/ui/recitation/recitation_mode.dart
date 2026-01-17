@@ -5,7 +5,6 @@ import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/models/recitation_result.dart';
 import 'package:daily_manna/ui/recitation/results/recitation_results.dart';
 import 'package:daily_manna/services/results_service.dart';
-import 'package:daily_manna/ui/theme_card.dart';
 import 'package:daily_manna/bytes_audio_source.dart';
 import 'package:daily_manna/wav_encoder.dart';
 import 'package:daily_manna/services/openrouter_service.dart';
@@ -16,6 +15,7 @@ import 'package:daily_manna/services/whisper_service.dart';
 import 'package:daily_manna/ui/recitation/recitation_playback_section.dart';
 import 'package:daily_manna/ui/recitation/recitation_confirmation_section.dart';
 import 'package:daily_manna/ui/recitation/recording_card.dart';
+import 'package:daily_manna/ui/loading_section.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
@@ -413,7 +413,7 @@ class _RecitationModeState extends State<RecitationMode> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           switch (_step) {
-            RecitationStep.processing => _buildLoadingSection(),
+            RecitationStep.processing => LoadingSection(message: _loadingMessage),
             RecitationStep.confirming => RecitationConfirmationSection(
               passageRef: _selectedPassageRef,
               onPassageSelected: (ref) {
@@ -444,18 +444,4 @@ class _RecitationModeState extends State<RecitationMode> {
     ),
   );
 
-  Widget _buildLoadingSection() => ThemeCard(
-    child: Column(
-      spacing: 24,
-      children: [
-        const SizedBox(height: 4),
-        const CircularProgressIndicator(),
-        Text(
-          _loadingMessage,
-          style: Theme.of(context).textTheme.titleMedium,
-          textAlign: TextAlign.center,
-        ),
-      ],
-    ),
-  );
 }
