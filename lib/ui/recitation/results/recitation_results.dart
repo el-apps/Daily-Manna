@@ -92,6 +92,8 @@ class _DiffViewWrapperState extends State<_DiffViewWrapper> {
                   bibleService.getRangeRefName(widget.ref),
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
+                // Star rating
+                _StarRating(score: widget.score),
                 // View toggle buttons
                 SegmentedButton<bool>(
                   selected: {_showExpected},
@@ -113,21 +115,14 @@ class _DiffViewWrapperState extends State<_DiffViewWrapper> {
               child: DiffPassageSection(diff: filteredDiff),
             ),
           ),
-          // Fixed footer with progress bar and button
+          // Fixed footer with button
           SafeArea(
             top: false,
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 12,
-                children: [
-                  LinearProgressIndicator(value: widget.score.clamp(0.0, 1.0)),
-                  FilledButton(
-                    onPressed: widget.onReciteAgain,
-                    child: const Text('Continue'),
-                  ),
-                ],
+              child: FilledButton(
+                onPressed: widget.onReciteAgain,
+                child: const Text('Continue'),
               ),
             ),
           ),
@@ -154,6 +149,29 @@ class _DiffViewWrapperState extends State<_DiffViewWrapper> {
     }
   }
 }
+class _StarRating extends StatelessWidget {
+  final double score;
+
+  const _StarRating({required this.score});
+
+  @override
+  Widget build(BuildContext context) {
+    final stars = (score * 5).round().clamp(0, 5);
+    final emptyStars = 5 - stars;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ...List.generate(stars, (_) => const Icon(Icons.star, color: Colors.amber)),
+        ...List.generate(
+          emptyStars,
+          (_) => const Icon(Icons.star_outline, color: Colors.amber),
+        ),
+      ],
+    );
+  }
+}
+
 class DiffPassageSection extends StatelessWidget {
   final List<DiffWord> diff;
 
