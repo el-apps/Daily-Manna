@@ -47,7 +47,7 @@ jobs:
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
       - name: Build APK Release             
-        run: flutter build apk --release
+        run: flutter build apk --release --dart-define=DEFAULT_OPENROUTER_API_KEY=${{ secrets.DEFAULT_OPENROUTER_API_KEY }}
       - name: Save APK to Artifacts
         uses: actions/upload-artifact@v4
         with:
