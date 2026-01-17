@@ -59,10 +59,6 @@ run-android:
     fi
     flutter run -d "$device"
 
-# Run the app on Android through nix shell
-run-android-nix:
-    nix develop -c "just run-android"
-
 # Build Android APK
 build-apk-prod:
     flutter build apk --release
