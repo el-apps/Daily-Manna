@@ -24,10 +24,7 @@ void main() {
     });
 
     test('creates instance with partial fields', () {
-      final ref = ScriptureRef(
-        bookId: 'John',
-        chapterNumber: 3,
-      );
+      final ref = ScriptureRef(bookId: 'John', chapterNumber: 3);
 
       expect(ref.bookId, 'John');
       expect(ref.chapterNumber, 3);
@@ -46,28 +43,19 @@ void main() {
       });
 
       test('returns false when bookId is null', () {
-        final ref = ScriptureRef(
-          chapterNumber: 3,
-          verseNumber: 16,
-        );
+        final ref = ScriptureRef(chapterNumber: 3, verseNumber: 16);
 
         expect(ref.complete, false);
       });
 
       test('returns false when chapterNumber is null', () {
-        final ref = ScriptureRef(
-          bookId: 'John',
-          verseNumber: 16,
-        );
+        final ref = ScriptureRef(bookId: 'John', verseNumber: 16);
 
         expect(ref.complete, false);
       });
 
       test('returns false when verseNumber is null', () {
-        final ref = ScriptureRef(
-          bookId: 'John',
-          chapterNumber: 3,
-        );
+        final ref = ScriptureRef(bookId: 'John', chapterNumber: 3);
 
         expect(ref.complete, false);
       });
@@ -87,10 +75,7 @@ void main() {
       });
 
       test('returns book and chapter when verse is null', () {
-        final ref = ScriptureRef(
-          bookId: 'John',
-          chapterNumber: 3,
-        );
+        final ref = ScriptureRef(bookId: 'John', chapterNumber: 3);
 
         expect(ref.toString(), 'John 3');
       });
@@ -106,10 +91,7 @@ void main() {
       });
 
       test('returns Unknown when bookId is null', () {
-        final ref = ScriptureRef(
-          chapterNumber: 3,
-          verseNumber: 16,
-        );
+        final ref = ScriptureRef(chapterNumber: 3, verseNumber: 16);
 
         expect(ref.toString(), 'Unknown');
       });

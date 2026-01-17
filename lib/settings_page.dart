@@ -47,43 +47,43 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: AutofillGroup(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            const SizedBox(height: 16),
-            Text('API Keys', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _whisperController,
-              autofillHints: const [AutofillHints.password],
-              decoration: const InputDecoration(
-                labelText: 'Whisper API Key',
-                hintText: 'Enter your OpenAI Whisper API key',
-              ),
-              obscureText: true,
+    appBar: AppBar(title: const Text('Settings')),
+    body: AutofillGroup(
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const SizedBox(height: 16),
+          Text('API Keys', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _whisperController,
+            autofillHints: const [AutofillHints.password],
+            decoration: const InputDecoration(
+              labelText: 'Whisper API Key',
+              hintText: 'Enter your OpenAI Whisper API key',
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _openRouterController,
-              autofillHints: const [AutofillHints.password],
-              decoration: const InputDecoration(
-                labelText: 'OpenRouter API Key',
-                hintText: 'Enter your OpenRouter API key',
-              ),
-              obscureText: true,
+            obscureText: true,
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _openRouterController,
+            autofillHints: const [AutofillHints.password],
+            decoration: const InputDecoration(
+              labelText: 'OpenRouter API Key',
+              hintText: 'Enter your OpenRouter API key',
             ),
-            const SizedBox(height: 32),
-            FilledButton(
-              onPressed: _saveSettings,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Text('Save Settings'),
-              ),
+            obscureText: true,
+          ),
+          const SizedBox(height: 32),
+          FilledButton(
+            onPressed: _saveSettings,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('Save Settings'),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
+    ),
+  );
 }

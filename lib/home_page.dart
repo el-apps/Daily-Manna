@@ -14,37 +14,37 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: Text('Daily Manna')),
-      body: ListView(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              'An app for building strong daily habits in interacting with the Word of God.',
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall!.copyWith(fontStyle: FontStyle.italic),
-            ),
+    appBar: AppBar(title: Text('Daily Manna')),
+    body: ListView(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'An app for building strong daily habits in interacting with the Word of God.',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall!.copyWith(fontStyle: FontStyle.italic),
           ),
-          for (final feature in features)
-            ModeCard(
-              title: feature.title,
-              icon: feature.icon,
-              onTap: () => Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => feature.widget)),
-            ),
+        ),
+        for (final feature in features)
           ModeCard(
-            title: 'Settings',
-            icon: Icons.settings,
+            title: feature.title,
+            icon: feature.icon,
             onTap: () => Navigator.of(
               context,
-            ).push(MaterialPageRoute(builder: (_) => const SettingsPage())),
+            ).push(MaterialPageRoute(builder: (_) => feature.widget)),
           ),
-          const ListTile(leading: Text('More features coming soon!')),
-        ],
-      ),
-    );
+        ModeCard(
+          title: 'Settings',
+          icon: Icons.settings,
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const SettingsPage())),
+        ),
+        const ListTile(leading: Text('More features coming soon!')),
+      ],
+    ),
+  );
 }
 
 typedef Feature = ({String title, IconData icon, Widget widget});

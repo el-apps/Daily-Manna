@@ -1,3 +1,4 @@
+import 'package:daily_manna/models/result_section.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:flutter/material.dart';
@@ -11,34 +12,47 @@ class ShareDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final bibleService = context.read<BibleService>();
     final resultsService = context.read<ResultsService>();
-    final shareContent = [
-      [
-        'Memorization',
-        ...resultsService.memorizationResults.map(
-          (result) =>
-              '${result.scoreString} ${bibleService.getRefName(result.ref)}',
-        ),
-      ].join('\n'),
-      [
-        'Recitation',
-        ...resultsService.recitationResults.map(
-          (result) =>
-              '${result.starDisplay} ${bibleService.getRangeRefName(result.ref)}',
-        ),
-      ].join('\n'),
-    ].where((section) => section.isNotEmpty).join('\n----------\n');
+
+    final sections = resultsService.getSections(bibleService);
+    final hasContent = sections.isNotEmpty;
+
     return AlertDialog(
       title: Text('Share Your Progress'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
-        spacing: 4,
+        spacing: 8,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Daily sharing your results with others is a great way to practice accountability!',
           ),
-          if (shareContent.isNotEmpty) Divider(),
-          Text(shareContent),
+          if (hasContent) ...[
+            Divider(),
+            ...sections.expand(
+              (section) => [
+                Text(
+                  section.title,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                ...section.items.map(
+                  (item) => Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [Text(item.score), Text(item.reference)],
+                  ),
+                ),
+                if (section != sections.last) SizedBox(height: 8),
+              ],
+            ),
+          ] else ...[
+            Divider(),
+            Text(
+              'No results to share yet. Complete a memorization or recitation to get started.',
+              style: TextStyle(
+                color: Theme.of(context).disabledColor,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
         ],
       ),
 
@@ -47,16 +61,28 @@ class ShareDialog extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
           child: Text('Cancel'),
         ),
-        if (shareContent.isNotEmpty)
+        if (hasContent)
           TextButton(
-            onPressed: () => _share(context, shareContent),
+            onPressed: () => _share(context, sections),
             child: Text('Share'),
           ),
       ],
     );
   }
 
-  Future<void> _share(BuildContext context, String shareContent) async {
+  Future<void> _share(
+    BuildContext context,
+    List<ResultSection> sections,
+  ) async {
+    final shareContent = sections
+        .map(
+          (section) => [
+            section.title,
+            ...section.items.map((item) => '${item.score} ${item.reference}'),
+          ].join('\n'),
+        )
+        .join('\n\n----------\n\n');
+
     await SharePlus.instance.share(
       ShareParams(text: 'Daily Manna Results\n\n$shareContent'),
     );

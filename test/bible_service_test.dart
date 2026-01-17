@@ -61,10 +61,7 @@ class _MockBook {
   final String id;
   final String title;
 
-  _MockBook({
-    required this.id,
-    required this.title,
-  });
+  _MockBook({required this.id, required this.title});
 }
 
 BibleService _createTestBibleService() {

@@ -434,6 +434,4 @@ class _RecitationModeState extends State<RecitationMode> {
       ],
     ),
   );
-
-
 }

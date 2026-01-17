@@ -100,10 +100,8 @@ class _RecitationResultsState extends State<RecitationResults> {
     );
   }
 
-  void _shareResult(BuildContext context) => showDialog(
-    context: context,
-    builder: (_) => const ShareDialog(),
-  );
+  void _shareResult(BuildContext context) =>
+      showDialog(context: context, builder: (_) => const ShareDialog());
 }
 
 class DiffComparison extends StatefulWidget {
@@ -164,32 +162,32 @@ class MinimalLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 12,
-        runSpacing: 4,
-        children: [
-          _LegendColor(
-            color: _getPrimaryColor(DiffStatus.correct),
-            label: 'Correct',
-            isVisible: visibleStatuses.contains(DiffStatus.correct),
-            onTap: () => onToggle(DiffStatus.correct),
-          ),
-          _LegendColor(
-            color: _getPrimaryColor(DiffStatus.missing),
-            label: 'Missing',
-            isVisible: visibleStatuses.contains(DiffStatus.missing),
-            onTap: () => onToggle(DiffStatus.missing),
-          ),
-          _LegendColor(
-            color: _getPrimaryColor(DiffStatus.extra),
-            label: 'Extra',
-            isVisible: visibleStatuses.contains(DiffStatus.extra),
-            onTap: () => onToggle(DiffStatus.extra),
-          ),
-        ],
-      ),
-    );
+    child: Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 12,
+      runSpacing: 4,
+      children: [
+        _LegendColor(
+          color: _getPrimaryColor(DiffStatus.correct),
+          label: 'Correct',
+          isVisible: visibleStatuses.contains(DiffStatus.correct),
+          onTap: () => onToggle(DiffStatus.correct),
+        ),
+        _LegendColor(
+          color: _getPrimaryColor(DiffStatus.missing),
+          label: 'Missing',
+          isVisible: visibleStatuses.contains(DiffStatus.missing),
+          onTap: () => onToggle(DiffStatus.missing),
+        ),
+        _LegendColor(
+          color: _getPrimaryColor(DiffStatus.extra),
+          label: 'Extra',
+          isVisible: visibleStatuses.contains(DiffStatus.extra),
+          onTap: () => onToggle(DiffStatus.extra),
+        ),
+      ],
+    ),
+  );
 }
 
 class _LegendColor extends StatelessWidget {
@@ -207,36 +205,36 @@ class _LegendColor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Opacity(
-          opacity: isVisible ? 1.0 : 0.4,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: isVisible
-                      ? color.withValues(alpha: 0.3)
-                      : Colors.grey.withValues(alpha: 0.2),
-                  border: Border.all(
-                    color: isVisible ? color : Colors.grey,
-                    width: 1.5,
-                  ),
-                  borderRadius: BorderRadius.circular(2),
+    onTap: onTap,
+    behavior: HitTestBehavior.opaque,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Opacity(
+        opacity: isVisible ? 1.0 : 0.4,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: isVisible
+                    ? color.withValues(alpha: 0.3)
+                    : Colors.grey.withValues(alpha: 0.2),
+                border: Border.all(
+                  color: isVisible ? color : Colors.grey,
+                  width: 1.5,
                 ),
+                borderRadius: BorderRadius.circular(2),
               ),
-              const SizedBox(width: 6),
-              Text(label, style: Theme.of(context).textTheme.bodySmall),
-            ],
-          ),
+            ),
+            const SizedBox(width: 6),
+            Text(label, style: Theme.of(context).textTheme.bodySmall),
+          ],
         ),
       ),
-    );
+    ),
+  );
 }
 
 class DiffPassageSection extends StatelessWidget {
@@ -305,7 +303,7 @@ class _WordGroup {
 }
 
 MaterialColor _getPrimaryColor(DiffStatus status) => switch (status) {
-    DiffStatus.correct => Colors.green,
-    DiffStatus.missing => Colors.red,
-    DiffStatus.extra => Colors.yellow,
-  };
+  DiffStatus.correct => Colors.green,
+  DiffStatus.missing => Colors.red,
+  DiffStatus.extra => Colors.yellow,
+};

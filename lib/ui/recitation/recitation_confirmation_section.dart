@@ -22,10 +22,7 @@ class RecitationConfirmationSection extends StatelessWidget {
     children: [
       Text('Confirm Passage', style: Theme.of(context).textTheme.titleLarge),
       const SizedBox(height: 24),
-      PassageRangeSelector(
-        ref: passageRef,
-        onSelected: onPassageSelected,
-      ),
+      PassageRangeSelector(ref: passageRef, onSelected: onPassageSelected),
       const SizedBox(height: 48),
       Row(
         children: [

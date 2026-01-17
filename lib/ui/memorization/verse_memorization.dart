@@ -171,18 +171,19 @@ class _VerseMemorizationState extends State<VerseMemorization> {
       _score = compareWordSequences(actualVerse, _input);
       _result = _score >= 0.6 ? Result.correct : Result.incorrect;
       if (_result == Result.correct) {
-        final result =
-            MemorizationResult(ref: _ref, attempts: _attempts, score: _score);
+        final result = MemorizationResult(
+          ref: _ref,
+          attempts: _attempts,
+          score: _score,
+        );
         _results.add(result);
         resultsService.addMemorizationResult(result);
       }
     });
   }
 
-  void _shareResults() => showDialog(
-    context: context,
-    builder: (_) => const ShareDialog(),
-  );
+  void _shareResults() =>
+      showDialog(context: context, builder: (_) => const ShareDialog());
 
   ThemeCardStyle _getThemeCardStyle(Result result) {
     switch (result) {
