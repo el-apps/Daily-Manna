@@ -30,7 +30,7 @@ class WhisperService {
         http.MultipartFile.fromBytes('file', audioBytes, filename: filename),
       );
 
-    final response = await request.send();
+    final response = await request.send().timeout(const Duration(seconds: 30));
     debugPrint('[Whisper] Response status: ${response.statusCode}');
 
     if (response.statusCode != 200) {

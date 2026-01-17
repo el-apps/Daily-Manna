@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/models/recitation_result.dart';
@@ -19,6 +21,14 @@ import 'package:record/record.dart';
 import 'package:word_tools/word_tools.dart';
 import 'package:just_audio/just_audio.dart';
 
+enum RecitationStep {
+  idle,
+  recording,
+  playback,
+  processing,
+  confirming,
+}
+
 class RecitationMode extends StatefulWidget {
   const RecitationMode({super.key});
 
@@ -33,17 +43,14 @@ class _RecitationModeState extends State<RecitationMode> {
   late WhisperService _whisperService;
   late OpenRouterService _openRouterService;
 
-  bool _isRecording = false;
-  bool _isPlayingBack = false;
-  bool _isConfirmingPassage = false;
-  bool _isTranscribing = false;
-  bool _isRecognizing = false;
+  RecitationStep _step = RecitationStep.idle;
   String _loadingMessage = '';
   List<int>? _audioBytes;
-  Stream<Uint8List>? _audioStream;
+  Uint8List? _wavData;
   final List<List<int>> _audioChunks = [];
   String _transcribedText = '';
   late ScriptureRangeRef _selectedPassageRef;
+  StreamSubscription<Uint8List>? _audioSub;
 
   @override
   void initState() {
@@ -66,6 +73,7 @@ class _RecitationModeState extends State<RecitationMode> {
 
   @override
   void dispose() {
+    _audioSub?.cancel();
     _recorder.dispose();
     _audioPlayer.dispose();
     super.dispose();
@@ -129,32 +137,33 @@ class _RecitationModeState extends State<RecitationMode> {
         _audioChunks.clear();
 
         // Record to stream on all platforms
-        _audioStream = await _recorder.startStream(config);
+        final audioStream = await _recorder.startStream(config);
 
         // Listen to stream and collect chunks
-        _audioStream!.listen((chunk) {
+        _audioSub = audioStream.listen((chunk) {
           _audioChunks.add(chunk);
           debugPrint(
             '[RecitationMode] Received audio chunk: ${chunk.length} bytes',
           );
         });
 
-        setState(() => _isRecording = true);
+        setState(() => _step = RecitationStep.recording);
       } else {
-        _showError('Microphone permission denied');
+        _safeShowError('Microphone permission denied');
       }
     } catch (e) {
-      _showError('Failed to start recording: $e');
+      _safeShowError('Failed to start recording: $e');
     }
   }
 
   Future<void> _stopRecording() async {
     try {
+      await _audioSub?.cancel();
+      _audioSub = null;
       await _recorder.stop();
-      setState(() => _isRecording = false);
 
       if (_audioChunks.isEmpty) {
-        _showError('No audio data recorded');
+        _safeShowError('No audio data recorded');
         return;
       }
 
@@ -168,78 +177,107 @@ class _RecitationModeState extends State<RecitationMode> {
         '[RecitationMode] Expected duration at 16kHz: ${_audioBytes!.length / (16000 * 2)} seconds',
       );
 
-      // Load audio for playback
-      final wavData = WavEncoder.encodePcm16ToWav(
-        _audioBytes!.toList(),
-        sampleRate: 16000,
+      // Encode to WAV once and reuse for playback and transcription
+      _wavData = Uint8List.fromList(
+        WavEncoder.encodePcm16ToWav(
+          _audioBytes!.toList(),
+          sampleRate: 16000,
+        ),
       );
-      debugPrint('[RecitationMode] WAV file size: ${wavData.length} bytes');
-      final audioSource = await createBytesAudioSource(wavData);
+      debugPrint('[RecitationMode] WAV file size: ${_wavData!.length} bytes');
+      
+      final audioSource = await createBytesAudioSource(_wavData!);
       await _audioPlayer.setAudioSource(audioSource);
 
-      // Show playback UI
-      setState(() => _isPlayingBack = true);
+      if (!mounted) return;
+      setState(() => _step = RecitationStep.playback);
     } catch (e) {
-      _showError('Failed to stop recording: $e');
+      if (!mounted) return;
+      _safeShowError('Failed to stop recording: $e');
     }
   }
 
   Future<void> _processRecording() async {
-    final audioBytes = _audioBytes;
-    if (audioBytes == null) return;
-
+    if (!mounted) return;
+    
     setState(() {
-      _isTranscribing = true;
+      _step = RecitationStep.processing;
       _loadingMessage = 'Transcribing audio...';
     });
 
     try {
-      final wavData = WavEncoder.encodePcm16ToWav(
-        audioBytes.toList(),
-        sampleRate: 16000,
-      );
+      final wavData = _wavData ??
+          Uint8List.fromList(
+            WavEncoder.encodePcm16ToWav(
+              _audioBytes!.toList(),
+              sampleRate: 16000,
+            ),
+          );
 
-      final transcribedText = await _whisperService.transcribeAudioBytes(
-        wavData,
-        'audio.wav',
-      );
+      final transcribedText = await _whisperService
+          .transcribeAudioBytes(wavData, 'audio.wav')
+          .timeout(const Duration(seconds: 30));
 
       if (!mounted) return;
       _transcribedText = transcribedText;
 
       setState(() {
-        _isTranscribing = false;
-        _isRecognizing = true;
         _loadingMessage = 'Recognizing passage...';
       });
 
       final bibleService = context.read<BibleService>();
-      final recognizedRef = await _openRouterService.recognizePassage(
-        transcribedText,
-        availableBookIds: bibleService.books.map((b) => b.id).toList(),
-      );
+      if (!bibleService.isLoaded) {
+        _handleError(
+          'Bible data is still loading. Please try again in a moment.',
+          context: 'recognition',
+        );
+        return;
+      }
+
+      final recognizedRef = await _openRouterService
+          .recognizePassage(
+            transcribedText,
+            availableBookIds: bibleService.books.map((b) => b.id).toList(),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (!mounted) return;
 
       if (recognizedRef == null) {
-        _handleError('Could not recognize passage from your recitation.');
+        _handleError(
+          'Could not recognize passage from your recitation.',
+          context: 'recognition',
+        );
         return;
       }
 
       setState(() {
-        _isRecognizing = false;
         _selectedPassageRef = recognizedRef;
-        _isConfirmingPassage = true;
+        _step = RecitationStep.confirming;
       });
+    } on TimeoutException {
+      if (!mounted) return;
+      setState(() => _step = RecitationStep.playback);
+      _handleError(
+        'Network timeout. Please check your connection and try again.',
+        context: 'processing_timeout',
+      );
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _isTranscribing = false;
-        _isRecognizing = false;
-      });
-      _handleError(
-        'Something went wrong processing your recitation. Please try again.',
-      );
+      setState(() => _step = RecitationStep.playback);
+
+      final msg = e.toString();
+      if (msg.contains('API key not configured')) {
+        _handleError(
+          'Your API key is missing or invalid. Please check Settings and try again.',
+          context: 'processing',
+        );
+      } else {
+        _handleError(
+          'Something went wrong processing your recitation. Please try again.',
+          context: 'processing',
+        );
+      }
     }
   }
 
@@ -279,8 +317,8 @@ class _RecitationModeState extends State<RecitationMode> {
             onReciteAgain: () {
               Navigator.of(context).pop(); // Pop results page
               setState(() {
+                _step = RecitationStep.idle;
                 _clearAudio();
-                _isConfirmingPassage = false;
                 _transcribedText = '';
               });
             },
@@ -294,14 +332,18 @@ class _RecitationModeState extends State<RecitationMode> {
 
   void _clearAudio() {
     _audioBytes = null;
-    _audioStream = null;
+    _wavData = null;
     _audioChunks.clear();
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _safeShowError(String message) {
+    if (!mounted) return;
+    _showError(message);
   }
 
   Future<void> _togglePlayback() async {
@@ -312,7 +354,7 @@ class _RecitationModeState extends State<RecitationMode> {
         await _audioPlayer.play();
       }
     } catch (e) {
-      _showError('Playback error: $e');
+      _safeShowError('Playback error: $e');
     }
   }
 
@@ -320,22 +362,23 @@ class _RecitationModeState extends State<RecitationMode> {
     try {
       await _audioPlayer.stop();
     } catch (e) {
-      _showError('Error stopping playback: $e');
+      _safeShowError('Error stopping playback: $e');
     }
   }
 
   Future<void> _sendForTranscription() async {
     await _stopPlayback();
-    setState(() => _isPlayingBack = false);
     await _processRecording();
   }
 
   Future<void> _discardRecording() async {
     await _stopPlayback();
-    setState(() {
-      _isPlayingBack = false;
-      _clearAudio();
-    });
+    if (mounted) {
+      setState(() {
+        _step = RecitationStep.idle;
+        _clearAudio();
+      });
+    }
   }
 
   void _confirmPassage() {
@@ -348,18 +391,16 @@ class _RecitationModeState extends State<RecitationMode> {
     debugPrint(
       '[RecitationMode] User confirmed passage: ${bibleService.getRangeRefName(_selectedPassageRef)}',
     );
-    setState(() {
-      _isConfirmingPassage = false;
-    });
     _showRecitationResults(_selectedPassageRef, _transcribedText);
   }
 
   void _cancelConfirmation() {
-    setState(() {
-      _isConfirmingPassage = false;
-      _transcribedText = '';
-      _clearAudio();
-    });
+    if (mounted) {
+      setState(() {
+        _step = RecitationStep.playback;
+        _transcribedText = '';
+      });
+    }
   }
 
   @override
@@ -370,53 +411,62 @@ class _RecitationModeState extends State<RecitationMode> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_isTranscribing || _isRecognizing)
-            _buildLoadingSection()
-          else if (_isConfirmingPassage)
-            RecitationConfirmationSection(
+          switch (_step) {
+            RecitationStep.processing => _buildLoadingSection(),
+            RecitationStep.confirming => RecitationConfirmationSection(
               passageRef: _selectedPassageRef,
               onPassageSelected: (ref) {
                 setState(() => _selectedPassageRef = ref);
               },
               onConfirm: _confirmPassage,
               onCancel: _cancelConfirmation,
-            )
-          else if (!_isPlayingBack) ...[
-            // Recording section
-            ThemeCard(
-              child: Column(
-                children: [
-                  Icon(
-                    _isRecording ? Icons.mic : Icons.mic_none,
-                    size: 80,
-                    color: _isRecording ? Colors.red : Colors.grey,
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    _isRecording ? 'Recording...' : 'Ready to recite',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 48),
-                  FilledButton.icon(
-                    onPressed: _isRecording ? _stopRecording : _startRecording,
-                    icon: Icon(_isRecording ? Icons.stop : Icons.mic),
-                    label: Text(
-                      _isRecording ? 'Stop Recording' : 'Start Recording',
-                    ),
-                  ),
-                ],
-              ),
             ),
-          ] else
-            RecitationPlaybackSection(
+            RecitationStep.playback => RecitationPlaybackSection(
               audioPlayer: _audioPlayer,
               onTogglePlayback: _togglePlayback,
               onStopPlayback: _stopPlayback,
               onDiscard: _discardRecording,
               onSubmit: _sendForTranscription,
             ),
+            RecitationStep.idle || RecitationStep.recording =>
+              _buildRecordingCard(),
+          },
         ],
       ),
+    ),
+  );
+
+  Widget _buildRecordingCard() => ThemeCard(
+    child: Column(
+      children: [
+        Icon(
+          _step == RecitationStep.recording ? Icons.mic : Icons.mic_none,
+          size: 80,
+          color: _step == RecitationStep.recording ? Colors.red : Colors.grey,
+        ),
+        const SizedBox(height: 24),
+        Text(
+          _step == RecitationStep.recording
+              ? 'Recording...'
+              : 'Ready to recite',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 48),
+        FilledButton.icon(
+          onPressed:
+              _step == RecitationStep.recording
+                  ? _stopRecording
+                  : _startRecording,
+          icon: Icon(
+            _step == RecitationStep.recording ? Icons.stop : Icons.mic,
+          ),
+          label: Text(
+            _step == RecitationStep.recording
+                ? 'Stop Recording'
+                : 'Start Recording',
+          ),
+        ),
+      ],
     ),
   );
 

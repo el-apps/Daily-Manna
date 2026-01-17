@@ -44,14 +44,16 @@ class OpenRouterService {
     };
 
     debugPrint('[RecognizePassage] Sending request to OpenRouter');
-    final response = await http.post(
-      Uri.parse(_baseUrl),
-      headers: {
-        'Authorization': 'Bearer $apiKey',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(requestBody),
-    );
+    final response = await http
+        .post(
+          Uri.parse(_baseUrl),
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(requestBody),
+        )
+        .timeout(const Duration(seconds: 30));
 
     debugPrint('[RecognizePassage] Response status: ${response.statusCode}');
     debugPrint('[RecognizePassage] Response body: ${response.body}');
