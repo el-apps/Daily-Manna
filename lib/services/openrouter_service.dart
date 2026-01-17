@@ -7,10 +7,133 @@ import 'package:http/http.dart' as http;
 
 class OpenRouterService {
   final SettingsService settingsService;
-  static const String _baseUrl =
+  static const String _chatBaseUrl =
       'https://openrouter.ai/api/v1/chat/completions';
+  static const String _appUrl = 'https://github.com/el-apps/Daily-Manna';
+  static const String _appTitle = 'Daily Manna';
 
   OpenRouterService(this.settingsService);
+
+  Map<String, String> _getHeaders(String apiKey) => {
+        'Authorization': 'Bearer $apiKey',
+        'Content-Type': 'application/json',
+        'HTTP-Referer': _appUrl,
+        'X-Title': _appTitle,
+      };
+
+  Future<String> transcribeAudio(List<int> audioBytes, String filename) async {
+    debugPrint('[OpenRouter Audio] Starting transcription');
+    debugPrint('[OpenRouter Audio] Audio size: ${audioBytes.length} bytes');
+
+    final apiKey = settingsService.getOpenRouterApiKey();
+    if (apiKey == null || apiKey.isEmpty) {
+      throw Exception('OpenRouter API key not configured');
+    }
+
+    // Base64 encode audio
+    final base64Audio = base64Encode(audioBytes);
+    debugPrint(
+      '[OpenRouter Audio] Base64 encoded audio size: ${base64Audio.length} chars',
+    );
+
+    // Determine audio format from filename
+    final audioFormat = _getAudioFormat(filename);
+
+    final requestBody = {
+      'model': 'openai/gpt-4o-audio-preview',
+      'messages': [
+        {
+          'role': 'system',
+          'content': Prompts.bibleAudioTranscriptionSystem,
+        },
+        {
+          'role': 'user',
+          'content': [
+            {
+              'type': 'input_audio',
+              'input_audio': {'data': base64Audio, 'format': audioFormat},
+            },
+          ],
+        },
+      ],
+    };
+
+    debugPrint('[OpenRouter Audio] Sending audio to chat API');
+    final response = await http
+        .post(
+          Uri.parse(_chatBaseUrl),
+          headers: _getHeaders(apiKey),
+          body: jsonEncode(requestBody),
+        )
+        .timeout(const Duration(seconds: 60));
+
+    debugPrint('[OpenRouter Audio] Response status: ${response.statusCode}');
+    debugPrint('[OpenRouter Audio] Response body: ${response.body}');
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to transcribe audio: ${response.statusCode} ${response.reasonPhrase}',
+      );
+    }
+
+    final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (responseBody.containsKey('error')) {
+      final errorMsg = responseBody['error'];
+      debugPrint('[OpenRouter Audio] Error: $errorMsg');
+      throw Exception('OpenRouter audio error: $errorMsg');
+    }
+
+    if (!responseBody.containsKey('choices') ||
+        (responseBody['choices'] as List).isEmpty) {
+      throw Exception('No response from OpenRouter');
+    }
+
+    final choice = (responseBody['choices'] as List).first;
+    final messageContent = choice['message']['content'];
+
+    String transcript;
+    if (messageContent is String) {
+      // Text-only models or simple string response
+      transcript = messageContent;
+    } else if (messageContent is List) {
+      // Multimodal response: find the text block
+      final textBlock = messageContent.cast<Map<String, dynamic>>().firstWhere(
+        (block) =>
+            block['type'] == 'output_text' || block['type'] == 'text',
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (textBlock.isEmpty) {
+        throw Exception('No text content found in OpenRouter audio response');
+      }
+
+      transcript = textBlock['text'] as String;
+    } else {
+      throw Exception(
+        'Unexpected content format in OpenRouter audio response: ${messageContent.runtimeType}',
+      );
+    }
+
+    debugPrint('[OpenRouter Audio] Transcribed text: "$transcript"');
+    return transcript;
+  }
+
+  String _getAudioFormat(String filename) {
+    final ext = filename.split('.').last.toLowerCase();
+    const supportedFormats = [
+      'wav',
+      'mp3',
+      'aiff',
+      'aac',
+      'ogg',
+      'flac',
+      'm4a',
+      'pcm16',
+      'pcm24',
+    ];
+    return supportedFormats.contains(ext) ? ext : 'wav';
+  }
 
   Future<ScriptureRangeRef?> recognizePassage(
     String transcribedText, {
@@ -25,9 +148,13 @@ class OpenRouterService {
       throw Exception('OpenRouter API key not configured');
     }
 
-    final systemPrompt = availableBookIds != null && availableBookIds.isNotEmpty
-        ? Prompts.biblePassageRecognitionSystemWithBooks(availableBookIds)
-        : Prompts.biblePassageRecognitionSystem;
+    if (availableBookIds == null) {
+      throw Exception('Book IDs have not loaded');
+    }
+
+    final systemPrompt = Prompts.biblePassageRecognitionSystemWithBooks(
+      availableBookIds,
+    );
 
     final requestBody = {
       'model': 'openai/gpt-5-mini',
@@ -46,11 +173,8 @@ class OpenRouterService {
     debugPrint('[RecognizePassage] Sending request to OpenRouter');
     final response = await http
         .post(
-          Uri.parse(_baseUrl),
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
-          },
+          Uri.parse(_chatBaseUrl),
+          headers: _getHeaders(apiKey),
           body: jsonEncode(requestBody),
         )
         .timeout(const Duration(seconds: 30));

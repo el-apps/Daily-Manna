@@ -7,7 +7,6 @@ import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/openrouter_service.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/settings_service.dart';
-import 'package:daily_manna/services/whisper_service.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/loading_section.dart';
@@ -36,7 +35,6 @@ class _RecitationModeState extends State<RecitationMode> {
   late AudioRecorder _recorder;
   late AudioPlayer _audioPlayer;
   late SettingsService _settingsService;
-  late WhisperService _whisperService;
   late OpenRouterService _openRouterService;
 
   RecitationStep _step = RecitationStep.idle;
@@ -54,7 +52,6 @@ class _RecitationModeState extends State<RecitationMode> {
     _recorder = AudioRecorder();
     _audioPlayer = AudioPlayer();
     _settingsService = context.read<SettingsService>();
-    _whisperService = WhisperService(_settingsService);
     _openRouterService = OpenRouterService(_settingsService);
     _selectedPassageRef = ScriptureRangeRef(
       bookId: '',
@@ -208,8 +205,8 @@ class _RecitationModeState extends State<RecitationMode> {
             ),
           );
 
-      final transcribedText = await _whisperService
-          .transcribeAudioBytes(wavData, 'audio.wav')
+      final transcribedText = await _openRouterService
+          .transcribeAudio(wavData, 'audio.wav')
           .timeout(const Duration(seconds: 30));
 
       if (!mounted) return;
@@ -221,6 +218,8 @@ class _RecitationModeState extends State<RecitationMode> {
 
       final bibleService = context.read<BibleService>();
       if (!bibleService.isLoaded) {
+        if (!mounted) return;
+        setState(() => _step = RecitationStep.playback);
         _handleError(
           'Bible data is still loading. Please try again in a moment.',
           context: 'recognition',
@@ -238,6 +237,8 @@ class _RecitationModeState extends State<RecitationMode> {
       if (!mounted) return;
 
       if (recognizedRef == null) {
+        if (!mounted) return;
+        setState(() => _step = RecitationStep.playback);
         _handleError(
           'Could not recognize passage from your recitation.',
           context: 'recognition',
@@ -418,7 +419,7 @@ class _RecitationModeState extends State<RecitationMode> {
       builder: (context) => AlertDialog(
         title: const Text('API Keys Required'),
         content: const Text(
-          'Please configure your Whisper and OpenRouter API keys in Settings before using Recitation Mode.',
+          'Please configure your OpenRouter API key in Settings before using Recitation Mode.',
         ),
         actions: [
           TextButton(
