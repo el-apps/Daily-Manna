@@ -4,6 +4,7 @@ import 'package:daily_manna/bytes_audio_source.dart';
 import 'package:daily_manna/models/recitation_result.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
+import 'package:daily_manna/services/error_logger_service.dart';
 import 'package:daily_manna/services/openrouter_service.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/settings_service.dart';
@@ -22,7 +23,7 @@ import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 import 'package:word_tools/word_tools.dart';
 
-enum RecitationStep { idle, recording, playback, processing, confirming }
+enum RecitationStep { idle, recording, playback, processing, scriptureReference }
 
 class RecitationMode extends StatefulWidget {
   const RecitationMode({super.key});
@@ -84,7 +85,7 @@ class _RecitationModeState extends State<RecitationMode> {
             RecitationStep.processing => LoadingSection(
               message: _loadingMessage,
             ),
-            RecitationStep.confirming => RecitationConfirmationSection(
+            RecitationStep.scriptureReference => RecitationConfirmationSection(
               passageRef: _selectedPassageRef,
               onPassageSelected: (ref) {
                 setState(() => _selectedPassageRef = ref);
@@ -238,9 +239,9 @@ class _RecitationModeState extends State<RecitationMode> {
 
       if (recognizedRef == null) {
         if (!mounted) return;
-        setState(() => _step = RecitationStep.playback);
+        setState(() => _step = RecitationStep.scriptureReference);
         _handleError(
-          'Could not recognize passage from your recitation.',
+          'Could not recognize passage from your recitation. Please enter it manually.',
           context: 'recognition',
         );
         return;
@@ -248,31 +249,25 @@ class _RecitationModeState extends State<RecitationMode> {
 
       setState(() {
         _selectedPassageRef = recognizedRef;
-        _step = RecitationStep.confirming;
+        _step = RecitationStep.scriptureReference;
       });
-    } on TimeoutException {
+    } on TimeoutException catch (e, st) {
       if (!mounted) return;
       setState(() => _step = RecitationStep.playback);
       _handleError(
         'Network timeout. Please check your connection and try again.',
         context: 'processing_timeout',
+        errorDetails: '$e\n$st',
       );
-    } catch (e) {
+    } catch (e, st) {
       if (!mounted) return;
       setState(() => _step = RecitationStep.playback);
 
-      final msg = e.toString();
-      if (msg.contains('API key not configured')) {
-        _handleError(
-          'Your API key is missing or invalid. Please check Settings and try again.',
-          context: 'processing',
-        );
-      } else {
-        _handleError(
-          'Something went wrong processing your recitation. Please try again.',
-          context: 'processing',
-        );
-      }
+      final msg = e.toString().contains('OpenRouter API key not configured')
+          ? 'OpenRouter API key is not configured. Please update it in Settings, then try again.'
+          : 'Something went wrong processing your recitation. Check Settings > Logs for details.';
+
+      _handleError(msg, context: 'processing', errorDetails: '$e\n$st');
     }
   }
 
@@ -399,9 +394,17 @@ class _RecitationModeState extends State<RecitationMode> {
     _showError(message);
   }
 
-  void _handleError(String message, {String? context}) {
+  void _handleError(String message, {String? context, String? errorDetails}) {
     if (context != null) {
       debugPrint('[RecitationMode] Error ($context): $message');
+    }
+    if (errorDetails != null && mounted) {
+      try {
+        final errorLoggerService = this.context.read<ErrorLoggerService>();
+        errorLoggerService.logError(errorDetails, context: context);
+      } catch (_) {
+        // Ignore if logger service is not available
+      }
     }
     _showError(message);
   }

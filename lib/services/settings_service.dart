@@ -3,8 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SettingsService {
   static const String _openRouterKeyKey = 'openrouter_api_key';
   // Default API key injected at build time via --dart-define
-  static const String _defaultApiKey =
-      String.fromEnvironment('DEFAULT_OPENROUTER_API_KEY', defaultValue: '');
+  static const String _defaultApiKey = String.fromEnvironment(
+    'DEFAULT_OPENROUTER_API_KEY',
+    defaultValue: '',
+  );
 
   late SharedPreferences _prefs;
 

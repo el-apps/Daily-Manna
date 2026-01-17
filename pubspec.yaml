@@ -2,7 +2,7 @@ name: daily_manna
 description: 'An app for building strong daily habits in interacting with the Word of God.'
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 0.10.0+16
+version: 0.10.1+17
 
 environment:
   sdk: ^3.9.0
@@ -24,6 +24,7 @@ dependencies:
   just_audio: ^0.9.40
   path_provider: ^2.1.4
   http: ^1.2.0
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:

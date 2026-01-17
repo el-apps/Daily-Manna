@@ -15,11 +15,11 @@ class OpenRouterService {
   OpenRouterService(this.settingsService);
 
   Map<String, String> _getHeaders(String apiKey) => {
-        'Authorization': 'Bearer $apiKey',
-        'Content-Type': 'application/json',
-        'HTTP-Referer': _appUrl,
-        'X-Title': _appTitle,
-      };
+    'Authorization': 'Bearer $apiKey',
+    'Content-Type': 'application/json',
+    'HTTP-Referer': _appUrl,
+    'X-Title': _appTitle,
+  };
 
   Future<String> transcribeAudio(List<int> audioBytes, String filename) async {
     debugPrint('[OpenRouter Audio] Starting transcription');
@@ -27,7 +27,9 @@ class OpenRouterService {
 
     final apiKey = settingsService.getOpenRouterApiKey();
     if (apiKey == null || apiKey.isEmpty) {
-      throw Exception('OpenRouter API key not configured');
+      throw Exception(
+        'OpenRouter API key not configured. The default API key may not have been set at build time. Please check your configuration and try again.',
+      );
     }
 
     // Base64 encode audio
@@ -40,12 +42,9 @@ class OpenRouterService {
     final audioFormat = _getAudioFormat(filename);
 
     final requestBody = {
-      'model': 'openai/gpt-4o-audio-preview',
+      'model': 'google/gemini-3-flash-preview',
       'messages': [
-        {
-          'role': 'system',
-          'content': Prompts.bibleAudioTranscriptionSystem,
-        },
+        {'role': 'system', 'content': Prompts.bibleAudioTranscriptionSystem},
         {
           'role': 'user',
           'content': [
@@ -71,8 +70,22 @@ class OpenRouterService {
     debugPrint('[OpenRouter Audio] Response body: ${response.body}');
 
     if (response.statusCode != 200) {
+      String errorDetail = response.reasonPhrase ?? 'Unknown error';
+      try {
+        final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
+        if (errorBody.containsKey('error')) {
+          final error = errorBody['error'];
+          if (error is Map && error.containsKey('message')) {
+            errorDetail = error['message'] as String;
+          } else if (error is String) {
+            errorDetail = error;
+          }
+        }
+      } catch (_) {
+        // Ignore JSON parse errors, use reasonPhrase
+      }
       throw Exception(
-        'Failed to transcribe audio: ${response.statusCode} ${response.reasonPhrase}',
+        'Failed to transcribe audio: ${response.statusCode} - $errorDetail',
       );
     }
 
@@ -99,8 +112,7 @@ class OpenRouterService {
     } else if (messageContent is List) {
       // Multimodal response: find the text block
       final textBlock = messageContent.cast<Map<String, dynamic>>().firstWhere(
-        (block) =>
-            block['type'] == 'output_text' || block['type'] == 'text',
+        (block) => block['type'] == 'output_text' || block['type'] == 'text',
         orElse: () => <String, dynamic>{},
       );
 
@@ -183,8 +195,22 @@ class OpenRouterService {
     debugPrint('[RecognizePassage] Response body: ${response.body}');
 
     if (response.statusCode != 200) {
+      String errorDetail = response.reasonPhrase ?? 'Unknown error';
+      try {
+        final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
+        if (errorBody.containsKey('error')) {
+          final error = errorBody['error'];
+          if (error is Map && error.containsKey('message')) {
+            errorDetail = error['message'] as String;
+          } else if (error is String) {
+            errorDetail = error;
+          }
+        }
+      } catch (_) {
+        // Ignore JSON parse errors, use reasonPhrase
+      }
       throw Exception(
-        'Failed to recognize passage: ${response.statusCode} ${response.reasonPhrase}',
+        'Failed to recognize passage: ${response.statusCode} - $errorDetail',
       );
     }
 
