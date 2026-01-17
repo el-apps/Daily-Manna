@@ -1,163 +1,247 @@
 # Daily Manna - Agent Guidelines
 
+> **Note:** Essential information only. Keep context window lean.
+> **Updates to this file:** Concise prose only. Include code examples only when high-impact and necessary. No verbose explanations, multiple examples, or unnecessary bulleted lists of benefits.
+
 ## Project Overview
 
-Daily Manna is a Flutter application for building strong daily habits in interacting with the Word of God. The primary feature is Bible verse memorization.
+Daily Manna is a Flutter app for building strong daily habits in interacting with the Word of God. Primary feature: Bible verse memorization.
 
 ## Tech Stack
 
 - **Framework**: Flutter (Dart)
 - **State Management**: Provider
-- **Code Generation**: Freezed (for immutable data classes)
-- **Bible Data**: bible_parser_flutter (parses KJV XML)
+- **Code Generation**: Freezed (immutable data classes)
+- **Bible Data**: bible_parser_flutter (KJV XML parser)
 - **Platforms**: Android, Web
 
 ## Project Structure
 
 ```
 lib/
-├── main.dart              # App entry point and root widget
-├── home_page.dart         # Main home screen with feature cards
-├── bible_service.dart     # Bible parsing and verse retrieval service
-├── verse_memorization.dart # Core memorization practice feature
-├── verse_selector.dart    # UI for selecting book/chapter/verse
-├── scripture_ref.dart     # Freezed model for scripture references
-├── scripture_ref.freezed.dart # Generated freezed code
-├── practice_result.dart   # Memorization result tracking
-└── share_dialog.dart      # Share progress with others
+├── main.dart
+├── home_page.dart                 # Feature cards registered here
+├── settings_page.dart             # API keys config
+├── share_dialog.dart
+├── prompts.dart                   # LLM prompts
+│
+├── models/                        # Freezed classes only
+│   ├── scripture_ref.dart
+│   ├── scripture_range_ref.dart
+│   ├── recitation_result.dart
+│   ├── result_item.dart
+│   └── result_section.dart
+│
+├── services/                      # Business logic & integrations
+│   ├── bible_service.dart
+│   ├── results_service.dart
+│   ├── settings_service.dart
+│   ├── whisper_service.dart       # OpenAI Whisper
+│   └── openrouter_service.dart    # LLM passage recognition
+│
+├── ui/
+│   ├── theme_card.dart            # Shared container
+│   ├── mode_card.dart             # Home card
+│   ├── loading_section.dart       # Shared loading indicator
+│   ├── memorization/
+│   │   ├── verse_memorization.dart
+│   │   ├── verse_selector.dart
+│   │   └── practice_result.dart
+│   └── recitation/                # Audio practice
+│       ├── recitation_mode.dart
+│       ├── recording_card.dart
+│       ├── recitation_playback_section.dart
+│       ├── recitation_confirmation_section.dart
+│       └── results/
+│           ├── recitation_results.dart
+│           ├── diff_comparison.dart
+│           ├── diff_legend.dart
+│           └── diff_colors.dart
+│
+├── bytes_audio_source.dart
+├── wav_encoder.dart
+└── passage_range_selector.dart
 
 assets/
-└── kjv.xml               # King James Version Bible data (~5MB)
+└── kjv.xml                        # ~5MB
 
-web/                       # Flutter web support files
-android/                   # Android platform files
+web/                               # Flutter web support
+android/                           # Android platform
 ```
 
 ## Key Commands
 
-Use `just` to run common tasks:
-
-- `just gen` - Run code generation (freezed)
-- `just web` - Run web version on local debug server (port 8000)
-- `just android` - Run on Android device/emulator
-- `just build-web` - Build web production release
-- `just start-web-prod` - Build web production release and start server on 0.0.0.0:8000 (background)
-- `just stop-web-prod` - Stop the production web server
-- `just logs-web-prod` - Check production web server logs
-- `just build-apk-prod` - Build Android APK (release)
-- `just test` - Run tests
-- `just analyze` - Analyze code
-- `just format` - Format code
-- `just clean` - Clean build artifacts
+```bash
+just gen              # Code generation (freezed)
+just web              # Local debug server (port 8000)
+just android          # Run on device/emulator
+just build-web        # Production web build
+just start-web-prod   # Build & serve production (0.0.0.0:8000)
+just stop-web-prod    # Stop production server
+just logs-web-prod    # View production logs
+just build-apk-prod   # Android release APK
+just test             # Run tests
+just analyze          # Lint analysis
+just format           # Format code
+just clean            # Clean build artifacts
+```
 
 ## Development Guidelines
 
 ### Just Recipe Naming
 
-Recipe names use verb-first format: `verb-noun`
-
-Examples:
-- `build-web` - build something
-- `start-web-prod` - start something
-- `stop-web-prod` - stop something
-- `logs-web-prod` - view logs for something
-- `format` - simple verbs stand alone
+Verb-first format: `verb-noun`. Simple verbs stand alone: `format`, `test`.
 
 ### Git Commits
 
-Use conventional commit format:
+Use conventional format with optional scope:
 
-- `feat:` - New features
-- `fix:` - Bug fixes
-- `chore:` - Maintenance tasks
-- `docs:` - Documentation changes
-- `refactor:` - Code refactoring
-- `style:` - Formatting changes
-- `test:` - Adding/updating tests
+- `feat(web):` / `fix(android):` - Feature or fix with scope
+- `chore:` `docs:` `refactor:` `style:` `test:` - Other changes
 
-Include scope when relevant: `fix(web):`, `feat(android):`
+### Code Organization
 
-### Code Generation
+Organize by importance: **Public APIs first**, then supporting code.
 
-After modifying any `@freezed` annotated classes, run:
+**File structure:**
 
-```bash
-just gen
+1. Main functions/classes (`computeWordDiff()`, `MyWidget`)
+2. Data classes (`WordDiff`, `DiffWord`)
+3. Enums and constants
+4. Helper/private functions
+
+**Within classes:** Public methods → methods they call → private utilities.
+
+### Freezed Data Classes
+
+Always `abstract class X with _$X`. Place in `/lib/models/`. Use domain-specific names, not UI context.
+
+```dart
+@freezed
+abstract class ResultItem with _$ResultItem {
+  const factory ResultItem({
+    required String score,
+    required String reference,
+  }) = _ResultItem;
+}
 ```
+
+After modifying: `just gen`
+
+### Enhanced Enums with Extensions
+
+Prefer extension methods on enums over standalone utility functions:
+
+```dart
+extension DiffStatusColors on DiffStatus {
+  MaterialColor get primaryColor => switch (this) {
+    DiffStatus.correct => Colors.green,
+    DiffStatus.missing => Colors.red,
+    DiffStatus.extra => Colors.yellow,
+  };
+}
+```
+
+Call as `status.primaryColor` instead of `getPrimaryColor(status)`.
+
+### Business Logic in Services
+
+Format and transform data in service classes, not widgets. Example: `ResultsService.getSections()` returns display-ready sections rather than raw data.
+
+### Widget Creation and Organization
+
+**Critical:** Prefer separate widgets over helper methods.
+
+**Why:** Helper methods create new widget instances on every parent rebuild, bypassing Flutter's widget tree diffing. Actual Widget classes enable the framework to skip unnecessary rebuilds—fundamental to rendering performance.
+
+**Extract a widget if it:**
+
+- Represents a distinct UI concept (`RecordingCard`, `LoadingSection`)
+- Is reused across multiple places
+- Has parameters or state management
+- Is more than a few lines
+
+**When NOT to extract:** Trivial spacing (`SizedBox(height: 16)`) or single widgets (`Text('Hello')`).
+
+**File organization:**
+
+- **Shared** (reusable): `lib/ui/widget_name.dart`
+- **Feature-specific**: `lib/ui/feature_name/widget_name.dart`
+- **Sections**: `lib/ui/feature_name/*_section.dart`
+- **Results/dialogs/pages**: With the feature that uses them
+
+**Widget structure:**
+
+1. Simple stateless → expression body: `Widget build(BuildContext context) => Container(...);`
+2. Widgets with parameters → `final` fields
+3. Stateful → keep state in `State` class, not widget class
+
+**Widget naming:**
+
+- Use `_PrivateWidget` prefix for internal-only widgets (used only in their own file or within a parent widget)
+- Public widgets (reusable or imported elsewhere) have no underscore: `PublicWidget`
+
+### Page Structure
+
+**Always use `AppScaffold` (not `Scaffold` directly).** It provides consistent AppBar and share button. Set `showShareButton: false` only on Settings page.
 
 ### Adding New Features
 
-1. Features are displayed on the HomePage as cards
-2. Add new feature widgets in `lib/`
-3. Register them in the `features` list in `home_page.dart`
+1. Create feature widget in `lib/`
+2. Register in `features` list in `home_page.dart`
+3. Use `AppScaffold` for page structure
 
-### Bible Data Access
+### Data Access Patterns
 
-Use `BibleService` via Provider:
+**Bible service:**
 
 ```dart
 final bibleService = context.read<BibleService>();
 final verse = bibleService.getVerse('Gen', 1, 1);
 ```
 
-### Scripture References
-
-Use the `ScriptureRef` freezed class:
+**Scripture references:**
 
 ```dart
 final ref = ScriptureRef(bookId: 'Gen', chapterNumber: 1, verseNumber: 1);
-if (ref.complete) { /* all fields are set */ }
+if (ref.complete) { /* all fields set */ }
 ```
+
+### Fallback UI States
+
+Always show helpful feedback when data is empty. Don't leave views blank.
+
+Examples: "No results to share yet", loading indicators, error messages.
+
+## Releases
+
+Update version in `pubspec.yaml`, merge to `main` to trigger automatic workflow: creates git tag, builds APK, and creates GitHub Release.
 
 ## Web Support
 
-Flutter web support is enabled. A custom Python server with CORS headers is used for serving the production build.
+Flask web support enabled. Custom Python server with CORS headers.
 
-**For local development:**
+**Local dev:** `just web` → http://localhost:8000
 
-```bash
-just web
-```
+**Production** (exe.dev VM):
 
-The app will be served at http://localhost:8000 in debug mode.
+- `just start-web-prod` - Build & serve on 0.0.0.0:8000 (background)
+- `just stop-web-prod` - Stop server
+- `just logs-web-prod` - View logs
 
-**For production deployment:**
+## Important Notes
 
-The app can be deployed inside an [exe.dev](https://exe.dev) VM, a service providing virtual machines with persistent disks and HTTPS access. From within the exe.dev VM, use:
-
-```bash
-just start-web-prod
-```
-
-This builds a production release and starts the server on 0.0.0.0:8000 in the background, making it accessible to external clients. Stop the server with:
-
-```bash
-just stop-web-prod
-```
-
-View logs with:
-
-```bash
-just logs-web-prod
-```
-
-For manual production builds without serving:
-
-```bash
-just build-web
-```
-
-## Notes
-
-- The KJV Bible XML file is ~5MB, so initial load may take a moment
-- Web version uses CanvasKit renderer by default (requires WebGL)
-- The `share_plus` package handles sharing on both mobile and web
-- Memorization scoring uses `word_tools` package for text comparison
+- KJV XML ~5MB: initial load may be slow
+- Web uses CanvasKit renderer (requires WebGL)
+- `share_plus` handles mobile/web sharing
+- `word_tools` for memorization scoring
+- Whisper API for speech-to-text
+- OpenRouter LLM for passage recognition
+- Audio: PCM 16-bit at 16kHz, encoded to WAV
 
 ## TODO Items
 
-See TODO comments in code for planned features:
+See code comments for planned features:
 
 - Persistent storage of memorization results (currently in-memory)
 - User verse queue management
-- Additional features beyond memorization

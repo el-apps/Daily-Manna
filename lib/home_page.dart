@@ -1,4 +1,8 @@
-import 'package:daily_manna/verse_memorization.dart';
+import 'package:daily_manna/mode_card.dart';
+import 'package:daily_manna/ui/recitation/recitation_mode.dart';
+import 'package:daily_manna/settings_page.dart';
+import 'package:daily_manna/ui/memorization/verse_memorization.dart';
+import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatelessWidget {
@@ -6,56 +10,42 @@ class HomePage extends StatelessWidget {
 
   final List<Feature> features = const [
     (title: 'Memorize', icon: Icons.voice_chat, widget: VerseMemorization()),
+    (title: 'Recite', icon: Icons.mic, widget: RecitationMode()),
   ];
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Daily Manna')),
-      body: ListView(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              'An app for building strong daily habits in interacting with the Word of God.',
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall!.copyWith(fontStyle: FontStyle.italic),
-            ),
+  Widget build(BuildContext context) => AppScaffold(
+    title: 'Daily Manna',
+    body: ListView(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'An app for building strong daily habits in interacting with the Word of God.',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall!.copyWith(fontStyle: FontStyle.italic),
           ),
-          for (final feature in features) FeatureCard(feature),
-          ListTile(leading: Text('More features coming soon!')),
-        ],
-      ),
-    );
-  }
-}
-
-typedef Feature = ({String title, IconData icon, Widget widget});
-
-class FeatureCard extends StatelessWidget {
-  const FeatureCard(this.feature, {super.key});
-
-  final Feature feature;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16),
-    child: Card.filled(
-      child: ListTile(
-        contentPadding: EdgeInsetsGeometry.symmetric(
-          vertical: 16,
-          horizontal: 24,
         ),
-        leading: Text(
-          feature.title,
-          style: Theme.of(context).textTheme.titleMedium,
+        for (final feature in features)
+          ModeCard(
+            title: feature.title,
+            icon: feature.icon,
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => feature.widget)),
+          ),
+        ModeCard(
+          title: 'Settings',
+          icon: Icons.settings,
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const SettingsPage())),
         ),
-        trailing: Icon(feature.icon),
-        onTap: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => feature.widget)),
-      ),
+        const ListTile(leading: Text('More features coming soon!')),
+      ],
     ),
   );
 }
+
+typedef Feature = ({String title, IconData icon, Widget widget});

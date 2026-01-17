@@ -1,5 +1,5 @@
-import 'package:daily_manna/bible_service.dart';
-import 'package:daily_manna/scripture_ref.dart';
+import 'package:daily_manna/services/bible_service.dart';
+import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -24,7 +24,7 @@ class VerseSelector extends StatelessWidget {
   void _openSelectorDialog(BuildContext context) async {
     final selectedRef = await showDialog<ScriptureRef>(
       context: context,
-      builder: (context) => SelectVerseDialog(ref: ref),
+      builder: (context) => _SelectVerseDialog(ref: ref),
     );
 
     if (selectedRef != null) {
@@ -33,16 +33,16 @@ class VerseSelector extends StatelessWidget {
   }
 }
 
-class SelectVerseDialog extends StatefulWidget {
-  const SelectVerseDialog({super.key, required this.ref});
+class _SelectVerseDialog extends StatefulWidget {
+  const _SelectVerseDialog({required this.ref});
 
   final ScriptureRef ref;
 
   @override
-  State<SelectVerseDialog> createState() => _SelectVerseDialogState();
+  State<_SelectVerseDialog> createState() => _SelectVerseDialogState();
 }
 
-class _SelectVerseDialogState extends State<SelectVerseDialog> {
+class _SelectVerseDialogState extends State<_SelectVerseDialog> {
   late ScriptureRef selected;
 
   @override

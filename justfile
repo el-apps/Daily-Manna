@@ -8,11 +8,15 @@ clean:
 
 # Run code generation (freezed)
 gen:
-    dart run build_runner build --delete-conflicting-outputs
+    flutter pub run build_runner build --delete-conflicting-outputs
 
 # Format code
 format:
     dart format lib test
+
+# Fix lints automatically
+fix:
+    dart fix --apply lib
 
 # Analyze code
 analyze:
@@ -44,9 +48,16 @@ stop-web-prod:
 logs-web-prod:
     tail -f build/web/server.log
 
-# Run the app on Android
-android:
-    flutter run -d android
+# Run the app on Android (first device)
+run-android:
+    #!/usr/bin/env bash
+    device=$(flutter devices | grep android | awk -F'•' '{print $2}' | head -1 | xargs);
+    if [ -z "$device" ]; then
+      echo "No Android device found"
+      flutter devices
+      exit 1
+    fi
+    flutter run -d "$device"
 
 # Build Android APK
 build-apk-prod:

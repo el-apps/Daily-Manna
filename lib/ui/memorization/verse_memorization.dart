@@ -1,8 +1,10 @@
-import 'package:daily_manna/bible_service.dart';
-import 'package:daily_manna/practice_result.dart';
-import 'package:daily_manna/scripture_ref.dart';
-import 'package:daily_manna/share_dialog.dart';
-import 'package:daily_manna/verse_selector.dart';
+import 'package:daily_manna/services/bible_service.dart';
+import 'package:daily_manna/ui/memorization/practice_result.dart';
+import 'package:daily_manna/services/results_service.dart';
+import 'package:daily_manna/models/scripture_ref.dart';
+import 'package:daily_manna/ui/app_scaffold.dart';
+import 'package:daily_manna/ui/theme_card.dart';
+import 'package:daily_manna/ui/memorization/verse_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -42,13 +44,8 @@ class _VerseMemorizationState extends State<VerseMemorization> {
             _ref.verseNumber!,
           )
         : '';
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Memorize'),
-        actions: [
-          IconButton(icon: Icon(Icons.share), onPressed: _shareResults),
-        ],
-      ),
+    return AppScaffold(
+      title: 'Memorize',
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -58,13 +55,8 @@ class _VerseMemorizationState extends State<VerseMemorization> {
             children: [
               VerseSelector(ref: _ref, onSelected: _selectRef),
               if (_result != Result.unknown && bibleService.hasVerse(_ref))
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.brown.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.brown),
-                  ),
+                ThemeCard(
+                  style: ThemeCardStyle.brown,
                   child: Text(
                     actualVerse,
                     style: Theme.of(context).textTheme.bodyLarge,
@@ -77,18 +69,13 @@ class _VerseMemorizationState extends State<VerseMemorization> {
                   maxLines: 5,
                   decoration: InputDecoration(
                     hintText:
-                        "Enter the verse here. Voice input is recommended!",
+                        'Enter the verse here. Voice input is recommended!',
                   ),
                   onChanged: (String value) => setState(() => _input = value),
                 ),
               if (_result != Result.unknown)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: _result.color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: _result.color),
-                  ),
+                ThemeCard(
+                  style: _getThemeCardStyle(_result),
                   child: Text(switch (_result) {
                     Result.learn => 'Practice the verse...',
                     Result.incorrect => 'Try again',
@@ -173,22 +160,35 @@ class _VerseMemorizationState extends State<VerseMemorization> {
       print(_input);
     }
     _inputFocusNode.unfocus();
+    final resultsService = context.read<ResultsService>();
     setState(() {
       _attempts += 1;
       _score = compareWordSequences(actualVerse, _input);
       _result = _score >= 0.6 ? Result.correct : Result.incorrect;
       if (_result == Result.correct) {
-        _results.add(
-          MemorizationResult(ref: _ref, attempts: _attempts, score: _score),
+        final result = MemorizationResult(
+          ref: _ref,
+          attempts: _attempts,
+          score: _score,
         );
+        _results.add(result);
+        resultsService.addMemorizationResult(result);
       }
     });
   }
 
-  void _shareResults() => showDialog(
-    context: context,
-    builder: (_) => ShareDialog(memorizationResults: _results),
-  );
+  ThemeCardStyle _getThemeCardStyle(Result result) {
+    switch (result) {
+      case Result.learn:
+        return ThemeCardStyle.blue;
+      case Result.incorrect:
+        return ThemeCardStyle.red;
+      case Result.correct:
+        return ThemeCardStyle.green;
+      case Result.unknown:
+        return ThemeCardStyle.brown;
+    }
+  }
 }
 
 enum Result {
