@@ -3,6 +3,7 @@ import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:word_tools/word_tools.dart';
 import 'package:daily_manna/ui/theme_card.dart';
+import 'package:daily_manna/ui/recitation/results/star_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -93,7 +94,7 @@ class _DiffViewWrapperState extends State<_DiffViewWrapper> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 // Star rating
-                _StarRating(score: widget.score),
+                StarUtils.buildStarDisplay(widget.score),
                 // View toggle buttons
                 SegmentedButton<bool>(
                   selected: {_showExpected},
@@ -149,29 +150,6 @@ class _DiffViewWrapperState extends State<_DiffViewWrapper> {
     }
   }
 }
-class _StarRating extends StatelessWidget {
-  final double score;
-
-  const _StarRating({required this.score});
-
-  @override
-  Widget build(BuildContext context) {
-    final stars = (score * 5).round().clamp(0, 5);
-    final emptyStars = 5 - stars;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ...List.generate(stars, (_) => const Icon(Icons.star, color: Colors.amber)),
-        ...List.generate(
-          emptyStars,
-          (_) => const Icon(Icons.star_outline, color: Colors.amber),
-        ),
-      ],
-    );
-  }
-}
-
 class DiffPassageSection extends StatelessWidget {
   final List<DiffWord> diff;
 
