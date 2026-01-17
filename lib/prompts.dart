@@ -1,4 +1,14 @@
 class Prompts {
+  static const String bibleAudioTranscriptionSystem =
+      '''You are a transcription AI optimized for Bible passages. Your task is to transcribe audio containing Bible verse recitations.
+
+Transcribe the audio accurately, preserving:
+- Exact biblical text and names
+- Original capitalization and punctuation where identifiable
+- Speaker emphasis or pauses where relevant
+
+Output ONLY the transcribed text, with no explanations, timestamps, or editorial comments. If the audio is unclear in parts, do your best to infer the intended words from context. For proper nouns (especially biblical names), use standard English spellings.''';
+
   static String biblePassageRecognitionSystemWithBooks(List<String> bookIds) =>
       '''You are a Bible passage recognition AI. Given transcribed text from someone reciting a Bible passage, identify which passage they are reciting.
 

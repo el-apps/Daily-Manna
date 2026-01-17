@@ -34,9 +34,13 @@ class OpenRouterService {
       'model': 'openai/gpt-4o-audio-preview',
       'messages': [
         {
+          'role': 'system',
+          'content': Prompts.bibleAudioTranscriptionSystem,
+        },
+        {
           'role': 'user',
           'content': [
-            {'type': 'text', 'text': 'Please transcribe this audio file.'},
+            {'type': 'text', 'text': 'Transcribe this Bible passage audio:'},
             {
               'type': 'input_audio',
               'input_audio': {'data': base64Audio, 'format': audioFormat},
