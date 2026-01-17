@@ -95,13 +95,46 @@ Organize code by importance: public APIs first, then supporting code.
 
 This makes the most important code visible first when opening a file.
 
-### Code Generation
+### Freezed Data Classes
+
+When creating freezed classes:
+
+1. **Always use `abstract class`** — Freezed requires `abstract class X with _$X`, not just `class X with _$X`
+2. **Place in `/lib/models/`** — Keep freezed classes in separate files in the models directory
+3. **Use domain-specific names** — Name classes by their purpose/domain, not by UI context (e.g., `ResultItem` not `ShareItem`)
+
+Example:
+```dart
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'result_item.freezed.dart';
+
+@freezed
+abstract class ResultItem with _$ResultItem {
+  const factory ResultItem({
+    required String score,
+    required String reference,
+  }) = _ResultItem;
+}
+```
 
 After modifying any `@freezed` annotated classes, run:
 
 ```bash
 just gen
 ```
+
+### Business Logic in Services
+
+Transform and format data in service classes, not in widgets. This keeps UI code clean and testable.
+
+Example: Have `ResultsService.getSections()` return formatted sections for display, rather than doing this formatting in the dialog widget.
+
+### Fallback UI States
+
+Always provide helpful feedback when data is empty or unavailable. Don't leave dialogs or views blank.
+
+Example: Show "No results to share yet" message instead of just an empty dialog.
 
 ### Adding New Features
 
