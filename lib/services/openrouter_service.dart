@@ -9,8 +9,17 @@ class OpenRouterService {
   final SettingsService settingsService;
   static const String _chatBaseUrl =
       'https://openrouter.ai/api/v1/chat/completions';
+  static const String _appUrl = 'https://github.com/el-apps/Daily-Manna';
+  static const String _appTitle = 'Daily Manna';
 
   OpenRouterService(this.settingsService);
+
+  Map<String, String> _getHeaders(String apiKey) => {
+        'Authorization': 'Bearer $apiKey',
+        'Content-Type': 'application/json',
+        'HTTP-Referer': _appUrl,
+        'X-Title': _appTitle,
+      };
 
   Future<String> transcribeAudio(List<int> audioBytes, String filename) async {
     debugPrint('[OpenRouter Audio] Starting transcription');
@@ -53,10 +62,7 @@ class OpenRouterService {
     final response = await http
         .post(
           Uri.parse(_chatBaseUrl),
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
-          },
+          headers: _getHeaders(apiKey),
           body: jsonEncode(requestBody),
         )
         .timeout(const Duration(seconds: 60));
@@ -168,10 +174,7 @@ class OpenRouterService {
     final response = await http
         .post(
           Uri.parse(_chatBaseUrl),
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
-          },
+          headers: _getHeaders(apiKey),
           body: jsonEncode(requestBody),
         )
         .timeout(const Duration(seconds: 30));
