@@ -15,6 +15,7 @@ import 'package:daily_manna/services/settings_service.dart';
 import 'package:daily_manna/services/whisper_service.dart';
 import 'package:daily_manna/ui/recitation/recitation_playback_section.dart';
 import 'package:daily_manna/ui/recitation/recitation_confirmation_section.dart';
+import 'package:daily_manna/ui/recitation/recording_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
@@ -429,44 +430,17 @@ class _RecitationModeState extends State<RecitationMode> {
               onSubmit: _sendForTranscription,
             ),
             RecitationStep.idle || RecitationStep.recording =>
-              _buildRecordingCard(),
+              RecordingCard(
+                state: _step == RecitationStep.recording
+                    ? RecordingState.recording
+                    : RecordingState.idle,
+                onToggle: _step == RecitationStep.recording
+                    ? _stopRecording
+                    : _startRecording,
+              ),
           },
         ],
       ),
-    ),
-  );
-
-  Widget _buildRecordingCard() => ThemeCard(
-    child: Column(
-      children: [
-        Icon(
-          _step == RecitationStep.recording ? Icons.mic : Icons.mic_none,
-          size: 80,
-          color: _step == RecitationStep.recording ? Colors.red : Colors.grey,
-        ),
-        const SizedBox(height: 24),
-        Text(
-          _step == RecitationStep.recording
-              ? 'Recording...'
-              : 'Ready to recite',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 48),
-        FilledButton.icon(
-          onPressed:
-              _step == RecitationStep.recording
-                  ? _stopRecording
-                  : _startRecording,
-          icon: Icon(
-            _step == RecitationStep.recording ? Icons.stop : Icons.mic,
-          ),
-          label: Text(
-            _step == RecitationStep.recording
-                ? 'Stop Recording'
-                : 'Start Recording',
-          ),
-        ),
-      ],
     ),
   );
 
