@@ -242,6 +242,33 @@ Extract a widget if it:
 
 Even small, single-use subtrees should be widgets for consistency, testability, and performance.
 
+**When NOT to extract:**
+
+Some cases are genuinely too trivial:
+
+```dart
+// OK as part of parent build() - trivial spacing
+const SizedBox(height: 16),
+
+// OK as part of parent build() - single widget
+Text('Hello', style: Theme.of(context).textTheme.bodySmall),
+
+// Extract - has logic, uses theme, meaningful concept
+class SectionHeader extends StatelessWidget {
+  final String title;
+  
+  const SectionHeader({super.key, required this.title});
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Text(title, style: Theme.of(context).textTheme.titleLarge),
+      const SizedBox(height: 16),
+    ],
+  );
+}
+```
+
 **Widget file organization:**
 
 - **Shared widgets** (reusable across features): `lib/ui/widget_name.dart`
