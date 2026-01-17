@@ -2,6 +2,7 @@ import 'package:daily_manna/mode_card.dart';
 import 'package:daily_manna/ui/recitation/recitation_mode.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/ui/memorization/verse_memorization.dart';
+import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatelessWidget {
@@ -13,8 +14,9 @@ class HomePage extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text('Daily Manna')),
+  Widget build(BuildContext context) => AppScaffold(
+    title: 'Daily Manna',
+    showShareButton: false,
     body: ListView(
       children: [
         Padding(
