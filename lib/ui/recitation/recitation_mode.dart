@@ -75,46 +75,46 @@ class _RecitationModeState extends State<RecitationMode> {
     super.dispose();
   }
 
-  void _checkApiKeys() {
-    if (!_settingsService.hasRequiredKeys()) {
-      _showMissingKeysError();
-    }
-  }
-
-  void _handleError(String message, {String? context}) {
-    if (context != null) {
-      debugPrint('[RecitationMode] Error ($context): $message');
-    }
-    _showError(message);
-  }
-
-  void _showMissingKeysError() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('API Keys Required'),
-        content: const Text(
-          'Please configure your Whisper and OpenRouter API keys in Settings before using Recitation Mode.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // Close dialog
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const SettingsPage()));
-            },
-            child: const Text('Go to Settings'),
-          ),
+  @override
+  Widget build(BuildContext context) => AppScaffold(
+    title: 'Recite',
+    body: SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          switch (_step) {
+            RecitationStep.processing => LoadingSection(
+              message: _loadingMessage,
+            ),
+            RecitationStep.confirming => RecitationConfirmationSection(
+              passageRef: _selectedPassageRef,
+              onPassageSelected: (ref) {
+                setState(() => _selectedPassageRef = ref);
+              },
+              onConfirm: _confirmPassage,
+              onCancel: _cancelConfirmation,
+            ),
+            RecitationStep.playback => RecitationPlaybackSection(
+              audioPlayer: _audioPlayer,
+              onTogglePlayback: _togglePlayback,
+              onStopPlayback: _stopPlayback,
+              onDiscard: _discardRecording,
+              onSubmit: _sendForTranscription,
+            ),
+            RecitationStep.idle || RecitationStep.recording => RecordingCard(
+              state: _step == RecitationStep.recording
+                  ? RecordingState.recording
+                  : RecordingState.idle,
+              onToggle: _step == RecitationStep.recording
+                  ? _stopRecording
+                  : _startRecording,
+            ),
+          },
         ],
       ),
-    );
-  }
+    ),
+  );
 
   Future<void> _startRecording() async {
     try {
@@ -275,6 +275,63 @@ class _RecitationModeState extends State<RecitationMode> {
     }
   }
 
+  Future<void> _togglePlayback() async {
+    try {
+      if (_audioPlayer.playing) {
+        await _audioPlayer.pause();
+      } else {
+        await _audioPlayer.play();
+      }
+    } catch (e) {
+      _safeShowError('Playback error: $e');
+    }
+  }
+
+  Future<void> _stopPlayback() async {
+    try {
+      await _audioPlayer.stop();
+    } catch (e) {
+      _safeShowError('Error stopping playback: $e');
+    }
+  }
+
+  Future<void> _sendForTranscription() async {
+    await _stopPlayback();
+    await _processRecording();
+  }
+
+  Future<void> _discardRecording() async {
+    await _stopPlayback();
+    if (mounted) {
+      setState(() {
+        _step = RecitationStep.idle;
+        _clearAudio();
+      });
+    }
+  }
+
+  void _confirmPassage() {
+    if (!_selectedPassageRef.complete) {
+      _showError('Please select a valid passage');
+      return;
+    }
+
+    final bibleService = context.read<BibleService>();
+    debugPrint(
+      '[RecitationMode] User confirmed passage: ${bibleService.getRangeRefName(_selectedPassageRef)}',
+    );
+    _showRecitationResults(_selectedPassageRef, _transcribedText);
+  }
+
+  void _cancelConfirmation() {
+    if (mounted) {
+      setState(() {
+        _step = RecitationStep.playback;
+        _transcribedText = '';
+      });
+    }
+  }
+
   void _showRecitationResults(
     ScriptureRangeRef passageRef,
     String transcribedText,
@@ -341,101 +398,44 @@ class _RecitationModeState extends State<RecitationMode> {
     _showError(message);
   }
 
-  Future<void> _togglePlayback() async {
-    try {
-      if (_audioPlayer.playing) {
-        await _audioPlayer.pause();
-      } else {
-        await _audioPlayer.play();
-      }
-    } catch (e) {
-      _safeShowError('Playback error: $e');
+  void _handleError(String message, {String? context}) {
+    if (context != null) {
+      debugPrint('[RecitationMode] Error ($context): $message');
+    }
+    _showError(message);
+  }
+
+  void _checkApiKeys() {
+    if (!_settingsService.hasRequiredKeys()) {
+      _showMissingKeysError();
     }
   }
 
-  Future<void> _stopPlayback() async {
-    try {
-      await _audioPlayer.stop();
-    } catch (e) {
-      _safeShowError('Error stopping playback: $e');
-    }
-  }
-
-  Future<void> _sendForTranscription() async {
-    await _stopPlayback();
-    await _processRecording();
-  }
-
-  Future<void> _discardRecording() async {
-    await _stopPlayback();
-    if (mounted) {
-      setState(() {
-        _step = RecitationStep.idle;
-        _clearAudio();
-      });
-    }
-  }
-
-  void _confirmPassage() {
-    if (!_selectedPassageRef.complete) {
-      _showError('Please select a valid passage');
-      return;
-    }
-
-    final bibleService = context.read<BibleService>();
-    debugPrint(
-      '[RecitationMode] User confirmed passage: ${bibleService.getRangeRefName(_selectedPassageRef)}',
-    );
-    _showRecitationResults(_selectedPassageRef, _transcribedText);
-  }
-
-  void _cancelConfirmation() {
-    if (mounted) {
-      setState(() {
-        _step = RecitationStep.playback;
-        _transcribedText = '';
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => AppScaffold(
-    title: 'Recite',
-    body: SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          switch (_step) {
-            RecitationStep.processing => LoadingSection(
-              message: _loadingMessage,
-            ),
-            RecitationStep.confirming => RecitationConfirmationSection(
-              passageRef: _selectedPassageRef,
-              onPassageSelected: (ref) {
-                setState(() => _selectedPassageRef = ref);
-              },
-              onConfirm: _confirmPassage,
-              onCancel: _cancelConfirmation,
-            ),
-            RecitationStep.playback => RecitationPlaybackSection(
-              audioPlayer: _audioPlayer,
-              onTogglePlayback: _togglePlayback,
-              onStopPlayback: _stopPlayback,
-              onDiscard: _discardRecording,
-              onSubmit: _sendForTranscription,
-            ),
-            RecitationStep.idle || RecitationStep.recording => RecordingCard(
-              state: _step == RecitationStep.recording
-                  ? RecordingState.recording
-                  : RecordingState.idle,
-              onToggle: _step == RecitationStep.recording
-                  ? _stopRecording
-                  : _startRecording,
-            ),
-          },
+  void _showMissingKeysError() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('API Keys Required'),
+        content: const Text(
+          'Please configure your Whisper and OpenRouter API keys in Settings before using Recitation Mode.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close dialog
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const SettingsPage()));
+            },
+            child: const Text('Go to Settings'),
+          ),
         ],
       ),
-    ),
-  );
+    );
+  }
 }
