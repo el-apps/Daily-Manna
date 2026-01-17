@@ -1,5 +1,7 @@
 # Daily Manna - Agent Guidelines
 
+> **Note:** This document is intentionally concise to conserve context window. Include only essential information and patterns.
+
 ## Project Overview
 
 Daily Manna is a Flutter application for building strong daily habits in interacting with the Word of God. The primary feature is Bible verse memorization.
@@ -57,6 +59,7 @@ Use `just` to run common tasks:
 Recipe names use verb-first format: `verb-noun`
 
 Examples:
+
 - `build-web` - build something
 - `start-web-prod` - start something
 - `stop-web-prod` - stop something
@@ -82,12 +85,14 @@ Include scope when relevant: `fix(web):`, `feat(android):`
 Organize code by importance: public APIs first, then supporting code.
 
 **File structure:**
+
 1. **Main functions/classes** at the top (e.g., `computeWordDiff()`, `MyWidget`)
 2. **Data classes** next (e.g., `WordDiff`, `DiffWord`)
-3. **Enums and constants** 
+3. **Enums and constants**
 4. **Helper functions** at the bottom (e.g., `_normalizeAndSplit()`)
 
 **Within classes, apply the same principle:**
+
 1. **Public methods** (e.g., `build()`, `initState()`)
 2. **Methods called by public methods**
 3. **Helper methods** called by those methods
@@ -104,6 +109,7 @@ When creating freezed classes:
 3. **Use domain-specific names** — Name classes by their purpose/domain, not by UI context (e.g., `ResultItem` not `ShareItem`)
 
 Example:
+
 ```dart
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -123,6 +129,30 @@ After modifying any `@freezed` annotated classes, run:
 ```bash
 just gen
 ```
+
+### Enhanced and Extended Enums
+
+Dart's enhanced enums and extensions are powerful features for organizing domain logic. Prefer them over standalone utility functions.
+
+**Use extension methods on enums** to add behavior directly to the enum:
+
+```dart
+// In diff_colors.dart
+extension DiffStatusColors on DiffStatus {
+  MaterialColor get primaryColor => switch (this) {
+    DiffStatus.correct => Colors.green,
+    DiffStatus.missing => Colors.red,
+    DiffStatus.extra => Colors.yellow,
+  };
+
+  (Color bgColor, Color textColor) get colors => (
+    primaryColor.withValues(alpha: 0.25),
+    primaryColor.shade100,
+  );
+}
+```
+
+Then call as: `status.primaryColor` and `status.colors` instead of `getPrimaryColor(status)`.
 
 ### Business Logic in Services
 
@@ -211,4 +241,3 @@ See TODO comments in code for planned features:
 
 - Persistent storage of memorization results (currently in-memory)
 - User verse queue management
-- Additional features beyond memorization
