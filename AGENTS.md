@@ -227,14 +227,14 @@ if (ref.complete) { /* all fields are set */ }
 
 ### Widget Creation and Organization
 
-**When to extract a widget:**
+**Prefer separate widgets over helper methods.** Widgets are more composable, testable, and reusable than helper methods. Extract a widget if:
 
-- Subtree is **reused** in multiple places (or could be in the future)
-- Subtree is **complex** (more than ~30 lines) and has its own logic
 - Subtree represents a **distinct UI concept** (e.g., `RecordingCard`, `LoadingSection`)
-- Subtree needs **independent state management**
+- Subtree is **reused** in multiple places
+- Subtree has its own **parameters or state management**
+- Subtree is more than a few lines (or just for clarity)
 
-Don't extract purely for organization; use helper methods for small, single-use subtrees.
+Even small, single-use subtrees should be widgets for consistency and future extensibility.
 
 **Widget file organization:**
 
