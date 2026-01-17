@@ -27,12 +27,12 @@ class SettingsPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Error Logs (${logs.length})',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Error Logs — For Debugging (${logs.length})',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                         Row(
                           children: [
                             IconButton(
@@ -45,7 +45,11 @@ class SettingsPage extends StatelessWidget {
                                   ),
                                 );
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Logs copied')),
+                                  const SnackBar(
+                                    content: Text(
+                                      'Logs copied. You can paste them into an email or message to the developer.',
+                                    ),
+                                  ),
                                 );
                               },
                             ),
@@ -67,7 +71,6 @@ class SettingsPage extends StatelessWidget {
                                         onPressed: () {
                                           errorLoggerService.clearLogs();
                                           Navigator.pop(ctx);
-                                          Navigator.pop(context);
                                         },
                                         child: const Text('Clear'),
                                       ),

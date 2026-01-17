@@ -13,7 +13,8 @@ class ErrorLoggerService {
 
   void logError(String message, {String? context}) {
     final timestamp = DateTime.now().toIso8601String();
-    final logEntry = '[$timestamp] $message';
+    final contextPart = context != null ? ' [$context]' : '';
+    final logEntry = '[$timestamp]$contextPart $message';
     debugPrint('[ErrorLogger] $logEntry');
 
     final logs = _prefs.getStringList(_logsKey) ?? [];

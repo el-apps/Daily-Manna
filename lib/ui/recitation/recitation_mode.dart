@@ -251,20 +251,26 @@ class _RecitationModeState extends State<RecitationMode> {
         _selectedPassageRef = recognizedRef;
         _step = RecitationStep.confirming;
       });
-    } on TimeoutException {
+    } on TimeoutException catch (e, st) {
       if (!mounted) return;
       setState(() => _step = RecitationStep.playback);
       _handleError(
         'Network timeout. Please check your connection and try again.',
         context: 'processing_timeout',
+        errorDetails: '$e\n$st',
       );
-    } catch (e) {
+    } catch (e, st) {
       if (!mounted) return;
       setState(() => _step = RecitationStep.playback);
+
+      final msg = e.toString().contains('OpenRouter API key not configured')
+          ? 'OpenRouter API key is not configured. Please update it in Settings, then try again.'
+          : 'Something went wrong processing your recitation. Check Settings > Logs for details.';
+
       _handleError(
-        'Something went wrong processing your recitation. Check Settings > Logs for details.',
+        msg,
         context: 'processing',
-        errorDetails: e.toString(),
+        errorDetails: '$e\n$st',
       );
     }
   }

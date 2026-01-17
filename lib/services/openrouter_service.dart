@@ -71,7 +71,7 @@ class OpenRouterService {
     debugPrint('[OpenRouter Audio] Response body: ${response.body}');
 
     if (response.statusCode != 200) {
-      String errorDetail = '${response.reasonPhrase}';
+      String errorDetail = response.reasonPhrase ?? 'Unknown error';
       try {
         final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
         if (errorBody.containsKey('error')) {
@@ -197,7 +197,7 @@ class OpenRouterService {
     debugPrint('[RecognizePassage] Response body: ${response.body}');
 
     if (response.statusCode != 200) {
-      String errorDetail = '${response.reasonPhrase}';
+      String errorDetail = response.reasonPhrase ?? 'Unknown error';
       try {
         final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
         if (errorBody.containsKey('error')) {
