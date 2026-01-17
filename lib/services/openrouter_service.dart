@@ -12,10 +12,7 @@ class OpenRouterService {
 
   OpenRouterService(this.settingsService);
 
-  Future<String> transcribeAudio(
-    List<int> audioBytes,
-    String filename,
-  ) async {
+  Future<String> transcribeAudio(List<int> audioBytes, String filename) async {
     debugPrint('[OpenRouter Audio] Starting transcription');
     debugPrint('[OpenRouter Audio] Audio size: ${audioBytes.length} bytes');
 
@@ -26,7 +23,9 @@ class OpenRouterService {
 
     // Base64 encode audio
     final base64Audio = base64Encode(audioBytes);
-    debugPrint('[OpenRouter Audio] Base64 encoded audio size: ${base64Audio.length} chars');
+    debugPrint(
+      '[OpenRouter Audio] Base64 encoded audio size: ${base64Audio.length} chars',
+    );
 
     // Determine audio format from filename
     final audioFormat = _getAudioFormat(filename);
@@ -37,16 +36,10 @@ class OpenRouterService {
         {
           'role': 'user',
           'content': [
-            {
-              'type': 'text',
-              'text': 'Please transcribe this audio file.',
-            },
+            {'type': 'text', 'text': 'Please transcribe this audio file.'},
             {
               'type': 'input_audio',
-              'input_audio': {
-                'data': base64Audio,
-                'format': audioFormat,
-              },
+              'input_audio': {'data': base64Audio, 'format': audioFormat},
             },
           ],
         },
@@ -96,7 +89,17 @@ class OpenRouterService {
 
   String _getAudioFormat(String filename) {
     final ext = filename.split('.').last.toLowerCase();
-    const supportedFormats = ['wav', 'mp3', 'aiff', 'aac', 'ogg', 'flac', 'm4a', 'pcm16', 'pcm24'];
+    const supportedFormats = [
+      'wav',
+      'mp3',
+      'aiff',
+      'aac',
+      'ogg',
+      'flac',
+      'm4a',
+      'pcm16',
+      'pcm24',
+    ];
     return supportedFormats.contains(ext) ? ext : 'wav';
   }
 
@@ -113,9 +116,13 @@ class OpenRouterService {
       throw Exception('OpenRouter API key not configured');
     }
 
-    final systemPrompt = availableBookIds != null && availableBookIds.isNotEmpty
-        ? Prompts.biblePassageRecognitionSystemWithBooks(availableBookIds)
-        : Prompts.biblePassageRecognitionSystem;
+    if (availableBookIds == null) {
+      throw Exception('Book IDs have not loaded');
+    }
+
+    final systemPrompt = Prompts.biblePassageRecognitionSystemWithBooks(
+      availableBookIds,
+    );
 
     final requestBody = {
       'model': 'openai/gpt-5-mini',
