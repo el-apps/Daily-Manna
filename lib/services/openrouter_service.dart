@@ -32,6 +32,20 @@ class OpenRouterService {
       );
     }
 
+    debugPrint(
+      '[OpenRouter Audio] API Key (first 10 chars): ${apiKey.substring(0, (apiKey.length > 10 ? 10 : apiKey.length))}...',
+    );
+    debugPrint('[OpenRouter Audio] API Key length: ${apiKey.length}');
+    debugPrint(
+      '[OpenRouter Audio] API Key ends with: ${apiKey.length > 5 ? apiKey.substring(apiKey.length - 5) : apiKey}',
+    );
+    debugPrint(
+      '[OpenRouter Audio] API Key has spaces: ${apiKey.contains(' ')}',
+    );
+    debugPrint(
+      '[OpenRouter Audio] API Key has newlines: ${apiKey.contains('\n')}',
+    );
+
     // Base64 encode audio
     final base64Audio = base64Encode(audioBytes);
     debugPrint(
@@ -40,6 +54,7 @@ class OpenRouterService {
 
     // Determine audio format from filename
     final audioFormat = _getAudioFormat(filename);
+    debugPrint('[OpenRouter Audio] Audio format: $audioFormat');
 
     final requestBody = {
       'model': 'openai/gpt-4o-audio-preview',
@@ -48,6 +63,7 @@ class OpenRouterService {
         {
           'role': 'user',
           'content': [
+            {'type': 'text', 'text': 'Please transcribe this audio file.'},
             {
               'type': 'input_audio',
               'input_audio': {'data': base64Audio, 'format': audioFormat},
@@ -57,16 +73,31 @@ class OpenRouterService {
       ],
     };
 
+    final headers = _getHeaders(apiKey);
+    debugPrint('[OpenRouter Audio] Headers: ${headers.keys.join(', ')}');
+    final authHeader = headers['Authorization'] ?? '';
+    final authPreview = authHeader.length > 20
+        ? authHeader.substring(0, 20)
+        : authHeader;
+    debugPrint(
+      '[OpenRouter Audio] Authorization header (first 20 chars): $authPreview...',
+    );
+    debugPrint('[OpenRouter Audio] Request URL: $_chatBaseUrl');
+    debugPrint(
+      '[OpenRouter Audio] Request body keys: ${requestBody.keys.join(', ')}',
+    );
+
     debugPrint('[OpenRouter Audio] Sending audio to chat API');
     final response = await http
         .post(
           Uri.parse(_chatBaseUrl),
-          headers: _getHeaders(apiKey),
+          headers: headers,
           body: jsonEncode(requestBody),
         )
         .timeout(const Duration(seconds: 60));
 
     debugPrint('[OpenRouter Audio] Response status: ${response.statusCode}');
+    debugPrint('[OpenRouter Audio] Response headers: ${response.headers}');
     debugPrint('[OpenRouter Audio] Response body: ${response.body}');
 
     if (response.statusCode != 200) {

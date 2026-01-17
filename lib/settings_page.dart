@@ -16,7 +16,6 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final errorLoggerService = context.read<ErrorLoggerService>();
-    final logs = errorLoggerService.getLogs();
 
     return AppScaffold(
       title: 'Settings',
@@ -28,102 +27,113 @@ class SettingsPage extends StatelessWidget {
           children: [
             _ApiKeySection(),
             const SizedBox(height: 16),
-            if (logs.isNotEmpty)
-              ThemeCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Error Logs — For Debugging (${logs.length})',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Row(
+            ListenableBuilder(
+              listenable: errorLoggerService,
+              builder: (context, _) {
+                final logs = errorLoggerService.getLogs();
+                return logs.isNotEmpty
+                    ? ThemeCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            IconButton(
-                              icon: const Icon(Icons.content_copy),
-                              tooltip: 'Copy logs',
-                              onPressed: () {
-                                Clipboard.setData(
-                                  ClipboardData(
-                                    text: errorLoggerService.getLogsAsText(),
-                                  ),
-                                );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Logs copied. You can paste them into an email or message to the developer.',
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Error Logs — For Debugging (${logs.length})',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
+                                ),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.content_copy),
+                                      tooltip: 'Copy logs',
+                                      onPressed: () {
+                                        Clipboard.setData(
+                                          ClipboardData(
+                                            text: errorLoggerService
+                                                .getLogsAsText(),
+                                          ),
+                                        );
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Logs copied. You can paste them into an email or message to the developer.',
+                                            ),
+                                          ),
+                                        );
+                                      },
                                     ),
-                                  ),
-                                );
-                              },
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline),
+                                      tooltip: 'Clear logs',
+                                      onPressed: () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            title: const Text('Clear Logs?'),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(ctx),
+                                                child: const Text('Cancel'),
+                                              ),
+                                              FilledButton(
+                                                onPressed: () {
+                                                  errorLoggerService
+                                                      .clearLogs();
+                                                  Navigator.pop(ctx);
+                                                },
+                                                child: const Text('Clear'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline),
-                              tooltip: 'Clear logs',
-                              onPressed: () {
-                                showDialog(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: const Text('Clear Logs?'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(ctx),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      FilledButton(
-                                        onPressed: () {
-                                          errorLoggerService.clearLogs();
-                                          Navigator.pop(ctx);
-                                        },
-                                        child: const Text('Clear'),
-                                      ),
-                                    ],
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.black12,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Text(
+                                  logs.join('\n'),
+                                  style: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 11,
                                   ),
-                                );
-                              },
+                                ),
+                              ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.black12,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Text(
-                          logs.join('\n'),
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 11,
+                      )
+                    : ThemeCard(
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              'No errors logged',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: Colors.grey),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else
-              ThemeCard(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      'No errors logged',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-                    ),
-                  ),
-                ),
-              ),
+                      );
+              },
+            ),
           ],
         ),
       ),

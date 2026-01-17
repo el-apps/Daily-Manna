@@ -47,7 +47,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
               Provider.value(value: _bibleService),
               Provider.value(value: _settingsService),
               Provider.value(value: _resultsService),
-              Provider.value(value: _errorLoggerService),
+              ChangeNotifierProvider.value(value: _errorLoggerService),
             ],
             child: MaterialApp(
               title: 'Daily Manna',

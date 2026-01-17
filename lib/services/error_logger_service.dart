@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class ErrorLoggerService {
+class ErrorLoggerService extends ChangeNotifier {
   static const String _logsKey = 'error_logs';
   static const int _maxLogs = 20;
 
@@ -26,6 +26,7 @@ class ErrorLoggerService {
     }
 
     _prefs.setStringList(_logsKey, logs);
+    notifyListeners();
   }
 
   List<String> getLogs() => _prefs.getStringList(_logsKey) ?? [];
@@ -34,5 +35,6 @@ class ErrorLoggerService {
 
   Future<void> clearLogs() async {
     await _prefs.remove(_logsKey);
+    notifyListeners();
   }
 }
