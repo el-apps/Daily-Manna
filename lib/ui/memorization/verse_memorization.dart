@@ -25,7 +25,6 @@ class _VerseMemorizationState extends State<VerseMemorization> {
   Result _result = Result.unknown;
   double _score = 0;
   int _attempts = 0;
-  // TODO: store these in the DB instead of in widget state
   final List<MemorizationResult> _results = [];
 
   @override
