@@ -15,6 +15,7 @@ import 'package:daily_manna/ui/recitation/recitation_confirmation_section.dart';
 import 'package:daily_manna/ui/recitation/recitation_playback_section.dart';
 import 'package:daily_manna/ui/recitation/recitation_results.dart';
 import 'package:daily_manna/ui/recitation/recording_card.dart';
+import 'package:daily_manna/ui/recitation/transcription_review_section.dart';
 import 'package:daily_manna/wav_encoder.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -23,7 +24,15 @@ import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 import 'package:word_tools/word_tools.dart';
 
-enum RecitationStep { idle, recording, playback, processing, scriptureReference }
+enum RecitationStep {
+  idle,
+  recording,
+  playback,
+  transcribing,
+  transcriptionReview,
+  recognizing,
+  referenceReview,
+}
 
 class RecitationMode extends StatefulWidget {
   const RecitationMode({super.key});
@@ -39,11 +48,10 @@ class _RecitationModeState extends State<RecitationMode> {
   late OpenRouterService _openRouterService;
 
   RecitationStep _step = RecitationStep.idle;
-  String _loadingMessage = '';
   List<int>? _audioBytes;
   Uint8List? _wavData;
   final List<List<int>> _audioChunks = [];
-  String _transcribedText = '';
+  late TextEditingController _transcriptionController;
   late ScriptureRangeRef _selectedPassageRef;
   StreamSubscription<Uint8List>? _audioSub;
 
@@ -54,6 +62,7 @@ class _RecitationModeState extends State<RecitationMode> {
     _audioPlayer = AudioPlayer();
     _settingsService = context.read<SettingsService>();
     _openRouterService = OpenRouterService(_settingsService);
+    _transcriptionController = TextEditingController();
     _selectedPassageRef = ScriptureRangeRef(
       bookId: '',
       startChapter: 1,
@@ -70,6 +79,7 @@ class _RecitationModeState extends State<RecitationMode> {
     _audioSub?.cancel();
     _recorder.dispose();
     _audioPlayer.dispose();
+    _transcriptionController.dispose();
     super.dispose();
   }
 
@@ -82,16 +92,24 @@ class _RecitationModeState extends State<RecitationMode> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           switch (_step) {
-            RecitationStep.processing => LoadingSection(
-              message: _loadingMessage,
+            RecitationStep.transcribing => LoadingSection(
+              message: 'Transcribing audio...',
             ),
-            RecitationStep.scriptureReference => RecitationConfirmationSection(
+            RecitationStep.transcriptionReview => TranscriptionReviewSection(
+              controller: _transcriptionController,
+              onSubmit: _submitTranscription,
+              onCancel: _cancelTranscriptionReview,
+            ),
+            RecitationStep.recognizing => LoadingSection(
+              message: 'Recognizing passage...',
+            ),
+            RecitationStep.referenceReview => RecitationConfirmationSection(
               passageRef: _selectedPassageRef,
               onPassageSelected: (ref) {
                 setState(() => _selectedPassageRef = ref);
               },
               onConfirm: _confirmPassage,
-              onCancel: _cancelConfirmation,
+              onCancel: _cancelReferenceReview,
             ),
             RecitationStep.playback => RecitationPlaybackSection(
               audioPlayer: _audioPlayer,
@@ -188,13 +206,10 @@ class _RecitationModeState extends State<RecitationMode> {
     }
   }
 
-  Future<void> _processRecording() async {
+  Future<void> _transcribeAudio() async {
     if (!mounted) return;
 
-    setState(() {
-      _step = RecitationStep.processing;
-      _loadingMessage = 'Transcribing audio...';
-    });
+    setState(() => _step = RecitationStep.transcribing);
 
     try {
       final wavData =
@@ -211,16 +226,38 @@ class _RecitationModeState extends State<RecitationMode> {
           .timeout(const Duration(seconds: 30));
 
       if (!mounted) return;
-      _transcribedText = transcribedText;
+      _transcriptionController.text = transcribedText;
+      setState(() => _step = RecitationStep.transcriptionReview);
+    } on TimeoutException catch (e, st) {
+      if (!mounted) return;
+      setState(() => _step = RecitationStep.playback);
+      _handleError(
+        'Network timeout. Please check your connection and try again.',
+        context: 'transcription_timeout',
+        errorDetails: '$e\n$st',
+      );
+    } catch (e, st) {
+      if (!mounted) return;
+      setState(() => _step = RecitationStep.playback);
 
-      setState(() {
-        _loadingMessage = 'Recognizing passage...';
-      });
+      final msg = e.toString().contains('OpenRouter API key not configured')
+          ? 'OpenRouter API key is not configured. Please update it in Settings, then try again.'
+          : 'Something went wrong transcribing your recitation. Check Settings > Logs for details.';
 
+      _handleError(msg, context: 'transcription', errorDetails: '$e\n$st');
+    }
+  }
+
+  Future<void> _recognizePassage() async {
+    if (!mounted) return;
+
+    setState(() => _step = RecitationStep.recognizing);
+
+    try {
       final bibleService = context.read<BibleService>();
       if (!bibleService.isLoaded) {
         if (!mounted) return;
-        setState(() => _step = RecitationStep.playback);
+        setState(() => _step = RecitationStep.transcriptionReview);
         _handleError(
           'Bible data is still loading. Please try again in a moment.',
           context: 'recognition',
@@ -228,6 +265,7 @@ class _RecitationModeState extends State<RecitationMode> {
         return;
       }
 
+      final transcribedText = _transcriptionController.text;
       final recognizedRef = await _openRouterService
           .recognizePassage(
             transcribedText,
@@ -238,10 +276,9 @@ class _RecitationModeState extends State<RecitationMode> {
       if (!mounted) return;
 
       if (recognizedRef == null) {
-        if (!mounted) return;
-        setState(() => _step = RecitationStep.scriptureReference);
+        setState(() => _step = RecitationStep.referenceReview);
         _handleError(
-          'Could not recognize passage from your recitation. Please enter it manually.',
+          'Could not recognize passage. Please enter it manually.',
           context: 'recognition',
         );
         return;
@@ -249,25 +286,24 @@ class _RecitationModeState extends State<RecitationMode> {
 
       setState(() {
         _selectedPassageRef = recognizedRef;
-        _step = RecitationStep.scriptureReference;
+        _step = RecitationStep.referenceReview;
       });
     } on TimeoutException catch (e, st) {
       if (!mounted) return;
-      setState(() => _step = RecitationStep.playback);
+      setState(() => _step = RecitationStep.transcriptionReview);
       _handleError(
         'Network timeout. Please check your connection and try again.',
-        context: 'processing_timeout',
+        context: 'recognition_timeout',
         errorDetails: '$e\n$st',
       );
     } catch (e, st) {
       if (!mounted) return;
-      setState(() => _step = RecitationStep.playback);
-
-      final msg = e.toString().contains('OpenRouter API key not configured')
-          ? 'OpenRouter API key is not configured. Please update it in Settings, then try again.'
-          : 'Something went wrong processing your recitation. Check Settings > Logs for details.';
-
-      _handleError(msg, context: 'processing', errorDetails: '$e\n$st');
+      setState(() => _step = RecitationStep.transcriptionReview);
+      _handleError(
+        'Something went wrong recognizing the passage. Check Settings > Logs for details.',
+        context: 'recognition',
+        errorDetails: '$e\n$st',
+      );
     }
   }
 
@@ -293,7 +329,23 @@ class _RecitationModeState extends State<RecitationMode> {
 
   Future<void> _sendForTranscription() async {
     await _stopPlayback();
-    await _processRecording();
+    await _transcribeAudio();
+  }
+
+  void _submitTranscription() {
+    _recognizePassage();
+  }
+
+  void _cancelTranscriptionReview() {
+    if (mounted) {
+      setState(() => _step = RecitationStep.playback);
+    }
+  }
+
+  void _cancelReferenceReview() {
+    if (mounted) {
+      setState(() => _step = RecitationStep.transcriptionReview);
+    }
   }
 
   Future<void> _discardRecording() async {
@@ -316,16 +368,7 @@ class _RecitationModeState extends State<RecitationMode> {
     debugPrint(
       '[RecitationMode] User confirmed passage: ${bibleService.getRangeRefName(_selectedPassageRef)}',
     );
-    _showRecitationResults(_selectedPassageRef, _transcribedText);
-  }
-
-  void _cancelConfirmation() {
-    if (mounted) {
-      setState(() {
-        _step = RecitationStep.playback;
-        _transcribedText = '';
-      });
-    }
+    _showRecitationResults(_selectedPassageRef, _transcriptionController.text);
   }
 
   void _showRecitationResults(
@@ -366,7 +409,7 @@ class _RecitationModeState extends State<RecitationMode> {
               setState(() {
                 _step = RecitationStep.idle;
                 _clearAudio();
-                _transcribedText = '';
+                _transcriptionController.clear();
               });
             },
           ),
