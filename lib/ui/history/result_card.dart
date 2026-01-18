@@ -6,12 +6,14 @@ class ResultCard extends StatelessWidget {
   final Result result;
   final String reference;
   final String starDisplay;
+  final VoidCallback? onPractice;
 
   const ResultCard({
     super.key,
     required this.result,
     required this.reference,
     required this.starDisplay,
+    this.onPractice,
   });
 
   @override
@@ -47,6 +49,14 @@ class ResultCard extends StatelessWidget {
                 starDisplay,
                 style: const TextStyle(fontSize: 16),
               ),
+              if (onPractice != null) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.play_arrow),
+                  tooltip: 'Practice',
+                  onPressed: onPractice,
+                ),
+              ],
             ],
           ),
         ),
