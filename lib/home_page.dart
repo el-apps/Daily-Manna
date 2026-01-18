@@ -4,35 +4,14 @@ import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/ui/memorization/verse_memorization.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({super.key});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  String _version = '';
 
   final List<Feature> features = const [
     (title: 'Memorize', icon: Icons.voice_chat, widget: VerseMemorization()),
     (title: 'Recite', icon: Icons.mic, widget: RecitationMode()),
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadVersion();
-  }
-
-  Future<void> _loadVersion() async {
-    final info = await PackageInfo.fromPlatform();
-    setState(() {
-      _version = 'v${info.version}';
-    });
-  }
 
   @override
   Widget build(BuildContext context) => AppScaffold(
@@ -63,17 +42,6 @@ class _HomePageState extends State<HomePage> {
             context,
           ).push(MaterialPageRoute(builder: (_) => const SettingsPage())),
         ),
-        if (_version.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              _version,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.outline,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
       ],
     ),
   );
