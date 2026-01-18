@@ -1,5 +1,6 @@
-import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/home_page.dart';
+import 'package:daily_manna/services/bible_service.dart';
+import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/error_logger_service.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/settings_service.dart';
@@ -18,6 +19,7 @@ class DailyMannaApp extends StatefulWidget {
 }
 
 class _DailyMannaAppState extends State<DailyMannaApp> {
+  late AppDatabase _database;
   late BibleService _bibleService;
   late SettingsService _settingsService;
   late ResultsService _resultsService;
@@ -27,6 +29,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
   @override
   void initState() {
     super.initState();
+    _database = AppDatabase();
     _bibleService = BibleService();
     _settingsService = SettingsService();
     _resultsService = ResultsService();
@@ -44,6 +47,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
     builder: (context, asyncSnapshot) => _bibleService.isLoaded
         ? MultiProvider(
             providers: [
+              Provider.value(value: _database),
               Provider.value(value: _bibleService),
               Provider.value(value: _settingsService),
               Provider.value(value: _resultsService),
