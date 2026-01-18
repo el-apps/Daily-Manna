@@ -1,6 +1,8 @@
 import 'package:daily_manna/models/recitation_result.dart';
 import 'package:daily_manna/models/result_item.dart';
 import 'package:daily_manna/models/result_section.dart';
+import 'package:daily_manna/models/scripture_range_ref.dart';
+import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/ui/memorization/practice_result.dart';
@@ -9,22 +11,10 @@ import 'package:drift/drift.dart';
 class ResultsService {
   final AppDatabase _db;
 
-  // Session-only results for share dialog (cleared on app restart)
-  final List<MemorizationResult> _sessionMemorizationResults = [];
-  final List<RecitationResult> _sessionRecitationResults = [];
-
   ResultsService(this._db);
 
-  // Session getters (for share dialog)
-  List<MemorizationResult> get sessionMemorizationResults =>
-      List.unmodifiable(_sessionMemorizationResults);
-
-  List<RecitationResult> get sessionRecitationResults =>
-      List.unmodifiable(_sessionRecitationResults);
-
-  /// Add a memorization result to both session and persistent storage.
+  /// Add a memorization result to persistent storage.
   Future<void> addMemorizationResult(MemorizationResult result) async {
-    _sessionMemorizationResults.add(result);
     await _db.insertResult(
       ResultsCompanion.insert(
         timestamp: DateTime.now(),
@@ -38,9 +28,8 @@ class ResultsService {
     );
   }
 
-  /// Add a recitation result to both session and persistent storage.
+  /// Add a recitation result to persistent storage.
   Future<void> addRecitationResult(RecitationResult result) async {
-    _sessionRecitationResults.add(result);
     await _db.insertResult(
       ResultsCompanion.insert(
         timestamp: DateTime.now(),
@@ -55,39 +44,61 @@ class ResultsService {
     );
   }
 
-  /// Clear session results only (persistent storage remains).
-  void clearSession() {
-    _sessionMemorizationResults.clear();
-    _sessionRecitationResults.clear();
+  /// Get sections for the share dialog (today's results only).
+  Future<List<ResultSection>> getTodaySections(BibleService bibleService) async {
+    final results = await _db.getTodayResults();
+
+    final recitationResults =
+        results.where((r) => r.type == ResultType.recitation).toList();
+    final memorizationResults =
+        results.where((r) => r.type == ResultType.memorization).toList();
+
+    return [
+      if (recitationResults.isNotEmpty)
+        ResultSection(
+          title: 'Recitation',
+          items: recitationResults
+              .map((r) => ResultItem(
+                    score: RecitationResult(
+                      ref: _toRangeRef(r),
+                      score: r.score,
+                    ).starDisplay,
+                    reference: bibleService.getRangeRefName(_toRangeRef(r)),
+                  ))
+              .toList(),
+        ),
+      if (memorizationResults.isNotEmpty)
+        ResultSection(
+          title: 'Memorization',
+          items: memorizationResults
+              .map((r) => ResultItem(
+                    score: MemorizationResult(
+                      ref: ScriptureRef(
+                        bookId: r.bookId,
+                        chapterNumber: r.startChapter,
+                        verseNumber: r.startVerse,
+                      ),
+                      attempts: r.attempts ?? 1,
+                      score: r.score,
+                    ).scoreString,
+                    reference: bibleService.getRefName(ScriptureRef(
+                      bookId: r.bookId,
+                      chapterNumber: r.startChapter,
+                      verseNumber: r.startVerse,
+                    )),
+                  ))
+              .toList(),
+        ),
+    ];
   }
 
-  /// Get sections for the share dialog (session results only).
-  List<ResultSection> getSections(BibleService bibleService) => [
-        if (_sessionRecitationResults.isNotEmpty)
-          ResultSection(
-            title: 'Recitation',
-            items: _sessionRecitationResults
-                .map(
-                  (result) => ResultItem(
-                    score: result.starDisplay,
-                    reference: bibleService.getRangeRefName(result.ref),
-                  ),
-                )
-                .toList(),
-          ),
-        if (_sessionMemorizationResults.isNotEmpty)
-          ResultSection(
-            title: 'Memorization',
-            items: _sessionMemorizationResults
-                .map(
-                  (result) => ResultItem(
-                    score: result.scoreString,
-                    reference: bibleService.getRefName(result.ref),
-                  ),
-                )
-                .toList(),
-          ),
-      ];
+  ScriptureRangeRef _toRangeRef(Result r) => ScriptureRangeRef(
+        bookId: r.bookId,
+        startChapter: r.startChapter,
+        startVerse: r.startVerse,
+        endChapter: r.endChapter,
+        endVerse: r.endVerse,
+      );
 
   // Database access methods
 
@@ -108,4 +119,7 @@ class ResultsService {
   /// Get unique verses that have been practiced.
   Future<List<({String bookId, int chapter, int verse})>>
       getUniqueVersesPracticed() => _db.getUniqueVersesPracticed();
+
+  /// Get today's results.
+  Future<List<Result>> getTodayResults() => _db.getTodayResults();
 }
