@@ -27,6 +27,13 @@ jobs:
       - name: Get Flutter dependencies
         run: flutter pub get
 
+      - name: Set preview version
+        run: |
+          SHORT_SHA=$(echo ${{ github.event.pull_request.head.sha }} | cut -c1-7)
+          VERSION_SUFFIX="pr${{ github.event.pull_request.number }}-${SHORT_SHA}"
+          sed -i "s/^version: \(.*\)+\(.*\)$/version: \1-${VERSION_SUFFIX}+\2/" pubspec.yaml
+          echo "Preview version: $(grep ^version: pubspec.yaml)"
+
       - name: Build debug APK
         run: flutter build apk --debug
 
