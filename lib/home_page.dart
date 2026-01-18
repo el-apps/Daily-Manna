@@ -42,7 +42,6 @@ class HomePage extends StatelessWidget {
             context,
           ).push(MaterialPageRoute(builder: (_) => const SettingsPage())),
         ),
-        const ListTile(leading: Text('More features coming soon!')),
       ],
     ),
   );
