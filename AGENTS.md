@@ -94,10 +94,20 @@ Verb-first format: `verb-noun`. Simple verbs stand alone: `format`, `test`.
 
 ### Git Commits
 
-Use conventional format with optional scope:
+**Always use conventional commit format.** Every commit message must start with a type prefix.
 
-- `feat(web):` / `fix(android):` - Feature or fix with scope
-- `chore:` `docs:` `refactor:` `style:` `test:` - Other changes
+Format: `type(scope): description` or `type: description`
+
+Types:
+- `feat:` - New feature
+- `fix:` - Bug fix
+- `refactor:` - Code change that neither fixes a bug nor adds a feature
+- `chore:` - Build, config, or tooling changes
+- `docs:` - Documentation only
+- `style:` - Formatting, whitespace (no code change)
+- `test:` - Adding or updating tests
+
+Optional scope in parentheses: `feat(web):`, `fix(android):`
 
 ### Code Organization
 
