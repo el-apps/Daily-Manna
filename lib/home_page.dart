@@ -9,8 +9,8 @@ class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   final List<Feature> features = const [
-    (title: 'Memorize', icon: Icons.voice_chat, widget: VerseMemorization()),
     (title: 'Recite', icon: Icons.mic, widget: RecitationMode()),
+    (title: 'Memorize', icon: Icons.voice_chat, widget: VerseMemorization()),
   ];
 
   @override
@@ -42,7 +42,6 @@ class HomePage extends StatelessWidget {
             context,
           ).push(MaterialPageRoute(builder: (_) => const SettingsPage())),
         ),
-        const ListTile(leading: Text('More features coming soon!')),
       ],
     ),
   );

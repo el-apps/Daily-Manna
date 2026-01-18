@@ -26,18 +26,6 @@ class ResultsService {
   }
 
   List<ResultSection> getSections(BibleService bibleService) => [
-    if (_memorizationResults.isNotEmpty)
-      ResultSection(
-        title: 'Memorization',
-        items: _memorizationResults
-            .map(
-              (result) => ResultItem(
-                score: result.scoreString,
-                reference: bibleService.getRefName(result.ref),
-              ),
-            )
-            .toList(),
-      ),
     if (_recitationResults.isNotEmpty)
       ResultSection(
         title: 'Recitation',
@@ -46,6 +34,18 @@ class ResultsService {
               (result) => ResultItem(
                 score: result.starDisplay,
                 reference: bibleService.getRangeRefName(result.ref),
+              ),
+            )
+            .toList(),
+      ),
+    if (_memorizationResults.isNotEmpty)
+      ResultSection(
+        title: 'Memorization',
+        items: _memorizationResults
+            .map(
+              (result) => ResultItem(
+                score: result.scoreString,
+                reference: bibleService.getRefName(result.ref),
               ),
             )
             .toList(),
