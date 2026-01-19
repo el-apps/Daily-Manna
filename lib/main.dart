@@ -32,7 +32,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
     _database = AppDatabase();
     _bibleService = BibleService();
     _settingsService = SettingsService();
-    _resultsService = ResultsService();
+    _resultsService = ResultsService(_database);
     _errorLoggerService = ErrorLoggerService();
     _initFuture = Future.wait([
       _settingsService.init(),
