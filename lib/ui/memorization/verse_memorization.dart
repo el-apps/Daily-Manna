@@ -11,14 +11,16 @@ import 'package:provider/provider.dart';
 import 'package:word_tools/word_tools.dart';
 
 class VerseMemorization extends StatefulWidget {
-  const VerseMemorization({super.key});
+  final ScriptureRef? initialRef;
+
+  const VerseMemorization({super.key, this.initialRef});
 
   @override
   State<VerseMemorization> createState() => _VerseMemorizationState();
 }
 
 class _VerseMemorizationState extends State<VerseMemorization> {
-  ScriptureRef _ref = ScriptureRef();
+  late ScriptureRef _ref;
   late TextEditingController _inputController;
   final FocusNode _inputFocusNode = FocusNode();
   String _input = '';
@@ -29,6 +31,7 @@ class _VerseMemorizationState extends State<VerseMemorization> {
   @override
   void initState() {
     super.initState();
+    _ref = widget.initialRef ?? const ScriptureRef();
     _inputController = TextEditingController();
   }
 

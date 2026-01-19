@@ -6,12 +6,14 @@ class ResultCard extends StatelessWidget {
   final Result result;
   final String reference;
   final String starDisplay;
+  final VoidCallback? onPractice;
 
   const ResultCard({
     super.key,
     required this.result,
     required this.reference,
     required this.starDisplay,
+    this.onPractice,
   });
 
   @override
@@ -43,9 +45,34 @@ class ResultCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Text(
-                starDisplay,
-                style: const TextStyle(fontSize: 16),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    starDisplay,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  if (onPractice != null) ...[
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: onPractice,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        textStyle: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      child: const Text('Practice'),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),

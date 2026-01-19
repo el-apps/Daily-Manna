@@ -1,9 +1,11 @@
 import 'package:daily_manna/models/recitation_result.dart';
+import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
-import 'package:daily_manna/services/database/database.dart';
+import 'package:daily_manna/services/database/database.dart' as db;
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/history/result_card.dart';
+import 'package:daily_manna/ui/memorization/verse_memorization.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -15,7 +17,7 @@ class HistoryPage extends StatefulWidget {
 }
 
 class _HistoryPageState extends State<HistoryPage> {
-  ResultType? _filterType;
+  db.ResultType? _filterType;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +33,7 @@ class _HistoryPageState extends State<HistoryPage> {
             onSelected: (type) => setState(() => _filterType = type),
           ),
           Expanded(
-            child: StreamBuilder<List<Result>>(
+            child: StreamBuilder<List<db.Result>>(
               stream: resultsService.watchAllResults(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -69,13 +71,13 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  List<_ResultGroup> _groupByDate(List<Result> results) {
+  List<_ResultGroup> _groupByDate(List<db.Result> results) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final weekAgo = today.subtract(const Duration(days: 7));
 
-    final groups = <String, List<Result>>{
+    final groups = <String, List<db.Result>>{
       'Today': [],
       'Yesterday': [],
       'This Week': [],
@@ -109,14 +111,14 @@ class _HistoryPageState extends State<HistoryPage> {
 
 class _ResultGroup {
   final String label;
-  final List<Result> results;
+  final List<db.Result> results;
 
   _ResultGroup({required this.label, required this.results});
 }
 
 class _FilterChips extends StatelessWidget {
-  final ResultType? selectedType;
-  final ValueChanged<ResultType?> onSelected;
+  final db.ResultType? selectedType;
+  final ValueChanged<db.ResultType?> onSelected;
 
   const _FilterChips({required this.selectedType, required this.onSelected});
 
@@ -133,20 +135,20 @@ class _FilterChips extends StatelessWidget {
             ),
             FilterChip(
               label: const Text('Recitation'),
-              selected: selectedType == ResultType.recitation,
+              selected: selectedType == db.ResultType.recitation,
               onSelected: (_) => onSelected(
-                selectedType == ResultType.recitation
+                selectedType == db.ResultType.recitation
                     ? null
-                    : ResultType.recitation,
+                    : db.ResultType.recitation,
               ),
             ),
             FilterChip(
               label: const Text('Memorization'),
-              selected: selectedType == ResultType.memorization,
+              selected: selectedType == db.ResultType.memorization,
               onSelected: (_) => onSelected(
-                selectedType == ResultType.memorization
+                selectedType == db.ResultType.memorization
                     ? null
-                    : ResultType.memorization,
+                    : db.ResultType.memorization,
               ),
             ),
           ],
@@ -156,7 +158,7 @@ class _FilterChips extends StatelessWidget {
 
 class _DateGroup extends StatelessWidget {
   final String label;
-  final List<Result> results;
+  final List<db.Result> results;
   final BibleService bibleService;
 
   const _DateGroup({
@@ -183,12 +185,29 @@ class _DateGroup extends StatelessWidget {
               result: result,
               reference: _getReference(result),
               starDisplay: _getStarDisplay(result),
+              onPractice: result.type == db.ResultType.memorization
+                  ? () => _navigateToMemorization(context, result)
+                  : null,
             ),
           ),
         ],
       );
 
-  String _getReference(Result result) {
+  void _navigateToMemorization(BuildContext context, db.Result result) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => VerseMemorization(
+          initialRef: ScriptureRef(
+            bookId: result.bookId,
+            chapterNumber: result.startChapter,
+            verseNumber: result.startVerse,
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getReference(db.Result result) {
     final bookTitle = bibleService.booksMap[result.bookId]?.title ?? 'Unknown';
 
     if (result.endChapter != null && result.endVerse != null) {
@@ -200,7 +219,7 @@ class _DateGroup extends StatelessWidget {
     return '$bookTitle ${result.startChapter}:${result.startVerse}';
   }
 
-  String _getStarDisplay(Result result) {
+  String _getStarDisplay(db.Result result) {
     final stars = scoreToStars(result.score);
     return '⭐' * stars + '☆' * (5 - stars);
   }
