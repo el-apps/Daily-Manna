@@ -23,10 +23,15 @@ class _BooksTabState extends State<BooksTab> {
   Widget build(BuildContext context) {
     final bibleService = context.read<BibleService>();
 
+    // Only show breadcrumbs when navigated into a book
+    if (_selectedBookId == null) {
+      return _buildContent(bibleService);
+    }
+
     return Column(
       children: [
         _Breadcrumbs(
-          bookTitle: _selectedBookTitle,
+          bookTitle: _selectedBookTitle!,
           chapter: _selectedChapter,
           onHomeTap: _goToBooks,
           onBookTap: _goToChapters,
@@ -82,7 +87,7 @@ class _BooksTabState extends State<BooksTab> {
 }
 
 class _Breadcrumbs extends StatelessWidget {
-  final String? bookTitle;
+  final String bookTitle;
   final int? chapter;
   final VoidCallback onHomeTap;
   final VoidCallback onBookTap;
@@ -100,51 +105,32 @@ class _Breadcrumbs extends StatelessWidget {
     final linkStyle = TextStyle(color: theme.colorScheme.primary);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       width: double.infinity,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border(bottom: BorderSide(color: theme.dividerColor)),
-      ),
+      color: theme.colorScheme.surface,
       child: Row(
         children: [
-          if (bookTitle == null)
-            Text('Books', style: theme.textTheme.titleSmall)
-          else ...
-            _buildBreadcrumbTrail(context, linkStyle, theme),
+          GestureDetector(
+            onTap: onHomeTap,
+            child: Icon(Icons.arrow_back, size: 20, color: theme.colorScheme.primary),
+          ),
+          const SizedBox(width: 12),
+          if (chapter == null)
+            Text(bookTitle, style: theme.textTheme.titleMedium)
+          else ..._buildChapterBreadcrumb(linkStyle, theme),
         ],
       ),
     );
   }
 
-  List<Widget> _buildBreadcrumbTrail(
-    BuildContext context,
-    TextStyle linkStyle,
-    ThemeData theme,
-  ) {
-    final items = <Widget>[
-      GestureDetector(
-        onTap: onHomeTap,
-        child: Text('Books', style: linkStyle),
-      ),
-      const _BreadcrumbSeparator(),
-    ];
-
-    if (chapter == null) {
-      items.add(Text(bookTitle!, style: theme.textTheme.titleSmall));
-    } else {
-      items.addAll([
+  List<Widget> _buildChapterBreadcrumb(TextStyle linkStyle, ThemeData theme) => [
         GestureDetector(
           onTap: onBookTap,
-          child: Text(bookTitle!, style: linkStyle),
+          child: Text(bookTitle, style: linkStyle),
         ),
         const _BreadcrumbSeparator(),
-        Text('Chapter $chapter', style: theme.textTheme.titleSmall),
-      ]);
-    }
-
-    return items;
-  }
+        Text('Chapter $chapter', style: theme.textTheme.titleMedium),
+      ];
 }
 
 class _BreadcrumbSeparator extends StatelessWidget {
