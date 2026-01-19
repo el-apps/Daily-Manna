@@ -45,18 +45,25 @@ class ResultCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Text(
-                starDisplay,
-                style: const TextStyle(fontSize: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    starDisplay,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  if (onPractice != null)
+                    TextButton(
+                      onPressed: onPractice,
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text('Practice'),
+                    ),
+                ],
               ),
-              if (onPractice != null) ...[
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.play_arrow),
-                  tooltip: 'Practice',
-                  onPressed: onPractice,
-                ),
-              ],
             ],
           ),
         ),
