@@ -1,8 +1,9 @@
 import 'package:daily_manna/mode_card.dart';
-import 'package:daily_manna/ui/recitation/recitation_mode.dart';
 import 'package:daily_manna/settings_page.dart';
-import 'package:daily_manna/ui/memorization/verse_memorization.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
+import 'package:daily_manna/ui/history/history_page.dart';
+import 'package:daily_manna/ui/memorization/verse_memorization.dart';
+import 'package:daily_manna/ui/recitation/recitation_mode.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatelessWidget {
@@ -35,6 +36,13 @@ class HomePage extends StatelessWidget {
               context,
             ).push(MaterialPageRoute(builder: (_) => feature.widget)),
           ),
+        ModeCard(
+          title: 'History',
+          icon: Icons.history,
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const HistoryPage())),
+        ),
         ModeCard(
           title: 'Settings',
           icon: Icons.settings,
