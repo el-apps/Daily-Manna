@@ -253,5 +253,4 @@ Flask web support enabled. Custom Python server with CORS headers.
 
 See code comments for planned features:
 
-- Persistent storage of memorization results (currently in-memory)
 - User verse queue management

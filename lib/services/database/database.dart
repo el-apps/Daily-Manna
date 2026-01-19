@@ -74,4 +74,14 @@ class AppDatabase extends _$AppDatabase {
         )
         .toList();
   }
+
+  // Get results from today (since midnight)
+  Future<List<Result>> getTodayResults() {
+    final now = DateTime.now();
+    final midnight = DateTime(now.year, now.month, now.day);
+    return (select(results)
+          ..where((t) => t.timestamp.isBiggerOrEqualValue(midnight))
+          ..orderBy([(t) => OrderingTerm.desc(t.timestamp)]))
+        .get();
+  }
 }

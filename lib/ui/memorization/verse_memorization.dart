@@ -27,7 +27,6 @@ class _VerseMemorizationState extends State<VerseMemorization> {
   Result _result = Result.unknown;
   double _score = 0;
   int _attempts = 0;
-  final List<MemorizationResult> _results = [];
 
   @override
   void initState() {
@@ -173,7 +172,6 @@ class _VerseMemorizationState extends State<VerseMemorization> {
           attempts: _attempts,
           score: _score,
         );
-        _results.add(result);
         resultsService.addMemorizationResult(result);
       }
     });
