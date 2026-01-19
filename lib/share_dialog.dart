@@ -13,60 +13,74 @@ class ShareDialog extends StatelessWidget {
     final bibleService = context.read<BibleService>();
     final resultsService = context.read<ResultsService>();
 
-    final sections = resultsService.getSections(bibleService);
-    final hasContent = sections.isNotEmpty;
+    return FutureBuilder<List<ResultSection>>(
+      future: resultsService.getTodaySections(bibleService),
+      builder: (context, snapshot) {
+        final sections = snapshot.data ?? [];
+        final hasContent = sections.isNotEmpty;
+        final isLoading = snapshot.connectionState == ConnectionState.waiting;
 
-    return AlertDialog(
-      title: Text('Share Your Progress'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 8,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Daily sharing your results with others is a great way to practice accountability!',
-          ),
-          if (hasContent) ...[
-            Divider(),
-            ...sections.expand(
-              (section) => [
-                Text(
-                  section.title,
-                  style: Theme.of(context).textTheme.titleSmall,
+        return AlertDialog(
+          title: const Text('Share Your Progress'),
+          content: isLoading
+              ? const SizedBox(
+                  height: 100,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: 8,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Daily sharing your results with others is a great way to practice accountability!',
+                    ),
+                    if (hasContent) ...[
+                      const Divider(),
+                      ...sections.expand(
+                        (section) => [
+                          Text(
+                            section.title,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          ...section.items.map(
+                            (item) => Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(item.score),
+                                Text(item.reference),
+                              ],
+                            ),
+                          ),
+                          if (section != sections.last)
+                            const SizedBox(height: 8),
+                        ],
+                      ),
+                    ] else ...[
+                      const Divider(),
+                      Text(
+                        'No results to share yet today. Complete a memorization or recitation to get started.',
+                        style: TextStyle(
+                          color: Theme.of(context).disabledColor,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                ...section.items.map(
-                  (item) => Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [Text(item.score), Text(item.reference)],
-                  ),
-                ),
-                if (section != sections.last) SizedBox(height: 8),
-              ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
             ),
-          ] else ...[
-            Divider(),
-            Text(
-              'No results to share yet. Complete a memorization or recitation to get started.',
-              style: TextStyle(
-                color: Theme.of(context).disabledColor,
-                fontStyle: FontStyle.italic,
+            if (hasContent && !isLoading)
+              TextButton(
+                onPressed: () => _share(context, sections),
+                child: const Text('Share'),
               ),
-            ),
           ],
-        ],
-      ),
-
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel'),
-        ),
-        if (hasContent)
-          TextButton(
-            onPressed: () => _share(context, sections),
-            child: Text('Share'),
-          ),
-      ],
+        );
+      },
     );
   }
 

@@ -21,7 +21,7 @@ void main() {
   });
 
   group('ResultsService', () {
-    test('addMemorizationResult stores in session and database', () async {
+    test('addMemorizationResult stores in database', () async {
       final result = MemorizationResult(
         ref: const ScriptureRef(
           bookId: 'Gen',
@@ -34,11 +34,6 @@ void main() {
 
       await resultsService.addMemorizationResult(result);
 
-      // Check session
-      expect(resultsService.sessionMemorizationResults, hasLength(1));
-      expect(resultsService.sessionMemorizationResults.first.score, 0.95);
-
-      // Check database
       final dbResults = await resultsService.getAllResults();
       expect(dbResults, hasLength(1));
       expect(dbResults.first.type, ResultType.memorization);
@@ -46,7 +41,7 @@ void main() {
       expect(dbResults.first.attempts, 1);
     });
 
-    test('addRecitationResult stores in session and database', () async {
+    test('addRecitationResult stores in database', () async {
       final result = RecitationResult(
         ref: const ScriptureRangeRef(
           bookId: 'Psa',
@@ -60,11 +55,6 @@ void main() {
 
       await resultsService.addRecitationResult(result);
 
-      // Check session
-      expect(resultsService.sessionRecitationResults, hasLength(1));
-      expect(resultsService.sessionRecitationResults.first.score, 0.85);
-
-      // Check database
       final dbResults = await resultsService.getAllResults();
       expect(dbResults, hasLength(1));
       expect(dbResults.first.type, ResultType.recitation);
@@ -72,7 +62,8 @@ void main() {
       expect(dbResults.first.endVerse, 6);
     });
 
-    test('clearSession clears only session results', () async {
+    test('getTodayResults returns only results from today', () async {
+      // This result is from today
       await resultsService.addMemorizationResult(
         MemorizationResult(
           ref: const ScriptureRef(
@@ -85,14 +76,8 @@ void main() {
         ),
       );
 
-      resultsService.clearSession();
-
-      // Session should be empty
-      expect(resultsService.sessionMemorizationResults, isEmpty);
-
-      // Database should still have the result
-      final dbResults = await resultsService.getAllResults();
-      expect(dbResults, hasLength(1));
+      final todayResults = await resultsService.getTodayResults();
+      expect(todayResults, hasLength(1));
     });
 
     test('getResultsForVerse returns filtered results', () async {
