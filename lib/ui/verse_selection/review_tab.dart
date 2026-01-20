@@ -16,22 +16,22 @@ class ReviewTab extends StatelessWidget {
     final bibleService = context.read<BibleService>();
 
     return FutureBuilder<List<VerseReviewState>>(
-      future: srService.getDueVerses(),
+      future: srService.getVersesByReviewDate(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final dueVerses = snapshot.data ?? [];
+        final verses = snapshot.data ?? [];
 
-        if (dueVerses.isEmpty) {
+        if (verses.isEmpty) {
           return _EmptyState();
         }
 
         return ListView.builder(
-          itemCount: dueVerses.length,
+          itemCount: verses.length,
           itemBuilder: (context, index) {
-            final state = dueVerses[index];
+            final state = verses[index];
             return ListTile(
               title: Text(bibleService.getRefName(state.ref)),
               onTap: () => onVerseSelected(state.ref),

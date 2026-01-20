@@ -31,11 +31,11 @@ class SpacedRepetitionService {
   /// Convert score (0.5-1.0) to SM-2 quality (0-5).
   static int scoreToQuality(double score) => ((score * 10) - 5).round().clamp(0, 5);
 
-  /// Get all verses that are due for review.
-  Future<List<VerseReviewState>> getDueVerses() async {
+  /// Get all practiced verses sorted by next review date.
+  Future<List<VerseReviewState>> getVersesByReviewDate() async {
     final allStates = await _getAllVerseStates();
-    return allStates.where((state) => state.isDue).toList()
-      ..sort((a, b) => a.nextReviewDate.compareTo(b.nextReviewDate));
+    allStates.sort((a, b) => a.nextReviewDate.compareTo(b.nextReviewDate));
+    return allStates;
   }
 
   /// Get recently practiced verses (by last review date).
