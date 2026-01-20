@@ -19,10 +19,7 @@ class VerseReviewState {
 
   DateTime get nextReviewDate => lastReview.add(Duration(days: intervalDays));
 
-  bool get isDue => DateTime.now().isAfter(nextReviewDate) ||
-      DateTime.now().day == nextReviewDate.day &&
-          DateTime.now().month == nextReviewDate.month &&
-          DateTime.now().year == nextReviewDate.year;
+  bool get isDue => !DateTime.now().isBefore(nextReviewDate);
 }
 
 /// Service for calculating spaced repetition intervals using SM-2 algorithm.
