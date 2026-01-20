@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
@@ -6,6 +8,7 @@ import 'package:provider/provider.dart';
 
 /// Tab showing recently practiced verses.
 class RecentsTab extends StatelessWidget {
+  static final _dateFormat = DateFormat.yMMMd();
   final void Function(ScriptureRef) onVerseSelected;
 
   const RecentsTab({super.key, required this.onVerseSelected});
@@ -34,6 +37,7 @@ class RecentsTab extends StatelessWidget {
             final state = recentVerses[index];
             return ListTile(
               title: Text(bibleService.getRefName(state.ref)),
+              subtitle: Text(_formatLastPracticed(state.lastReview)),
               onTap: () => onVerseSelected(state.ref),
             );
           },
@@ -41,6 +45,18 @@ class RecentsTab extends StatelessWidget {
       },
     );
   }
+}
+
+String _formatLastPracticed(DateTime date) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final practiceDay = DateTime(date.year, date.month, date.day);
+  final difference = today.difference(practiceDay).inDays;
+
+  if (difference == 0) return 'Practiced today';
+  if (difference == 1) return 'Practiced yesterday';
+  if (difference < 7) return 'Practiced $difference days ago';
+  return 'Practiced ${RecentsTab._dateFormat.format(date)}';
 }
 
 class _EmptyState extends StatelessWidget {
