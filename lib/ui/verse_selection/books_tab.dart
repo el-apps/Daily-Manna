@@ -143,23 +143,187 @@ class _BreadcrumbSeparator extends StatelessWidget {
       );
 }
 
-class _BooksList extends StatelessWidget {
+/// Book categories for organized display.
+enum _BookCategory {
+  law('Law'),
+  history('History'),
+  poetry('Poetry'),
+  majorProphets('Major Prophets'),
+  minorProphets('Minor Prophets'),
+  gospels('Gospels'),
+  acts('History'),
+  paulineEpistles('Pauline Epistles'),
+  generalEpistles('General Epistles'),
+  prophecy('Prophecy');
+
+  final String label;
+  const _BookCategory(this.label);
+}
+
+const _bookCategories = <String, _BookCategory>{
+  // Law
+  'Gen': _BookCategory.law,
+  'Exod': _BookCategory.law,
+  'Lev': _BookCategory.law,
+  'Num': _BookCategory.law,
+  'Deut': _BookCategory.law,
+  // History (OT)
+  'Josh': _BookCategory.history,
+  'Judg': _BookCategory.history,
+  'Ruth': _BookCategory.history,
+  '1Sam': _BookCategory.history,
+  '2Sam': _BookCategory.history,
+  '1Kgs': _BookCategory.history,
+  '2Kgs': _BookCategory.history,
+  '1Chr': _BookCategory.history,
+  '2Chr': _BookCategory.history,
+  'Ezra': _BookCategory.history,
+  'Neh': _BookCategory.history,
+  'Esth': _BookCategory.history,
+  // Poetry
+  'Job': _BookCategory.poetry,
+  'Ps': _BookCategory.poetry,
+  'Prov': _BookCategory.poetry,
+  'Eccl': _BookCategory.poetry,
+  'Song': _BookCategory.poetry,
+  // Major Prophets
+  'Isa': _BookCategory.majorProphets,
+  'Jer': _BookCategory.majorProphets,
+  'Lam': _BookCategory.majorProphets,
+  'Ezek': _BookCategory.majorProphets,
+  'Dan': _BookCategory.majorProphets,
+  // Minor Prophets
+  'Hos': _BookCategory.minorProphets,
+  'Joel': _BookCategory.minorProphets,
+  'Amos': _BookCategory.minorProphets,
+  'Obad': _BookCategory.minorProphets,
+  'Jonah': _BookCategory.minorProphets,
+  'Mic': _BookCategory.minorProphets,
+  'Nah': _BookCategory.minorProphets,
+  'Hab': _BookCategory.minorProphets,
+  'Zeph': _BookCategory.minorProphets,
+  'Hag': _BookCategory.minorProphets,
+  'Zech': _BookCategory.minorProphets,
+  'Mal': _BookCategory.minorProphets,
+  // Gospels
+  'Matt': _BookCategory.gospels,
+  'Mark': _BookCategory.gospels,
+  'Luke': _BookCategory.gospels,
+  'John': _BookCategory.gospels,
+  // Acts
+  'Acts': _BookCategory.acts,
+  // Pauline Epistles
+  'Rom': _BookCategory.paulineEpistles,
+  '1Cor': _BookCategory.paulineEpistles,
+  '2Cor': _BookCategory.paulineEpistles,
+  'Gal': _BookCategory.paulineEpistles,
+  'Eph': _BookCategory.paulineEpistles,
+  'Phil': _BookCategory.paulineEpistles,
+  'Col': _BookCategory.paulineEpistles,
+  '1Thess': _BookCategory.paulineEpistles,
+  '2Thess': _BookCategory.paulineEpistles,
+  '1Tim': _BookCategory.paulineEpistles,
+  '2Tim': _BookCategory.paulineEpistles,
+  'Titus': _BookCategory.paulineEpistles,
+  'Phlm': _BookCategory.paulineEpistles,
+  // General Epistles
+  'Heb': _BookCategory.generalEpistles,
+  'Jas': _BookCategory.generalEpistles,
+  '1Pet': _BookCategory.generalEpistles,
+  '2Pet': _BookCategory.generalEpistles,
+  '1John': _BookCategory.generalEpistles,
+  '2John': _BookCategory.generalEpistles,
+  '3John': _BookCategory.generalEpistles,
+  'Jude': _BookCategory.generalEpistles,
+  // Prophecy
+  'Rev': _BookCategory.prophecy,
+};
+
+class _BooksList extends StatefulWidget {
   final List<Book> books;
   final void Function(Book) onBookSelected;
 
   const _BooksList({required this.books, required this.onBookSelected});
 
   @override
-  Widget build(BuildContext context) => ListView.builder(
-        itemCount: books.length,
-        itemBuilder: (context, index) {
-          final book = books[index];
-          return ListTile(
-            title: Text(book.title),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => onBookSelected(book),
-          );
-        },
+  State<_BooksList> createState() => _BooksListState();
+}
+
+class _BooksListState extends State<_BooksList> {
+  final Set<_BookCategory> _expandedCategories = {};
+
+  @override
+  Widget build(BuildContext context) {
+    // Group books by category
+    final grouped = <_BookCategory, List<Book>>{};
+    for (final book in widget.books) {
+      final category = _bookCategories[book.id];
+      if (category != null) {
+        grouped.putIfAbsent(category, () => []).add(book);
+      }
+    }
+
+    return ListView(
+      children: [
+        for (final category in _BookCategory.values)
+          if (grouped.containsKey(category))
+            _CategorySection(
+              category: category,
+              books: grouped[category]!,
+              isExpanded: _expandedCategories.contains(category),
+              onToggle: () => setState(() {
+                if (_expandedCategories.contains(category)) {
+                  _expandedCategories.remove(category);
+                } else {
+                  _expandedCategories.add(category);
+                }
+              }),
+              onBookSelected: widget.onBookSelected,
+            ),
+      ],
+    );
+  }
+}
+
+class _CategorySection extends StatelessWidget {
+  final _BookCategory category;
+  final List<Book> books;
+  final bool isExpanded;
+  final VoidCallback onToggle;
+  final void Function(Book) onBookSelected;
+
+  const _CategorySection({
+    required this.category,
+    required this.books,
+    required this.isExpanded,
+    required this.onToggle,
+    required this.onBookSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListTile(
+            title: Text(
+              '${category.label} (${books.length})',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+            ),
+            trailing: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
+            onTap: onToggle,
+          ),
+          if (isExpanded)
+            ...books.map(
+              (book) => ListTile(
+                title: Text(book.title),
+                trailing: const Icon(Icons.chevron_right),
+                contentPadding: const EdgeInsets.only(left: 32, right: 16),
+                onTap: () => onBookSelected(book),
+              ),
+            ),
+        ],
       );
 }
 
