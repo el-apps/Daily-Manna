@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ScriptureRangeRef {
 
- String get bookId; int get startChapter; int get startVerse; int? get endChapter; int? get endVerse;
+ String get bookId; int get chapter; int get startVerse; int? get endVerse;
 /// Create a copy of ScriptureRangeRef
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $ScriptureRangeRefCopyWith<ScriptureRangeRef> get copyWith => _$ScriptureRangeRe
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ScriptureRangeRef&&(identical(other.bookId, bookId) || other.bookId == bookId)&&(identical(other.startChapter, startChapter) || other.startChapter == startChapter)&&(identical(other.startVerse, startVerse) || other.startVerse == startVerse)&&(identical(other.endChapter, endChapter) || other.endChapter == endChapter)&&(identical(other.endVerse, endVerse) || other.endVerse == endVerse));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ScriptureRangeRef&&(identical(other.bookId, bookId) || other.bookId == bookId)&&(identical(other.chapter, chapter) || other.chapter == chapter)&&(identical(other.startVerse, startVerse) || other.startVerse == startVerse)&&(identical(other.endVerse, endVerse) || other.endVerse == endVerse));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,bookId,startChapter,startVerse,endChapter,endVerse);
+int get hashCode => Object.hash(runtimeType,bookId,chapter,startVerse,endVerse);
 
 @override
 String toString() {
-  return 'ScriptureRangeRef(bookId: $bookId, startChapter: $startChapter, startVerse: $startVerse, endChapter: $endChapter, endVerse: $endVerse)';
+  return 'ScriptureRangeRef(bookId: $bookId, chapter: $chapter, startVerse: $startVerse, endVerse: $endVerse)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $ScriptureRangeRefCopyWith<$Res>  {
   factory $ScriptureRangeRefCopyWith(ScriptureRangeRef value, $Res Function(ScriptureRangeRef) _then) = _$ScriptureRangeRefCopyWithImpl;
 @useResult
 $Res call({
- String bookId, int startChapter, int startVerse, int? endChapter, int? endVerse
+ String bookId, int chapter, int startVerse, int? endVerse
 });
 
 
@@ -62,13 +62,12 @@ class _$ScriptureRangeRefCopyWithImpl<$Res>
 
 /// Create a copy of ScriptureRangeRef
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? bookId = null,Object? startChapter = null,Object? startVerse = null,Object? endChapter = freezed,Object? endVerse = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? bookId = null,Object? chapter = null,Object? startVerse = null,Object? endVerse = freezed,}) {
   return _then(_self.copyWith(
 bookId: null == bookId ? _self.bookId : bookId // ignore: cast_nullable_to_non_nullable
-as String,startChapter: null == startChapter ? _self.startChapter : startChapter // ignore: cast_nullable_to_non_nullable
+as String,chapter: null == chapter ? _self.chapter : chapter // ignore: cast_nullable_to_non_nullable
 as int,startVerse: null == startVerse ? _self.startVerse : startVerse // ignore: cast_nullable_to_non_nullable
-as int,endChapter: freezed == endChapter ? _self.endChapter : endChapter // ignore: cast_nullable_to_non_nullable
-as int?,endVerse: freezed == endVerse ? _self.endVerse : endVerse // ignore: cast_nullable_to_non_nullable
+as int,endVerse: freezed == endVerse ? _self.endVerse : endVerse // ignore: cast_nullable_to_non_nullable
 as int?,
   ));
 }
@@ -154,10 +153,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String bookId,  int startChapter,  int startVerse,  int? endChapter,  int? endVerse)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String bookId,  int chapter,  int startVerse,  int? endVerse)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ScriptureRangeRef() when $default != null:
-return $default(_that.bookId,_that.startChapter,_that.startVerse,_that.endChapter,_that.endVerse);case _:
+return $default(_that.bookId,_that.chapter,_that.startVerse,_that.endVerse);case _:
   return orElse();
 
 }
@@ -175,10 +174,10 @@ return $default(_that.bookId,_that.startChapter,_that.startVerse,_that.endChapte
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String bookId,  int startChapter,  int startVerse,  int? endChapter,  int? endVerse)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String bookId,  int chapter,  int startVerse,  int? endVerse)  $default,) {final _that = this;
 switch (_that) {
 case _ScriptureRangeRef():
-return $default(_that.bookId,_that.startChapter,_that.startVerse,_that.endChapter,_that.endVerse);case _:
+return $default(_that.bookId,_that.chapter,_that.startVerse,_that.endVerse);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -195,10 +194,10 @@ return $default(_that.bookId,_that.startChapter,_that.startVerse,_that.endChapte
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String bookId,  int startChapter,  int startVerse,  int? endChapter,  int? endVerse)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String bookId,  int chapter,  int startVerse,  int? endVerse)?  $default,) {final _that = this;
 switch (_that) {
 case _ScriptureRangeRef() when $default != null:
-return $default(_that.bookId,_that.startChapter,_that.startVerse,_that.endChapter,_that.endVerse);case _:
+return $default(_that.bookId,_that.chapter,_that.startVerse,_that.endVerse);case _:
   return null;
 
 }
@@ -210,13 +209,12 @@ return $default(_that.bookId,_that.startChapter,_that.startVerse,_that.endChapte
 
 
 class _ScriptureRangeRef extends ScriptureRangeRef {
-  const _ScriptureRangeRef({required this.bookId, required this.startChapter, required this.startVerse, this.endChapter, this.endVerse}): super._();
+  const _ScriptureRangeRef({required this.bookId, required this.chapter, required this.startVerse, this.endVerse}): super._();
   
 
 @override final  String bookId;
-@override final  int startChapter;
+@override final  int chapter;
 @override final  int startVerse;
-@override final  int? endChapter;
 @override final  int? endVerse;
 
 /// Create a copy of ScriptureRangeRef
@@ -229,16 +227,16 @@ _$ScriptureRangeRefCopyWith<_ScriptureRangeRef> get copyWith => __$ScriptureRang
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ScriptureRangeRef&&(identical(other.bookId, bookId) || other.bookId == bookId)&&(identical(other.startChapter, startChapter) || other.startChapter == startChapter)&&(identical(other.startVerse, startVerse) || other.startVerse == startVerse)&&(identical(other.endChapter, endChapter) || other.endChapter == endChapter)&&(identical(other.endVerse, endVerse) || other.endVerse == endVerse));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ScriptureRangeRef&&(identical(other.bookId, bookId) || other.bookId == bookId)&&(identical(other.chapter, chapter) || other.chapter == chapter)&&(identical(other.startVerse, startVerse) || other.startVerse == startVerse)&&(identical(other.endVerse, endVerse) || other.endVerse == endVerse));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,bookId,startChapter,startVerse,endChapter,endVerse);
+int get hashCode => Object.hash(runtimeType,bookId,chapter,startVerse,endVerse);
 
 @override
 String toString() {
-  return 'ScriptureRangeRef(bookId: $bookId, startChapter: $startChapter, startVerse: $startVerse, endChapter: $endChapter, endVerse: $endVerse)';
+  return 'ScriptureRangeRef(bookId: $bookId, chapter: $chapter, startVerse: $startVerse, endVerse: $endVerse)';
 }
 
 
@@ -249,7 +247,7 @@ abstract mixin class _$ScriptureRangeRefCopyWith<$Res> implements $ScriptureRang
   factory _$ScriptureRangeRefCopyWith(_ScriptureRangeRef value, $Res Function(_ScriptureRangeRef) _then) = __$ScriptureRangeRefCopyWithImpl;
 @override @useResult
 $Res call({
- String bookId, int startChapter, int startVerse, int? endChapter, int? endVerse
+ String bookId, int chapter, int startVerse, int? endVerse
 });
 
 
@@ -266,13 +264,12 @@ class __$ScriptureRangeRefCopyWithImpl<$Res>
 
 /// Create a copy of ScriptureRangeRef
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? bookId = null,Object? startChapter = null,Object? startVerse = null,Object? endChapter = freezed,Object? endVerse = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? bookId = null,Object? chapter = null,Object? startVerse = null,Object? endVerse = freezed,}) {
   return _then(_ScriptureRangeRef(
 bookId: null == bookId ? _self.bookId : bookId // ignore: cast_nullable_to_non_nullable
-as String,startChapter: null == startChapter ? _self.startChapter : startChapter // ignore: cast_nullable_to_non_nullable
+as String,chapter: null == chapter ? _self.chapter : chapter // ignore: cast_nullable_to_non_nullable
 as int,startVerse: null == startVerse ? _self.startVerse : startVerse // ignore: cast_nullable_to_non_nullable
-as int,endChapter: freezed == endChapter ? _self.endChapter : endChapter // ignore: cast_nullable_to_non_nullable
-as int?,endVerse: freezed == endVerse ? _self.endVerse : endVerse // ignore: cast_nullable_to_non_nullable
+as int,endVerse: freezed == endVerse ? _self.endVerse : endVerse // ignore: cast_nullable_to_non_nullable
 as int?,
   ));
 }

@@ -65,7 +65,7 @@ class _RecitationModeState extends State<RecitationMode> {
     _transcriptionController = TextEditingController();
     _selectedPassageRef = ScriptureRangeRef(
       bookId: '',
-      startChapter: 1,
+      chapter: 1,
       startVerse: 1,
     );
 
@@ -382,9 +382,8 @@ class _RecitationModeState extends State<RecitationMode> {
       // Get the actual passage (handles single verse or range)
       String actualPassage = bibleService.getPassageRange(
         passageRef.bookId,
-        passageRef.startChapter,
+        passageRef.chapter,
         passageRef.startVerse,
-        endChapter: passageRef.endChapter,
         endVerse: passageRef.endVerse,
       );
 

@@ -45,9 +45,8 @@ void main() {
       final result = RecitationResult(
         ref: const ScriptureRangeRef(
           bookId: 'Psa',
-          startChapter: 23,
+          chapter: 23,
           startVerse: 1,
-          endChapter: 23,
           endVerse: 6,
         ),
         score: 0.85,
@@ -58,7 +57,7 @@ void main() {
       final dbResults = await resultsService.getAllResults();
       expect(dbResults, hasLength(1));
       expect(dbResults.first.type, ResultType.recitation);
-      expect(dbResults.first.endChapter, 23);
+      expect(dbResults.first.startChapter, 23);
       expect(dbResults.first.endVerse, 6);
     });
 

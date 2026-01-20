@@ -81,30 +81,15 @@ class SpacedRepetitionService {
   
   /// Expand a result's passage range into individual verse references.
   List<ScriptureRef> _expandRange(Result result) {
-    final verses = <ScriptureRef>[];
-    final endChapter = result.endChapter ?? result.startChapter;
     final endVerse = result.endVerse ?? result.startVerse;
-    
-    // Single chapter range
-    if (endChapter == result.startChapter) {
-      for (int v = result.startVerse; v <= endVerse; v++) {
-        verses.add(ScriptureRef(
+    return [
+      for (int v = result.startVerse; v <= endVerse; v++)
+        ScriptureRef(
           bookId: result.bookId,
           chapterNumber: result.startChapter,
           verseNumber: v,
-        ));
-      }
-    } else {
-      // Multi-chapter range - for now just use start verse
-      // TODO: Would need bible service to know verse counts per chapter
-      verses.add(ScriptureRef(
-        bookId: result.bookId,
-        chapterNumber: result.startChapter,
-        verseNumber: result.startVerse,
-      ));
-    }
-    
-    return verses;
+        ),
+    ];
   }
 
   /// Replay result history to calculate current SM-2 state.

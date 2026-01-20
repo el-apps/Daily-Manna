@@ -35,9 +35,8 @@ class ResultsService {
         timestamp: DateTime.now(),
         type: ResultType.recitation,
         bookId: result.ref.bookId,
-        startChapter: result.ref.startChapter,
+        startChapter: result.ref.chapter,
         startVerse: result.ref.startVerse,
-        endChapter: Value(result.ref.endChapter),
         endVerse: Value(result.ref.endVerse),
         score: result.score,
       ),
@@ -94,9 +93,8 @@ class ResultsService {
 
   ScriptureRangeRef _toRangeRef(Result r) => ScriptureRangeRef(
         bookId: r.bookId,
-        startChapter: r.startChapter,
+        chapter: r.startChapter,
         startVerse: r.startVerse,
-        endChapter: r.endChapter,
         endVerse: r.endVerse,
       );
 
