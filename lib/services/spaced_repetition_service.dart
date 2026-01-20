@@ -46,35 +46,65 @@ class SpacedRepetitionService {
   }
 
   /// Calculate SR state for all practiced verses.
+  /// Expands passage ranges into individual verses.
   Future<List<VerseReviewState>> _getAllVerseStates() async {
-    final uniqueVerses = await _db.getUniqueVersesPracticed();
-    final states = <VerseReviewState>[];
-
-    for (final verse in uniqueVerses) {
-      final results = await _db.getResultsForVerse(
-        verse.bookId,
-        verse.chapter,
-        verse.verse,
-      );
-
-      if (results.isEmpty) continue;
-
-      // Sort by timestamp ascending to replay history
-      results.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-
-      final state = _calculateState(
-        ScriptureRef(
-          bookId: verse.bookId,
-          chapterNumber: verse.chapter,
-          verseNumber: verse.verse,
-        ),
-        results,
-      );
-
-      states.add(state);
+    final allResults = await _db.getAllResults();
+    
+    // Expand all results into individual verses and group by verse
+    final verseResults = <String, List<Result>>{};
+    
+    for (final result in allResults) {
+      final verses = _expandRange(result);
+      for (final verse in verses) {
+        final key = '${verse.bookId}:${verse.chapterNumber}:${verse.verseNumber}';
+        verseResults.putIfAbsent(key, () => []).add(result);
+      }
     }
-
+    
+    // Calculate SR state for each unique verse
+    final states = <VerseReviewState>[];
+    for (final entry in verseResults.entries) {
+      final parts = entry.key.split(':');
+      final ref = ScriptureRef(
+        bookId: parts[0],
+        chapterNumber: int.parse(parts[1]),
+        verseNumber: int.parse(parts[2]),
+      );
+      
+      // Sort by timestamp ascending to replay history
+      final results = entry.value..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      states.add(_calculateState(ref, results));
+    }
+    
     return states;
+  }
+  
+  /// Expand a result's passage range into individual verse references.
+  List<ScriptureRef> _expandRange(Result result) {
+    final verses = <ScriptureRef>[];
+    final endChapter = result.endChapter ?? result.startChapter;
+    final endVerse = result.endVerse ?? result.startVerse;
+    
+    // Single chapter range
+    if (endChapter == result.startChapter) {
+      for (int v = result.startVerse; v <= endVerse; v++) {
+        verses.add(ScriptureRef(
+          bookId: result.bookId,
+          chapterNumber: result.startChapter,
+          verseNumber: v,
+        ));
+      }
+    } else {
+      // Multi-chapter range - for now just use start verse
+      // TODO: Would need bible service to know verse counts per chapter
+      verses.add(ScriptureRef(
+        bookId: result.bookId,
+        chapterNumber: result.startChapter,
+        verseNumber: result.startVerse,
+      ));
+    }
+    
+    return verses;
   }
 
   /// Replay result history to calculate current SM-2 state.
