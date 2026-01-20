@@ -34,7 +34,20 @@ class SpacedRepetitionService {
   /// Get all practiced verses sorted by next review date.
   Future<List<VerseReviewState>> getVersesByReviewDate() async {
     final allStates = await _getAllVerseStates();
-    allStates.sort((a, b) => a.nextReviewDate.compareTo(b.nextReviewDate));
+    allStates.sort((a, b) {
+      // Primary sort: next review date
+      final dateCompare = a.nextReviewDate.compareTo(b.nextReviewDate);
+      if (dateCompare != 0) return dateCompare;
+      
+      // Secondary sort: book, chapter, verse
+      final bookCompare = a.ref.bookId!.compareTo(b.ref.bookId!);
+      if (bookCompare != 0) return bookCompare;
+      
+      final chapterCompare = a.ref.chapterNumber!.compareTo(b.ref.chapterNumber!);
+      if (chapterCompare != 0) return chapterCompare;
+      
+      return a.ref.verseNumber!.compareTo(b.ref.verseNumber!);
+    });
     return allStates;
   }
 
