@@ -5,88 +5,78 @@ import 'package:intl/intl.dart';
 class ResultCard extends StatelessWidget {
   final Result result;
   final String reference;
-  final String starDisplay;
+  final String scoreDisplay;
   final VoidCallback? onPractice;
 
   const ResultCard({
     super.key,
     required this.result,
     required this.reference,
-    required this.starDisplay,
+    required this.scoreDisplay,
     this.onPractice,
   });
 
   @override
   Widget build(BuildContext context) => Card(
-        margin: const EdgeInsets.only(bottom: 8),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    margin: const EdgeInsets.only(bottom: 8),
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(reference, style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Row(
                   children: [
+                    _TypeBadge(type: result.type),
+                    const SizedBox(width: 8),
                     Text(
-                      reference,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        _TypeBadge(type: result.type),
-                        const SizedBox(width: 8),
-                        Text(
-                          _formatTime(result.timestamp),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
+                      _formatTime(result.timestamp),
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),
-              ),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    starDisplay,
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  if (onPractice != null) ...[
-                    const SizedBox(height: 8),
-                    OutlinedButton(
-                      onPressed: onPractice,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        textStyle: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      child: const Text('Practice'),
+              ],
+            ),
+          ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(scoreDisplay, style: const TextStyle(fontSize: 20)),
+              if (onPractice != null) ...[
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: onPractice,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
                     ),
-                  ],
-                ],
-              ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  child: const Text('Practice'),
+                ),
+              ],
             ],
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 
   String _formatTime(DateTime timestamp) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final date = DateTime(
-      timestamp.year,
-      timestamp.month,
-      timestamp.day,
-    );
+    final date = DateTime(timestamp.year, timestamp.month, timestamp.day);
 
     if (date == today) {
       return DateFormat.jm().format(timestamp);

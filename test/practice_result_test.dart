@@ -6,34 +6,34 @@ void main() {
   group('MemorizationResult', () {
     final ref = ScriptureRef(bookId: 'jas', chapterNumber: 1, verseNumber: 1);
 
-    test('scoreString returns 🎉 for 1 attempt and score 0.9', () {
-      final result = MemorizationResult(ref: ref, attempts: 1, score: 0.9);
-      expect(result.scoreString, '🎉');
+    test('scoreString returns 🌳 for high score single attempt', () {
+      final result = MemorizationResult(ref: ref, attempts: 1, score: 0.95);
+      expect(result.scoreString, '🌳');
     });
 
-    test('scoreString returns ✅ for 1 attempt and score 0.89', () {
-      final result = MemorizationResult(ref: ref, attempts: 1, score: 0.89);
-      expect(result.scoreString, '✅');
+    test('scoreString returns 🌿 for 80-89% score', () {
+      final result = MemorizationResult(ref: ref, attempts: 1, score: 0.85);
+      expect(result.scoreString, '🌿');
     });
 
-    test('scoreString returns ♻️ for 2 attempts and score 0.9', () {
-      final result = MemorizationResult(ref: ref, attempts: 2, score: 0.9);
-      expect(result.scoreString, '♻️');
+    test('scoreString returns 🌳♻️ for high score multiple attempts', () {
+      final result = MemorizationResult(ref: ref, attempts: 2, score: 0.95);
+      expect(result.scoreString, '🌳♻️');
     });
 
-    test('scoreString returns ♻️ for 2 attempts and score 0.5', () {
-      final result2 = MemorizationResult(ref: ref, attempts: 2, score: 0.5);
-      expect(result2.scoreString, '♻️');
+    test('scoreString returns 🌾♻️ for low score multiple attempts', () {
+      final result = MemorizationResult(ref: ref, attempts: 2, score: 0.50);
+      expect(result.scoreString, '🌾♻️');
     });
 
-    test('scoreString returns ⛔ for 1 attempt and score 0.49', () {
+    test('scoreString returns 🌾 for low score single attempt', () {
       final result = MemorizationResult(ref: ref, attempts: 1, score: 0.49);
-      expect(result.scoreString, '⛔');
+      expect(result.scoreString, '🌾');
     });
 
-    test('scoreString returns ⛔ for 2 attempts and score 0.49', () {
-      final result = MemorizationResult(ref: ref, attempts: 2, score: 0.49);
-      expect(result.scoreString, '⛔');
+    test('scoreString returns 🌱 for 70-79% score', () {
+      final result = MemorizationResult(ref: ref, attempts: 1, score: 0.75);
+      expect(result.scoreString, '🌱');
     });
   });
 }

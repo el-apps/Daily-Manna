@@ -1,4 +1,4 @@
-import 'package:daily_manna/models/recitation_result.dart';
+import 'package:daily_manna/services/score_display.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
@@ -124,36 +124,36 @@ class _FilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          spacing: 8,
-          children: [
-            FilterChip(
-              label: const Text('All'),
-              selected: selectedType == null,
-              onSelected: (_) => onSelected(null),
-            ),
-            FilterChip(
-              label: const Text('Recitation'),
-              selected: selectedType == db.ResultType.recitation,
-              onSelected: (_) => onSelected(
-                selectedType == db.ResultType.recitation
-                    ? null
-                    : db.ResultType.recitation,
-              ),
-            ),
-            FilterChip(
-              label: const Text('Memorization'),
-              selected: selectedType == db.ResultType.memorization,
-              onSelected: (_) => onSelected(
-                selectedType == db.ResultType.memorization
-                    ? null
-                    : db.ResultType.memorization,
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.all(16),
+    child: Row(
+      spacing: 8,
+      children: [
+        FilterChip(
+          label: const Text('All'),
+          selected: selectedType == null,
+          onSelected: (_) => onSelected(null),
         ),
-      );
+        FilterChip(
+          label: const Text('Recitation'),
+          selected: selectedType == db.ResultType.recitation,
+          onSelected: (_) => onSelected(
+            selectedType == db.ResultType.recitation
+                ? null
+                : db.ResultType.recitation,
+          ),
+        ),
+        FilterChip(
+          label: const Text('Memorization'),
+          selected: selectedType == db.ResultType.memorization,
+          onSelected: (_) => onSelected(
+            selectedType == db.ResultType.memorization
+                ? null
+                : db.ResultType.memorization,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _DateGroup extends StatelessWidget {
@@ -169,29 +169,29 @@ class _DateGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-            ),
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: Theme.of(context).colorScheme.primary,
           ),
-          ...results.map(
-            (result) => ResultCard(
-              result: result,
-              reference: _getReference(result),
-              starDisplay: _getStarDisplay(result),
-              onPractice: result.type == db.ResultType.memorization
-                  ? () => _navigateToMemorization(context, result)
-                  : null,
-            ),
-          ),
-        ],
-      );
+        ),
+      ),
+      ...results.map(
+        (result) => ResultCard(
+          result: result,
+          reference: _getReference(result),
+          scoreDisplay: _getScoreDisplay(result),
+          onPractice: result.type == db.ResultType.memorization
+              ? () => _navigateToMemorization(context, result)
+              : null,
+        ),
+      ),
+    ],
+  );
 
   void _navigateToMemorization(BuildContext context, db.Result result) {
     Navigator.of(context).push(
@@ -219,10 +219,10 @@ class _DateGroup extends StatelessWidget {
     return '$bookTitle ${result.startChapter}:${result.startVerse}';
   }
 
-  String _getStarDisplay(db.Result result) {
-    final stars = scoreToStars(result.score);
-    return '⭐' * stars + '☆' * (5 - stars);
-  }
+  String _getScoreDisplay(db.Result result) => ScoreDisplay.displayWithRetry(
+    result.score,
+    attempts: result.attempts ?? 1,
+  );
 }
 
 class _EmptyState extends StatelessWidget {
@@ -232,29 +232,25 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.history,
-                size: 64,
-                color: Theme.of(context).disabledColor,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                hasFilter
-                    ? 'No results match the filter.'
-                    : 'No practice history yet.\nComplete a memorization or recitation to get started!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Theme.of(context).disabledColor,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.history, size: 64, color: Theme.of(context).disabledColor),
+          const SizedBox(height: 16),
+          Text(
+            hasFilter
+                ? 'No results match the filter.'
+                : 'No practice history yet.\nComplete a memorization or recitation to get started!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Theme.of(context).disabledColor,
+              fontStyle: FontStyle.italic,
+            ),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }

@@ -1,8 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/gestures.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:daily_manna/services/error_logger_service.dart';
+import 'package:flutter/gestures.dart';
 import 'package:daily_manna/services/settings_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/theme_card.dart';
@@ -19,21 +18,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  String _version = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadVersion();
-  }
-
-  Future<void> _loadVersion() async {
-    final info = await PackageInfo.fromPlatform();
-    setState(() {
-      _version = 'v${info.version}';
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final errorLoggerService = context.read<ErrorLoggerService>();
@@ -155,16 +139,14 @@ class _SettingsPageState extends State<SettingsPage> {
                       );
               },
             ),
-            if (_version.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Text(
-                _version,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
-                textAlign: TextAlign.center,
+            const SizedBox(height: 16),
+            Text(
+              'Scoring and version info available on the About page.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
               ),
-            ],
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),

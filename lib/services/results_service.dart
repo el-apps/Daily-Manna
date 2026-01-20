@@ -45,60 +45,70 @@ class ResultsService {
   }
 
   /// Get sections for the share dialog (today's results only).
-  Future<List<ResultSection>> getTodaySections(BibleService bibleService) async {
+  Future<List<ResultSection>> getTodaySections(
+    BibleService bibleService,
+  ) async {
     final results = await _db.getTodayResults();
 
-    final recitationResults =
-        results.where((r) => r.type == ResultType.recitation).toList();
-    final memorizationResults =
-        results.where((r) => r.type == ResultType.memorization).toList();
+    final recitationResults = results
+        .where((r) => r.type == ResultType.recitation)
+        .toList();
+    final memorizationResults = results
+        .where((r) => r.type == ResultType.memorization)
+        .toList();
 
     return [
       if (recitationResults.isNotEmpty)
         ResultSection(
           title: 'Recitation',
           items: recitationResults
-              .map((r) => ResultItem(
-                    score: RecitationResult(
-                      ref: _toRangeRef(r),
-                      score: r.score,
-                    ).starDisplay,
-                    reference: bibleService.getRangeRefName(_toRangeRef(r)),
-                  ))
+              .map(
+                (r) => ResultItem(
+                  score: RecitationResult(
+                    ref: _toRangeRef(r),
+                    score: r.score,
+                  ).scoreDisplay,
+                  reference: bibleService.getRangeRefName(_toRangeRef(r)),
+                ),
+              )
               .toList(),
         ),
       if (memorizationResults.isNotEmpty)
         ResultSection(
           title: 'Memorization',
           items: memorizationResults
-              .map((r) => ResultItem(
-                    score: MemorizationResult(
-                      ref: ScriptureRef(
-                        bookId: r.bookId,
-                        chapterNumber: r.startChapter,
-                        verseNumber: r.startVerse,
-                      ),
-                      attempts: r.attempts ?? 1,
-                      score: r.score,
-                    ).scoreString,
-                    reference: bibleService.getRefName(ScriptureRef(
+              .map(
+                (r) => ResultItem(
+                  score: MemorizationResult(
+                    ref: ScriptureRef(
                       bookId: r.bookId,
                       chapterNumber: r.startChapter,
                       verseNumber: r.startVerse,
-                    )),
-                  ))
+                    ),
+                    attempts: r.attempts ?? 1,
+                    score: r.score,
+                  ).scoreString,
+                  reference: bibleService.getRefName(
+                    ScriptureRef(
+                      bookId: r.bookId,
+                      chapterNumber: r.startChapter,
+                      verseNumber: r.startVerse,
+                    ),
+                  ),
+                ),
+              )
               .toList(),
         ),
     ];
   }
 
   ScriptureRangeRef _toRangeRef(Result r) => ScriptureRangeRef(
-        bookId: r.bookId,
-        startChapter: r.startChapter,
-        startVerse: r.startVerse,
-        endChapter: r.endChapter,
-        endVerse: r.endVerse,
-      );
+    bookId: r.bookId,
+    startChapter: r.startChapter,
+    startVerse: r.startVerse,
+    endChapter: r.endChapter,
+    endVerse: r.endVerse,
+  );
 
   // Database access methods
 
@@ -113,12 +123,11 @@ class ResultsService {
     String bookId,
     int chapter,
     int verse,
-  ) =>
-      _db.getResultsForVerse(bookId, chapter, verse);
+  ) => _db.getResultsForVerse(bookId, chapter, verse);
 
   /// Get unique verses that have been practiced.
   Future<List<({String bookId, int chapter, int verse})>>
-      getUniqueVersesPracticed() => _db.getUniqueVersesPracticed();
+  getUniqueVersesPracticed() => _db.getUniqueVersesPracticed();
 
   /// Get today's results.
   Future<List<Result>> getTodayResults() => _db.getTodayResults();
