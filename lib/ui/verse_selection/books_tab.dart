@@ -306,7 +306,7 @@ class _CategorySection extends StatelessWidget {
         children: [
           ListTile(
             title: Text(
-              '${category.label} (${books.length})',
+              category.label,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: Theme.of(context).colorScheme.primary,
                   ),
