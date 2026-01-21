@@ -7,6 +7,7 @@ class AppScaffold extends StatelessWidget {
   final Widget body;
   final bool showShareButton;
   final List<Widget>? appBarActions;
+  final PreferredSizeWidget? bottom;
   final FloatingActionButton? floatingActionButton;
   final Color? backgroundColor;
 
@@ -16,6 +17,7 @@ class AppScaffold extends StatelessWidget {
     required this.body,
     this.showShareButton = true,
     this.appBarActions,
+    this.bottom,
     this.floatingActionButton,
     this.backgroundColor,
   });
@@ -24,6 +26,7 @@ class AppScaffold extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: Text(title),
+      bottom: bottom,
       actions: [
         ...?appBarActions,
         if (showShareButton)

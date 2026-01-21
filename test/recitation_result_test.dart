@@ -46,7 +46,7 @@ void main() {
   group('RecitationResult', () {
     test('scoreDisplay returns correct emoji', () {
       final result = RecitationResult(
-        ref: ScriptureRangeRef(bookId: 'Gen', startChapter: 1, startVerse: 1),
+        ref: ScriptureRangeRef(bookId: 'Gen', chapter: 1, startVerse: 1),
         score: 0.95,
       );
       expect(result.scoreDisplay, '🌳');
@@ -54,7 +54,7 @@ void main() {
 
     test('scoreDisplay returns 🌿 for mid-range score', () {
       final result = RecitationResult(
-        ref: ScriptureRangeRef(bookId: 'Gen', startChapter: 1, startVerse: 1),
+        ref: ScriptureRangeRef(bookId: 'Gen', chapter: 1, startVerse: 1),
         score: 0.85,
       );
       expect(result.scoreDisplay, '🌿');
@@ -62,7 +62,7 @@ void main() {
 
     test('scoreDisplay returns 🌾 for low score', () {
       final result = RecitationResult(
-        ref: ScriptureRangeRef(bookId: 'Gen', startChapter: 1, startVerse: 1),
+        ref: ScriptureRangeRef(bookId: 'Gen', chapter: 1, startVerse: 1),
         score: 0.50,
       );
       expect(result.scoreDisplay, '🌾');

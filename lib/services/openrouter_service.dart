@@ -237,25 +237,24 @@ class OpenRouterService {
       debugPrint('[RecognizePassage] Parsed JSON: $parsedContent');
 
       final bookId = parsedContent['bookId'] as String?;
-      final startChapter = parsedContent['startChapter'] as int?;
+      final chapter = parsedContent['chapter'] as int?;
       final startVerse = parsedContent['startVerse'] as int?;
 
-      if (bookId == null || startChapter == null || startVerse == null) {
+      if (bookId == null || chapter == null || startVerse == null) {
         debugPrint('[RecognizePassage] Missing essential fields');
         return null;
       }
 
       final result = ScriptureRangeRef(
         bookId: bookId,
-        startChapter: startChapter,
+        chapter: chapter,
         startVerse: startVerse,
-        endChapter: parsedContent['endChapter'] as int?,
         endVerse: parsedContent['endVerse'] as int?,
       );
 
       debugPrint(
         '[RecognizePassage] Recognition result: ${result.bookId} '
-        '${result.startChapter}:${result.startVerse}',
+        '${result.chapter}:${result.startVerse}',
       );
       return result;
     } catch (e) {

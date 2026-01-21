@@ -13,7 +13,7 @@ void main() {
     test('shows single verse when no end verse', () {
       final ref = ScriptureRangeRef(
         bookId: 'gen',
-        startChapter: 1,
+        chapter: 1,
         startVerse: 1,
       );
 
@@ -23,33 +23,20 @@ void main() {
     test('shows verse range in same chapter', () {
       final ref = ScriptureRangeRef(
         bookId: 'john',
-        startChapter: 3,
+        chapter: 3,
         startVerse: 16,
-        endChapter: 3,
         endVerse: 18,
       );
 
       expect(bibleService.getRangeRefName(ref), 'John 3:16-18');
     });
 
-    test('shows verse range across chapters', () {
+    test('shows single verse when endVerse equals startVerse', () {
       final ref = ScriptureRangeRef(
         bookId: 'john',
-        startChapter: 3,
+        chapter: 3,
         startVerse: 16,
-        endChapter: 4,
-        endVerse: 5,
-      );
-
-      expect(bibleService.getRangeRefName(ref), 'John 3:16-4:5');
-    });
-
-    test('shows single verse with end chapter only', () {
-      final ref = ScriptureRangeRef(
-        bookId: 'john',
-        startChapter: 3,
-        startVerse: 16,
-        endChapter: 3,
+        endVerse: 16,
       );
 
       expect(bibleService.getRangeRefName(ref), 'John 3:16');
@@ -82,12 +69,9 @@ class _TestBibleService extends BibleService {
   String getRangeRefName(ScriptureRangeRef ref) {
     final bookTitle = mockBooks[ref.bookId]?.title ?? 'Unknown';
 
-    if (ref.endChapter == null || ref.endVerse == null) {
-      return '$bookTitle ${ref.startChapter}:${ref.startVerse}';
+    if (ref.endVerse == null || ref.endVerse == ref.startVerse) {
+      return '$bookTitle ${ref.chapter}:${ref.startVerse}';
     }
-    if (ref.endChapter == ref.startChapter) {
-      return '$bookTitle ${ref.startChapter}:${ref.startVerse}-${ref.endVerse}';
-    }
-    return '$bookTitle ${ref.startChapter}:${ref.startVerse}-${ref.endChapter}:${ref.endVerse}';
+    return '$bookTitle ${ref.chapter}:${ref.startVerse}-${ref.endVerse}';
   }
 }

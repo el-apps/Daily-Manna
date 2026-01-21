@@ -35,9 +35,8 @@ class _RecitationResultsState extends State<RecitationResults> {
     final bibleService = context.read<BibleService>();
     _actualPassage = bibleService.getPassageRange(
       widget.ref.bookId,
-      widget.ref.startChapter,
+      widget.ref.chapter,
       widget.ref.startVerse,
-      endChapter: widget.ref.endChapter,
       endVerse: widget.ref.endVerse,
     );
     _diff = computeWordDiff(_actualPassage, widget.transcribedText);

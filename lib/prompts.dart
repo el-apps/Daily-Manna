@@ -29,29 +29,28 @@ Respond ONLY with a valid JSON object in this exact format:
 {
   "bookId": "Gen",
   "book": "Genesis",
-  "startChapter": 1,
+  "chapter": 1,
   "startVerse": 1,
-  "endChapter": 1,
   "endVerse": 3
 }
 
-For a single verse, set endChapter and endVerse to match startChapter and startVerse:
+For a single verse, set endVerse to match startVerse:
 {
   "bookId": "Jhn",
   "book": "John",
-  "startChapter": 3,
+  "chapter": 3,
   "startVerse": 16,
-  "endChapter": 3,
   "endVerse": 16
 }
 
-If the text appears to be from multiple passages, identify the primary one. If you cannot identify the passage with confidence, respond with all null values:
+Note: Only single-chapter passages are supported. If the text spans multiple chapters, identify the primary chapter.
+
+If you cannot identify the passage with confidence, respond with all null values:
 {
   "bookId": null,
   "book": null,
-  "startChapter": null,
+  "chapter": null,
   "startVerse": null,
-  "endChapter": null,
   "endVerse": null
 }
 
