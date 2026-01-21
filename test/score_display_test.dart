@@ -10,10 +10,10 @@ void main() {
         expect(ScoreDisplay.scoreToEmoji(1.0), '🌳');
       });
 
-      test('returns 🌲 for 80-89%', () {
-        expect(ScoreDisplay.scoreToEmoji(0.80), '🌲');
-        expect(ScoreDisplay.scoreToEmoji(0.85), '🌲');
-        expect(ScoreDisplay.scoreToEmoji(0.89), '🌲');
+      test('returns 🎋 for 80-89%', () {
+        expect(ScoreDisplay.scoreToEmoji(0.80), '🎋');
+        expect(ScoreDisplay.scoreToEmoji(0.85), '🎋');
+        expect(ScoreDisplay.scoreToEmoji(0.89), '🎋');
       });
 
       test('returns 🌿 for 70-79%', () {
