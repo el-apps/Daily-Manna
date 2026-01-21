@@ -1,5 +1,4 @@
 import 'package:daily_manna/models/scripture_ref.dart';
-import 'package:daily_manna/services/score_display.dart';
 
 class MemorizationResult {
   MemorizationResult({
@@ -10,7 +9,4 @@ class MemorizationResult {
   final ScriptureRef ref;
   final int attempts;
   final double score;
-
-  String get scoreString =>
-      ScoreDisplay.scoreToEmoji(score, attempts: attempts);
 }

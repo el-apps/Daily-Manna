@@ -1,5 +1,3 @@
-import 'package:daily_manna/models/recitation_result.dart';
-import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/score_display.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -40,32 +38,6 @@ void main() {
         expect(ScoreDisplay.scoreToEmoji(0.95, attempts: 2), '♻️');
         expect(ScoreDisplay.scoreToEmoji(0.75, attempts: 3), '♻️');
       });
-    });
-  });
-
-  group('RecitationResult', () {
-    test('scoreDisplay returns correct emoji', () {
-      final result = RecitationResult(
-        ref: ScriptureRangeRef(bookId: 'Gen', chapter: 1, startVerse: 1),
-        score: 0.95,
-      );
-      expect(result.scoreDisplay, '🌳');
-    });
-
-    test('scoreDisplay returns 🌿 for mid-range score', () {
-      final result = RecitationResult(
-        ref: ScriptureRangeRef(bookId: 'Gen', chapter: 1, startVerse: 1),
-        score: 0.85,
-      );
-      expect(result.scoreDisplay, '🌿');
-    });
-
-    test('scoreDisplay returns 🌾 for low score', () {
-      final result = RecitationResult(
-        ref: ScriptureRangeRef(bookId: 'Gen', chapter: 1, startVerse: 1),
-        score: 0.50,
-      );
-      expect(result.scoreDisplay, '🌾');
     });
   });
 }

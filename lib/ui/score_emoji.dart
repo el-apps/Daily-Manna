@@ -11,11 +11,11 @@ class ScoreEmoji extends StatelessWidget {
   const ScoreEmoji({super.key, required this.score, this.fontSize = 24});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
+  Widget build(BuildContext context) => InkWell(
     onTap: () => Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const AboutPage())),
-    behavior: HitTestBehavior.opaque,
+    borderRadius: BorderRadius.circular(8),
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Text(
