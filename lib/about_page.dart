@@ -35,11 +35,10 @@ class _AboutPageState extends State<AboutPage> {
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 16,
         children: [
           _VersionSection(version: _version),
-          const SizedBox(height: 16),
           const _GradesSection(),
-          const SizedBox(height: 16),
           const _ContributorsSection(),
         ],
       ),
@@ -56,17 +55,16 @@ class _VersionSection extends StatelessWidget {
   Widget build(BuildContext context) => ThemeCard(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 4,
       children: [
         Text('Daily Manna', style: Theme.of(context).textTheme.titleLarge),
-        if (version.isNotEmpty) ...[
-          const SizedBox(height: 4),
+        if (version.isNotEmpty)
           Text(
             version,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.outline,
             ),
           ),
-        ],
       ],
     ),
   );
@@ -79,9 +77,9 @@ class _GradesSection extends StatelessWidget {
   Widget build(BuildContext context) => ThemeCard(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 12,
       children: [
         Text('Grades', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 12),
         ...ScoreDisplay.grades.map(
           (grade) => _GradeRow(
             emoji: grade.emoji,
@@ -130,9 +128,9 @@ class _ContributorsSection extends StatelessWidget {
   Widget build(BuildContext context) => ThemeCard(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 12,
       children: [
         Text('Contributors', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 12),
         RichText(
           text: TextSpan(
             style: Theme.of(context).textTheme.bodyLarge,
