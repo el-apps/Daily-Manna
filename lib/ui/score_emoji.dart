@@ -15,9 +15,13 @@ class ScoreEmoji extends StatelessWidget {
     onTap: () => Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const AboutPage())),
-    child: Text(
-      ScoreDisplay.scoreToEmoji(score.value, attempts: score.attempts),
-      style: TextStyle(fontSize: fontSize),
+    behavior: HitTestBehavior.opaque,
+    child: Padding(
+      padding: const EdgeInsets.all(8),
+      child: Text(
+        ScoreDisplay.scoreToEmoji(score.value, attempts: score.attempts),
+        style: TextStyle(fontSize: fontSize),
+      ),
     ),
   );
 }
