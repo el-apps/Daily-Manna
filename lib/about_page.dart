@@ -130,12 +130,33 @@ class _ContributorsSection extends StatelessWidget {
       children: [
         Text('Contributors', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 4),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Addison Emig'),
-          subtitle: const Text('Kwila Development'),
-          trailing: const Icon(Icons.chevron_right),
+        InkWell(
           onTap: () => launchUrl(Uri.parse('https://kwila.dev')),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Addison Emig',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                      Text(
+                        'Kwila Development',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right),
+              ],
+            ),
+          ),
         ),
       ],
     ),
