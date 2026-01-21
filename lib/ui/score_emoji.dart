@@ -21,7 +21,7 @@ class ScoreEmoji extends StatelessWidget {
       context,
     ).push(MaterialPageRoute(builder: (_) => const AboutPage())),
     child: Text(
-      ScoreDisplay.displayWithRetry(score, attempts: attempts),
+      ScoreDisplay.scoreToEmoji(score, attempts: attempts),
       style: TextStyle(fontSize: fontSize),
     ),
   );

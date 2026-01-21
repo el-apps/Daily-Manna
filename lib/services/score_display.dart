@@ -9,19 +9,15 @@ class ScoreDisplay {
   /// 🌿 Growing Strong (80-89)
   /// 🌱 Sprouting (70-79)
   /// 🌾 Seeds Planted (0-69)
-  static String scoreToEmoji(double score) => switch (score) {
-    >= 0.90 => '🌳',
-    >= 0.80 => '🌿',
-    >= 0.70 => '🌱',
-    _ => '🌾',
-  };
-
-  /// Display emoji with retry indicator if applicable.
-  ///
-  /// The ♻️ emoji replaces the growth emoji when multiple attempts were needed.
-  static String displayWithRetry(double score, {int attempts = 1}) {
+  /// ♻️ Multiple attempts
+  static String scoreToEmoji(double score, {int attempts = 1}) {
     if (attempts > 1) return '♻️';
-    return scoreToEmoji(score);
+    return switch (score) {
+      >= 0.90 => '🌳',
+      >= 0.80 => '🌿',
+      >= 0.70 => '🌱',
+      _ => '🌾',
+    };
   }
 
   /// Grade descriptions for the About page.

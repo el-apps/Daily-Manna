@@ -12,5 +12,5 @@ class MemorizationResult {
   final double score;
 
   String get scoreString =>
-      ScoreDisplay.displayWithRetry(score, attempts: attempts);
+      ScoreDisplay.scoreToEmoji(score, attempts: attempts);
 }

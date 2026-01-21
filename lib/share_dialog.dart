@@ -100,7 +100,7 @@ class ShareDialog extends StatelessWidget {
             section.title,
             ...section.items.map(
               (item) =>
-                  '${ScoreDisplay.displayWithRetry(item.score, attempts: item.attempts)} ${item.reference}',
+                  '${ScoreDisplay.scoreToEmoji(item.score, attempts: item.attempts)} ${item.reference}',
             ),
           ].join('\n'),
         )
