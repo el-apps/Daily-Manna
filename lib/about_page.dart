@@ -1,8 +1,10 @@
 import 'package:daily_manna/services/score_display.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/theme_card.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
@@ -37,6 +39,8 @@ class _AboutPageState extends State<AboutPage> {
           _VersionSection(version: _version),
           const SizedBox(height: 16),
           const _GradesSection(),
+          const SizedBox(height: 16),
+          const _ContributorsSection(),
         ],
       ),
     ),
@@ -114,6 +118,39 @@ class _GradeRow extends StatelessWidget {
               color: Theme.of(context).colorScheme.outline,
             ),
           ),
+      ],
+    ),
+  );
+}
+
+class _ContributorsSection extends StatelessWidget {
+  const _ContributorsSection();
+
+  @override
+  Widget build(BuildContext context) => ThemeCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Contributors', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 12),
+        RichText(
+          text: TextSpan(
+            style: Theme.of(context).textTheme.bodyLarge,
+            children: [
+              const TextSpan(text: 'Addison Emig ('),
+              TextSpan(
+                text: 'Kwila Development',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  decoration: TextDecoration.underline,
+                ),
+                recognizer: TapGestureRecognizer()
+                  ..onTap = () => launchUrl(Uri.parse('https://kwila.dev')),
+              ),
+              const TextSpan(text: ')'),
+            ],
+          ),
+        ),
       ],
     ),
   );
