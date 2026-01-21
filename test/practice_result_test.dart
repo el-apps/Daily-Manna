@@ -16,14 +16,14 @@ void main() {
       expect(result.scoreString, '🌿');
     });
 
-    test('scoreString returns 🌳♻️ for high score multiple attempts', () {
+    test('scoreString returns ♻️ for high score multiple attempts', () {
       final result = MemorizationResult(ref: ref, attempts: 2, score: 0.95);
-      expect(result.scoreString, '🌳♻️');
+      expect(result.scoreString, '♻️');
     });
 
-    test('scoreString returns 🌾♻️ for low score multiple attempts', () {
+    test('scoreString returns ♻️ for low score multiple attempts', () {
       final result = MemorizationResult(ref: ref, attempts: 2, score: 0.50);
-      expect(result.scoreString, '🌾♻️');
+      expect(result.scoreString, '♻️');
     });
 
     test('scoreString returns 🌾 for low score single attempt', () {

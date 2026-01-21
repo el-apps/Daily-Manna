@@ -18,10 +18,10 @@ class ScoreDisplay {
 
   /// Display emoji with retry indicator if applicable.
   ///
-  /// The ♻️ emoji indicates multiple attempts were needed.
+  /// The ♻️ emoji replaces the growth emoji when multiple attempts were needed.
   static String displayWithRetry(double score, {int attempts = 1}) {
-    final emoji = scoreToEmoji(score);
-    return attempts > 1 ? '$emoji♻️' : emoji;
+    if (attempts > 1) return '♻️';
+    return scoreToEmoji(score);
   }
 
   /// Grade descriptions for the About page.

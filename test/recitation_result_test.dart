@@ -36,9 +36,9 @@ void main() {
         expect(ScoreDisplay.displayWithRetry(0.95, attempts: 1), '🌳');
       });
 
-      test('adds ♻️ for multiple attempts', () {
-        expect(ScoreDisplay.displayWithRetry(0.95, attempts: 2), '🌳♻️');
-        expect(ScoreDisplay.displayWithRetry(0.75, attempts: 3), '🌱♻️');
+      test('returns ♻️ for multiple attempts', () {
+        expect(ScoreDisplay.displayWithRetry(0.95, attempts: 2), '♻️');
+        expect(ScoreDisplay.displayWithRetry(0.75, attempts: 3), '♻️');
       });
     });
   });
