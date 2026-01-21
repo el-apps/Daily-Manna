@@ -132,8 +132,9 @@ class _ContributorsSection extends StatelessWidget {
         const SizedBox(height: 4),
         InkWell(
           onTap: () => launchUrl(Uri.parse('https://kwila.dev')),
+          borderRadius: BorderRadius.circular(8),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.all(12),
             child: Row(
               children: [
                 Expanded(
