@@ -11,11 +11,7 @@ void main() {
     });
 
     test('shows single verse when no end verse', () {
-      final ref = ScriptureRangeRef(
-        bookId: 'gen',
-        chapter: 1,
-        startVerse: 1,
-      );
+      final ref = ScriptureRangeRef(bookId: 'gen', chapter: 1, startVerse: 1);
 
       expect(bibleService.getRangeRefName(ref), 'Genesis 1:1');
     });

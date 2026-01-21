@@ -29,7 +29,8 @@ class SpacedRepetitionService {
   SpacedRepetitionService(this._db);
 
   /// Convert score (0.5-1.0) to SM-2 quality (0-5).
-  static int scoreToQuality(double score) => ((score * 10) - 5).round().clamp(0, 5);
+  static int scoreToQuality(double score) =>
+      ((score * 10) - 5).round().clamp(0, 5);
 
   /// Get all practiced verses sorted by next review date.
   Future<List<VerseReviewState>> getVersesByReviewDate() async {
@@ -38,14 +39,16 @@ class SpacedRepetitionService {
       // Primary sort: next review date
       final dateCompare = a.nextReviewDate.compareTo(b.nextReviewDate);
       if (dateCompare != 0) return dateCompare;
-      
+
       // Secondary sort: book, chapter, verse
       final bookCompare = a.ref.bookId!.compareTo(b.ref.bookId!);
       if (bookCompare != 0) return bookCompare;
-      
-      final chapterCompare = a.ref.chapterNumber!.compareTo(b.ref.chapterNumber!);
+
+      final chapterCompare = a.ref.chapterNumber!.compareTo(
+        b.ref.chapterNumber!,
+      );
       if (chapterCompare != 0) return chapterCompare;
-      
+
       return a.ref.verseNumber!.compareTo(b.ref.verseNumber!);
     });
     return allStates;
@@ -62,18 +65,19 @@ class SpacedRepetitionService {
   /// Expands passage ranges into individual verses.
   Future<List<VerseReviewState>> _getAllVerseStates() async {
     final allResults = await _db.getAllResults();
-    
+
     // Expand all results into individual verses and group by verse
     final verseResults = <String, List<Result>>{};
-    
+
     for (final result in allResults) {
       final verses = _expandRange(result);
       for (final verse in verses) {
-        final key = '${verse.bookId}:${verse.chapterNumber}:${verse.verseNumber}';
+        final key =
+            '${verse.bookId}:${verse.chapterNumber}:${verse.verseNumber}';
         verseResults.putIfAbsent(key, () => []).add(result);
       }
     }
-    
+
     // Calculate SR state for each unique verse
     final states = <VerseReviewState>[];
     for (final entry in verseResults.entries) {
@@ -83,15 +87,16 @@ class SpacedRepetitionService {
         chapterNumber: int.parse(parts[1]),
         verseNumber: int.parse(parts[2]),
       );
-      
+
       // Sort by timestamp ascending to replay history
-      final results = entry.value..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      final results = entry.value
+        ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
       states.add(_calculateState(ref, results));
     }
-    
+
     return states;
   }
-  
+
   /// Expand a result's passage range into individual verse references.
   List<ScriptureRef> _expandRange(Result result) {
     final endVerse = result.endVerse ?? result.startVerse;

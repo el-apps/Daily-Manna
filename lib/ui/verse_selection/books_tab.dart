@@ -36,9 +36,7 @@ class _BooksTabState extends State<BooksTab> {
           onHomeTap: _goToBooks,
           onBookTap: _goToChapters,
         ),
-        Expanded(
-          child: _buildContent(bibleService),
-        ),
+        Expanded(child: _buildContent(bibleService)),
       ],
     );
   }
@@ -76,14 +74,14 @@ class _BooksTabState extends State<BooksTab> {
   }
 
   void _goToBooks() => setState(() {
-        _selectedBookId = null;
-        _selectedBookTitle = null;
-        _selectedChapter = null;
-      });
+    _selectedBookId = null;
+    _selectedBookTitle = null;
+    _selectedChapter = null;
+  });
 
   void _goToChapters() => setState(() {
-        _selectedChapter = null;
-      });
+    _selectedChapter = null;
+  });
 }
 
 class _Breadcrumbs extends StatelessWidget {
@@ -112,18 +110,24 @@ class _Breadcrumbs extends StatelessWidget {
         children: [
           GestureDetector(
             onTap: onHomeTap,
-            child: Icon(Icons.arrow_back, size: 20, color: theme.colorScheme.primary),
+            child: Icon(
+              Icons.arrow_back,
+              size: 20,
+              color: theme.colorScheme.primary,
+            ),
           ),
           const SizedBox(width: 12),
           if (chapter == null)
             Text(bookTitle, style: theme.textTheme.titleMedium)
-          else ..._buildChapterBreadcrumb(linkStyle, theme),
+          else
+            ..._buildChapterBreadcrumb(linkStyle, theme),
         ],
       ),
     );
   }
 
-  List<Widget> _buildChapterBreadcrumb(TextStyle linkStyle, ThemeData theme) => [
+  List<Widget> _buildChapterBreadcrumb(TextStyle linkStyle, ThemeData theme) =>
+      [
         GestureDetector(
           onTap: onBookTap,
           child: Text(bookTitle, style: linkStyle),
@@ -138,9 +142,9 @@ class _BreadcrumbSeparator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 8),
-        child: Icon(Icons.chevron_right, size: 16),
-      );
+    padding: EdgeInsets.symmetric(horizontal: 8),
+    child: Icon(Icons.chevron_right, size: 16),
+  );
 }
 
 /// Book categories for organized display.
@@ -302,54 +306,57 @@ class _CategorySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ListTile(
-            title: Text(
-              category.label,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-            ),
-            trailing: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
-            onTap: onToggle,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      ListTile(
+        title: Text(
+          category.label,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: Theme.of(context).colorScheme.primary,
           ),
-          if (isExpanded)
-            ...books.map(
-              (book) => ListTile(
-                title: Text(book.title),
-                trailing: const Icon(Icons.chevron_right),
-                contentPadding: const EdgeInsets.only(left: 32, right: 16),
-                onTap: () => onBookSelected(book),
-              ),
-            ),
-        ],
-      );
+        ),
+        trailing: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
+        onTap: onToggle,
+      ),
+      if (isExpanded)
+        ...books.map(
+          (book) => ListTile(
+            title: Text(book.title),
+            trailing: const Icon(Icons.chevron_right),
+            contentPadding: const EdgeInsets.only(left: 32, right: 16),
+            onTap: () => onBookSelected(book),
+          ),
+        ),
+    ],
+  );
 }
 
 class _ChaptersList extends StatelessWidget {
   final List<Chapter> chapters;
   final void Function(int) onChapterSelected;
 
-  const _ChaptersList({required this.chapters, required this.onChapterSelected});
+  const _ChaptersList({
+    required this.chapters,
+    required this.onChapterSelected,
+  });
 
   @override
   Widget build(BuildContext context) => GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 5,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-        ),
-        itemCount: chapters.length,
-        itemBuilder: (context, index) {
-          final chapter = chapters[index];
-          return _NumberButton(
-            number: chapter.num,
-            onTap: () => onChapterSelected(chapter.num),
-          );
-        },
+    padding: const EdgeInsets.all(16),
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 5,
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+    ),
+    itemCount: chapters.length,
+    itemBuilder: (context, index) {
+      final chapter = chapters[index];
+      return _NumberButton(
+        number: chapter.num,
+        onTap: () => onChapterSelected(chapter.num),
       );
+    },
+  );
 }
 
 class _VersesList extends StatelessWidget {
@@ -360,21 +367,21 @@ class _VersesList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 5,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-        ),
-        itemCount: verses.length,
-        itemBuilder: (context, index) {
-          final verse = verses[index];
-          return _NumberButton(
-            number: verse.num,
-            onTap: () => onVerseSelected(verse.num),
-          );
-        },
+    padding: const EdgeInsets.all(16),
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 5,
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+    ),
+    itemCount: verses.length,
+    itemBuilder: (context, index) {
+      final verse = verses[index];
+      return _NumberButton(
+        number: verse.num,
+        onTap: () => onVerseSelected(verse.num),
       );
+    },
+  );
 }
 
 class _NumberButton extends StatelessWidget {
@@ -385,17 +392,17 @@ class _NumberButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
-          child: Center(
-            child: Text(
-              number.toString(),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ),
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+    borderRadius: BorderRadius.circular(8),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Center(
+        child: Text(
+          number.toString(),
+          style: Theme.of(context).textTheme.titleMedium,
         ),
-      );
+      ),
+    ),
+  );
 }
