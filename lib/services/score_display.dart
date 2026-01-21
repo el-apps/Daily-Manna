@@ -6,8 +6,8 @@ class ScoreDisplay {
   /// Convert score (0.0-1.0) to growth emoji.
   ///
   /// 🌳 Flourishing (90-100)
-  /// 🎋 Budding (80-89)
-  /// 🌿 Growing (70-79)
+  /// 🎋 Growing (80-89)
+  /// 🌿 Budding (70-79)
   /// 🌰 Planted (0-69)
   /// ♻️ Persevered
   static String scoreToEmoji(double score, {int attempts = 1}) {
@@ -23,8 +23,8 @@ class ScoreDisplay {
   /// Grade descriptions for the About page.
   static const grades = [
     (emoji: '🌳', label: 'Flourishing', range: '90-100'),
-    (emoji: '🎋', label: 'Budding', range: '80-89'),
-    (emoji: '🌿', label: 'Growing', range: '70-79'),
+    (emoji: '🎋', label: 'Growing', range: '80-89'),
+    (emoji: '🌿', label: 'Budding', range: '70-79'),
     (emoji: '🌰', label: 'Planted', range: '0-69'),
     (emoji: '♻️', label: 'Persevered', range: null),
   ];
