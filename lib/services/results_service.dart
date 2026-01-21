@@ -63,10 +63,7 @@ class ResultsService {
           items: recitationResults
               .map(
                 (r) => ResultItem(
-                  score: RecitationResult(
-                    ref: _toRangeRef(r),
-                    score: r.score,
-                  ).scoreDisplay,
+                  score: r.score,
                   reference: bibleService.getRangeRefName(_toRangeRef(r)),
                 ),
               )
@@ -78,15 +75,8 @@ class ResultsService {
           items: memorizationResults
               .map(
                 (r) => ResultItem(
-                  score: MemorizationResult(
-                    ref: ScriptureRef(
-                      bookId: r.bookId,
-                      chapterNumber: r.startChapter,
-                      verseNumber: r.startVerse,
-                    ),
-                    attempts: r.attempts ?? 1,
-                    score: r.score,
-                  ).scoreString,
+                  score: r.score,
+                  attempts: r.attempts ?? 1,
                   reference: bibleService.getRefName(
                     ScriptureRef(
                       bookId: r.bookId,
@@ -102,11 +92,11 @@ class ResultsService {
   }
 
   ScriptureRangeRef _toRangeRef(Result r) => ScriptureRangeRef(
-        bookId: r.bookId,
-        chapter: r.startChapter,
-        startVerse: r.startVerse,
-        endVerse: r.endVerse,
-      );
+    bookId: r.bookId,
+    chapter: r.startChapter,
+    startVerse: r.startVerse,
+    endVerse: r.endVerse,
+  );
 
   // Database access methods
 

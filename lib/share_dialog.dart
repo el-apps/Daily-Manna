@@ -1,6 +1,8 @@
 import 'package:daily_manna/models/result_section.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/results_service.dart';
+import 'package:daily_manna/services/score_display.dart';
+import 'package:daily_manna/ui/score_emoji.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -47,9 +49,10 @@ class ShareDialog extends StatelessWidget {
                             (item) => Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  item.score,
-                                  style: const TextStyle(fontSize: 18),
+                                ScoreEmoji(
+                                  score: item.score,
+                                  attempts: item.attempts,
+                                  fontSize: 18,
                                 ),
                                 Text(item.reference),
                               ],
@@ -95,7 +98,10 @@ class ShareDialog extends StatelessWidget {
         .map(
           (section) => [
             section.title,
-            ...section.items.map((item) => '${item.score} ${item.reference}'),
+            ...section.items.map(
+              (item) =>
+                  '${ScoreDisplay.displayWithRetry(item.score, attempts: item.attempts)} ${item.reference}',
+            ),
           ].join('\n'),
         )
         .join('\n\n');

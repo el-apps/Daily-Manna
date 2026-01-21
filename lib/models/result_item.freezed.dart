@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ResultItem {
 
- String get score; String get reference;
+ double get score; String get reference; int get attempts;
 /// Create a copy of ResultItem
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $ResultItemCopyWith<ResultItem> get copyWith => _$ResultItemCopyWithImpl<ResultI
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ResultItem&&(identical(other.score, score) || other.score == score)&&(identical(other.reference, reference) || other.reference == reference));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ResultItem&&(identical(other.score, score) || other.score == score)&&(identical(other.reference, reference) || other.reference == reference)&&(identical(other.attempts, attempts) || other.attempts == attempts));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,score,reference);
+int get hashCode => Object.hash(runtimeType,score,reference,attempts);
 
 @override
 String toString() {
-  return 'ResultItem(score: $score, reference: $reference)';
+  return 'ResultItem(score: $score, reference: $reference, attempts: $attempts)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $ResultItemCopyWith<$Res>  {
   factory $ResultItemCopyWith(ResultItem value, $Res Function(ResultItem) _then) = _$ResultItemCopyWithImpl;
 @useResult
 $Res call({
- String score, String reference
+ double score, String reference, int attempts
 });
 
 
@@ -62,11 +62,12 @@ class _$ResultItemCopyWithImpl<$Res>
 
 /// Create a copy of ResultItem
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? score = null,Object? reference = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? score = null,Object? reference = null,Object? attempts = null,}) {
   return _then(_self.copyWith(
 score: null == score ? _self.score : score // ignore: cast_nullable_to_non_nullable
-as String,reference: null == reference ? _self.reference : reference // ignore: cast_nullable_to_non_nullable
-as String,
+as double,reference: null == reference ? _self.reference : reference // ignore: cast_nullable_to_non_nullable
+as String,attempts: null == attempts ? _self.attempts : attempts // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
@@ -151,10 +152,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String score,  String reference)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( double score,  String reference,  int attempts)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ResultItem() when $default != null:
-return $default(_that.score,_that.reference);case _:
+return $default(_that.score,_that.reference,_that.attempts);case _:
   return orElse();
 
 }
@@ -172,10 +173,10 @@ return $default(_that.score,_that.reference);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String score,  String reference)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( double score,  String reference,  int attempts)  $default,) {final _that = this;
 switch (_that) {
 case _ResultItem():
-return $default(_that.score,_that.reference);case _:
+return $default(_that.score,_that.reference,_that.attempts);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -192,10 +193,10 @@ return $default(_that.score,_that.reference);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String score,  String reference)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( double score,  String reference,  int attempts)?  $default,) {final _that = this;
 switch (_that) {
 case _ResultItem() when $default != null:
-return $default(_that.score,_that.reference);case _:
+return $default(_that.score,_that.reference,_that.attempts);case _:
   return null;
 
 }
@@ -207,11 +208,12 @@ return $default(_that.score,_that.reference);case _:
 
 
 class _ResultItem implements ResultItem {
-  const _ResultItem({required this.score, required this.reference});
+  const _ResultItem({required this.score, required this.reference, this.attempts = 1});
   
 
-@override final  String score;
+@override final  double score;
 @override final  String reference;
+@override@JsonKey() final  int attempts;
 
 /// Create a copy of ResultItem
 /// with the given fields replaced by the non-null parameter values.
@@ -223,16 +225,16 @@ _$ResultItemCopyWith<_ResultItem> get copyWith => __$ResultItemCopyWithImpl<_Res
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ResultItem&&(identical(other.score, score) || other.score == score)&&(identical(other.reference, reference) || other.reference == reference));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ResultItem&&(identical(other.score, score) || other.score == score)&&(identical(other.reference, reference) || other.reference == reference)&&(identical(other.attempts, attempts) || other.attempts == attempts));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,score,reference);
+int get hashCode => Object.hash(runtimeType,score,reference,attempts);
 
 @override
 String toString() {
-  return 'ResultItem(score: $score, reference: $reference)';
+  return 'ResultItem(score: $score, reference: $reference, attempts: $attempts)';
 }
 
 
@@ -243,7 +245,7 @@ abstract mixin class _$ResultItemCopyWith<$Res> implements $ResultItemCopyWith<$
   factory _$ResultItemCopyWith(_ResultItem value, $Res Function(_ResultItem) _then) = __$ResultItemCopyWithImpl;
 @override @useResult
 $Res call({
- String score, String reference
+ double score, String reference, int attempts
 });
 
 
@@ -260,11 +262,12 @@ class __$ResultItemCopyWithImpl<$Res>
 
 /// Create a copy of ResultItem
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? score = null,Object? reference = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? score = null,Object? reference = null,Object? attempts = null,}) {
   return _then(_ResultItem(
 score: null == score ? _self.score : score // ignore: cast_nullable_to_non_nullable
-as String,reference: null == reference ? _self.reference : reference // ignore: cast_nullable_to_non_nullable
-as String,
+as double,reference: null == reference ? _self.reference : reference // ignore: cast_nullable_to_non_nullable
+as String,attempts: null == attempts ? _self.attempts : attempts // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
