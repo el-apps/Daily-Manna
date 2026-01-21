@@ -1,6 +1,7 @@
 import 'package:daily_manna/services/bible_service.dart';
-import 'package:daily_manna/ui/memorization/practice_result.dart';
 import 'package:daily_manna/services/results_service.dart';
+import 'package:daily_manna/ui/memorization/practice_result.dart';
+import 'package:daily_manna/ui/score_emoji.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/theme_card.dart';
@@ -113,7 +114,13 @@ class _VerseMemorizationState extends State<VerseMemorization> {
                   ],
                 ),
               if (_result == Result.correct && _ref.complete) ...[
-                LinearProgressIndicator(value: _score),
+                Center(
+                  child: ScoreEmoji(
+                    score: _score,
+                    attempts: _attempts,
+                    fontSize: 48,
+                  ),
+                ),
                 FilledButton(
                   // TODO: go to the next verse in the user's queue
                   onPressed: () => _selectRef(
