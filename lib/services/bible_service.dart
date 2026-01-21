@@ -44,35 +44,19 @@ class BibleService {
 
   String getPassageRange(
     String bookId,
-    int startChapter,
+    int chapter,
     int startVerse, {
-    int? endChapter,
     int? endVerse,
   }) {
     // If no end specified, just return the single verse
-    if (endChapter == null || endVerse == null) {
-      return getVerse(bookId, startChapter, startVerse);
+    if (endVerse == null) {
+      return getVerse(bookId, chapter, startVerse);
     }
 
+    final verses = getVerses(bookId, chapter);
     final verseTexts = <String>[];
-
-    // If range is within same chapter
-    if (endChapter == startChapter) {
-      final verses = getVerses(bookId, startChapter);
-      for (int i = startVerse - 1; i < endVerse && i < verses.length; i++) {
-        verseTexts.add(verses[i].text.trim());
-      }
-    } else {
-      // Range spans multiple chapters
-      for (int chapter = startChapter; chapter <= endChapter; chapter++) {
-        final verses = getVerses(bookId, chapter);
-        final startV = chapter == startChapter ? startVerse : 1;
-        final endV = chapter == endChapter ? endVerse : verses.length;
-
-        for (int i = startV - 1; i < endV && i < verses.length; i++) {
-          verseTexts.add(verses[i].text.trim());
-        }
-      }
+    for (int i = startVerse - 1; i < endVerse && i < verses.length; i++) {
+      verseTexts.add(verses[i].text.trim());
     }
 
     return verseTexts.join('\n');
@@ -93,12 +77,9 @@ class BibleService {
         ? (_booksMap[ref.bookId]?.title ?? 'Unknown')
         : 'Unknown';
 
-    if (ref.endChapter == null || ref.endVerse == null) {
-      return '$bookTitle ${ref.startChapter}:${ref.startVerse}';
+    if (ref.endVerse == null || ref.endVerse == ref.startVerse) {
+      return '$bookTitle ${ref.chapter}:${ref.startVerse}';
     }
-    if (ref.endChapter == ref.startChapter) {
-      return '$bookTitle ${ref.startChapter}:${ref.startVerse}-${ref.endVerse}';
-    }
-    return '$bookTitle ${ref.startChapter}:${ref.startVerse}-${ref.endChapter}:${ref.endVerse}';
+    return '$bookTitle ${ref.chapter}:${ref.startVerse}-${ref.endVerse}';
   }
 }

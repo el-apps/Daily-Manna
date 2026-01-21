@@ -80,9 +80,8 @@ class _SelectPassageRangeDialogState extends State<_SelectPassageRangeDialog> {
             // Book selector
             DropdownMenu(
               width: double.infinity,
-              initialSelection: selected.bookId.isNotEmpty
-                  ? selected.bookId
-                  : null,
+              initialSelection:
+                  selected.bookId.isNotEmpty ? selected.bookId : null,
               label: const Text('Book'),
               dropdownMenuEntries: bibleService.books
                   .map<DropdownMenuEntry<String>>(
@@ -93,107 +92,62 @@ class _SelectPassageRangeDialogState extends State<_SelectPassageRangeDialog> {
               onSelected: (bookId) => setState(
                 () => selected = ScriptureRangeRef(
                   bookId: bookId ?? '',
-                  startChapter: 1,
+                  chapter: 1,
                   startVerse: 1,
                 ),
               ),
             ),
 
-            // Start verse selector
             if (selected.bookId.isNotEmpty) ...[
-              Text(
-                'Start Verse',
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-              Row(
-                spacing: 8,
-                children: [
-                  Expanded(
-                    child: DropdownMenu(
-                      expandedInsets: EdgeInsets.zero,
-                      label: const Text('Chapter'),
-                      initialSelection: selected.startChapter,
-                      dropdownMenuEntries:
-                          (bibleService.getChapters(selected.bookId))
-                              .map<DropdownMenuEntry<int>>(
-                                (chapter) => DropdownMenuEntry(
-                                  value: chapter.num,
-                                  label: chapter.num.toString(),
-                                ),
-                              )
-                              .toList(),
-                      onSelected: (chapterNumber) => setState(
-                        () => selected = ScriptureRangeRef(
-                          bookId: selected.bookId,
-                          startChapter: chapterNumber ?? 1,
-                          startVerse: selected.startVerse,
-                          endChapter: selected.endChapter ?? chapterNumber,
-                          endVerse: selected.endVerse ?? selected.startVerse,
-                        ),
-                      ),
-                    ),
+              // Chapter selector
+              DropdownMenu(
+                width: double.infinity,
+                label: const Text('Chapter'),
+                initialSelection: selected.chapter,
+                dropdownMenuEntries:
+                    (bibleService.getChapters(selected.bookId))
+                        .map<DropdownMenuEntry<int>>(
+                          (chapter) => DropdownMenuEntry(
+                            value: chapter.num,
+                            label: chapter.num.toString(),
+                          ),
+                        )
+                        .toList(),
+                onSelected: (chapterNumber) => setState(
+                  () => selected = ScriptureRangeRef(
+                    bookId: selected.bookId,
+                    chapter: chapterNumber ?? 1,
+                    startVerse: 1,
                   ),
-                  Expanded(
-                    child: DropdownMenu(
-                      expandedInsets: EdgeInsets.zero,
-                      label: const Text('Verse'),
-                      initialSelection: selected.startVerse,
-                      dropdownMenuEntries:
-                          (bibleService.getVerses(
-                                selected.bookId,
-                                selected.startChapter,
-                              ))
-                              .map<DropdownMenuEntry<int>>(
-                                (verse) => DropdownMenuEntry(
-                                  value: verse.num,
-                                  label: verse.num.toString(),
-                                ),
-                              )
-                              .toList(),
-                      onSelected: (verseNumber) => setState(
-                        () => selected = ScriptureRangeRef(
-                          bookId: selected.bookId,
-                          startChapter: selected.startChapter,
-                          startVerse: verseNumber ?? 1,
-                          endChapter:
-                              selected.endChapter ?? selected.startChapter,
-                          endVerse: selected.endVerse ?? verseNumber,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ],
 
-            // End verse selector
-            if (selected.bookId.isNotEmpty)
-              Text('End Verse', style: Theme.of(context).textTheme.labelMedium),
-            if (selected.bookId.isNotEmpty)
+              // Verse range selector
               Row(
                 spacing: 8,
                 children: [
                   Expanded(
                     child: DropdownMenu(
                       expandedInsets: EdgeInsets.zero,
-                      label: const Text('Chapter'),
-                      initialSelection: selected.endChapter,
-                      dropdownMenuEntries:
-                          (bibleService.getChapters(selected.bookId))
-                              .map<DropdownMenuEntry<int>>(
-                                (chapter) => DropdownMenuEntry(
-                                  value: chapter.num,
-                                  label: chapter.num.toString(),
-                                ),
-                              )
-                              .toList(),
-                      onSelected: (chapterNumber) => setState(
+                      label: const Text('Start Verse'),
+                      initialSelection: selected.startVerse,
+                      dropdownMenuEntries: (bibleService.getVerses(
+                            selected.bookId,
+                            selected.chapter,
+                          ))
+                          .map<DropdownMenuEntry<int>>(
+                            (verse) => DropdownMenuEntry(
+                              value: verse.num,
+                              label: verse.num.toString(),
+                            ),
+                          )
+                          .toList(),
+                      onSelected: (verseNumber) => setState(
                         () => selected = ScriptureRangeRef(
                           bookId: selected.bookId,
-                          startChapter: selected.startChapter,
-                          startVerse: selected.startVerse,
-                          endChapter: chapterNumber,
-                          endVerse: selected.endVerse ?? 1,
+                          chapter: selected.chapter,
+                          startVerse: verseNumber ?? 1,
+                          endVerse: selected.endVerse,
                         ),
                       ),
                     ),
@@ -201,28 +155,25 @@ class _SelectPassageRangeDialogState extends State<_SelectPassageRangeDialog> {
                   Expanded(
                     child: DropdownMenu(
                       expandedInsets: EdgeInsets.zero,
-                      label: const Text('Verse'),
+                      label: const Text('End Verse'),
                       initialSelection: selected.endVerse,
-                      dropdownMenuEntries:
-                          (selected.endChapter != null
-                                  ? bibleService.getVerses(
-                                      selected.bookId,
-                                      selected.endChapter!,
-                                    )
-                                  : [])
-                              .map<DropdownMenuEntry<int>>(
-                                (verse) => DropdownMenuEntry(
-                                  value: verse.num,
-                                  label: verse.num.toString(),
-                                ),
-                              )
-                              .toList(),
+                      dropdownMenuEntries: (bibleService.getVerses(
+                            selected.bookId,
+                            selected.chapter,
+                          ))
+                          .where((v) => v.num >= selected.startVerse)
+                          .map<DropdownMenuEntry<int>>(
+                            (verse) => DropdownMenuEntry(
+                              value: verse.num,
+                              label: verse.num.toString(),
+                            ),
+                          )
+                          .toList(),
                       onSelected: (verseNumber) => setState(
                         () => selected = ScriptureRangeRef(
                           bookId: selected.bookId,
-                          startChapter: selected.startChapter,
+                          chapter: selected.chapter,
                           startVerse: selected.startVerse,
-                          endChapter: selected.endChapter,
                           endVerse: verseNumber,
                         ),
                       ),
@@ -230,6 +181,7 @@ class _SelectPassageRangeDialogState extends State<_SelectPassageRangeDialog> {
                   ),
                 ],
               ),
+            ],
           ],
         ),
       ),
