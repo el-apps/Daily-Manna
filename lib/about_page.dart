@@ -1,10 +1,8 @@
 import 'package:daily_manna/services/score_display.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/theme_card.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
@@ -128,26 +126,13 @@ class _ContributorsSection extends StatelessWidget {
   Widget build(BuildContext context) => ThemeCard(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: 12,
       children: [
         Text('Contributors', style: Theme.of(context).textTheme.titleMedium),
-        RichText(
-          text: TextSpan(
-            style: Theme.of(context).textTheme.bodyLarge,
-            children: [
-              const TextSpan(text: 'Addison Emig ('),
-              TextSpan(
-                text: 'Kwila Development',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.primary,
-                  decoration: TextDecoration.underline,
-                ),
-                recognizer: TapGestureRecognizer()
-                  ..onTap = () => launchUrl(Uri.parse('https://kwila.dev')),
-              ),
-              const TextSpan(text: ')'),
-            ],
-          ),
+        const SizedBox(height: 4),
+        const ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text('Addison Emig'),
+          subtitle: Text('Kwila Development'),
         ),
       ],
     ),
