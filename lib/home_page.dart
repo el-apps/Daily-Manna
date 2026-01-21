@@ -45,18 +45,18 @@ class HomePage extends StatelessWidget {
           ).push(MaterialPageRoute(builder: (_) => const HistoryPage())),
         ),
         ModeCard(
-          title: 'About',
-          icon: Icons.info_outline,
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const AboutPage())),
-        ),
-        ModeCard(
           title: 'Settings',
           icon: Icons.settings,
           onTap: () => Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (_) => const SettingsPage())),
+        ),
+        ModeCard(
+          title: 'About',
+          icon: Icons.info_outline,
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const AboutPage())),
         ),
       ],
     ),

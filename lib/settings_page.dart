@@ -139,14 +139,6 @@ class _SettingsPageState extends State<SettingsPage> {
                       );
               },
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Scoring and version info available on the About page.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.outline,
-              ),
-              textAlign: TextAlign.center,
-            ),
           ],
         ),
       ),

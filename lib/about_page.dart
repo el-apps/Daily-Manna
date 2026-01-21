@@ -77,25 +77,12 @@ class _GradesSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Grades', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        Text(
-          'We use growth-themed emoji to celebrate your memorization progress:',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         ...ScoreDisplay.grades.map(
           (grade) => _GradeRow(
             emoji: grade.emoji,
             label: grade.label,
             range: grade.range,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Every score represents growth in your journey with Scripture. Keep growing!',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            fontStyle: FontStyle.italic,
-            color: Theme.of(context).colorScheme.primary,
           ),
         ),
       ],
