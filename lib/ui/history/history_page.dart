@@ -1,3 +1,4 @@
+import 'package:daily_manna/models/score_data.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
@@ -183,8 +184,10 @@ class _DateGroup extends StatelessWidget {
         (result) => ResultCard(
           result: result,
           reference: _getReference(result),
-          score: result.score,
-          attempts: result.attempts ?? 1,
+          scoreData: ScoreData(
+            score: result.score,
+            attempts: result.attempts ?? 1,
+          ),
           onPractice: result.type == db.ResultType.memorization
               ? () => _navigateToMemorization(context, result)
               : null,

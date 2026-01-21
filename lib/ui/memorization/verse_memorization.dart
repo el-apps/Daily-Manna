@@ -1,3 +1,4 @@
+import 'package:daily_manna/models/score_data.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/ui/memorization/practice_result.dart';
@@ -116,8 +117,7 @@ class _VerseMemorizationState extends State<VerseMemorization> {
               if (_result == Result.correct && _ref.complete) ...[
                 Center(
                   child: ScoreEmoji(
-                    score: _score,
-                    attempts: _attempts,
+                    data: ScoreData(score: _score, attempts: _attempts),
                     fontSize: 48,
                   ),
                 ),

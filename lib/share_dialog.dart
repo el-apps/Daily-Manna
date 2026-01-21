@@ -1,4 +1,5 @@
 import 'package:daily_manna/models/result_section.dart';
+import 'package:daily_manna/models/score_data.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/score_display.dart';
@@ -50,8 +51,10 @@ class ShareDialog extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 ScoreEmoji(
-                                  score: item.score,
-                                  attempts: item.attempts,
+                                  data: ScoreData(
+                                    score: item.score,
+                                    attempts: item.attempts,
+                                  ),
                                   fontSize: 18,
                                 ),
                                 Text(item.reference),

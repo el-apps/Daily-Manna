@@ -1,3 +1,4 @@
+import 'package:daily_manna/models/score_data.dart';
 import 'package:daily_manna/ui/score_emoji.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
@@ -93,7 +94,7 @@ class _DiffViewWrapperState extends State<_DiffViewWrapper> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 // Growth emoji
-                ScoreEmoji(score: widget.score, fontSize: 32),
+                ScoreEmoji(data: ScoreData(score: widget.score), fontSize: 32),
                 // View toggle buttons
                 SegmentedButton<bool>(
                   selected: {_showExpected},
