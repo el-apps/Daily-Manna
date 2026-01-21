@@ -5,7 +5,7 @@
 class ScoreDisplay {
   /// Convert score (0.0-1.0) to growth emoji.
   ///
-  /// 🌳 Mastered (90-100)
+  /// 🌳 Flourishing (90-100)
   /// 🌲 Almost There (80-89)
   /// 🌿 Growing (70-79)
   /// 🌰 Planted (0-69)
@@ -22,7 +22,7 @@ class ScoreDisplay {
 
   /// Grade descriptions for the About page.
   static const grades = [
-    (emoji: '🌳', label: 'Mastered', range: '90-100'),
+    (emoji: '🌳', label: 'Flourishing', range: '90-100'),
     (emoji: '🌲', label: 'Almost There', range: '80-89'),
     (emoji: '🌿', label: 'Growing', range: '70-79'),
     (emoji: '🌰', label: 'Planted', range: '0-69'),
