@@ -17,7 +17,7 @@ class ScoreEmoji extends StatelessWidget {
     ).push(MaterialPageRoute(builder: (_) => const AboutPage())),
     behavior: HitTestBehavior.opaque,
     child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Text(
         ScoreDisplay.scoreToEmoji(score.value, attempts: score.attempts),
         style: TextStyle(fontSize: fontSize),
