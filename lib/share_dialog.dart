@@ -47,7 +47,10 @@ class ShareDialog extends StatelessWidget {
                             (item) => Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(item.score),
+                                Text(
+                                  item.score,
+                                  style: const TextStyle(fontSize: 18),
+                                ),
                                 Text(item.reference),
                               ],
                             ),
