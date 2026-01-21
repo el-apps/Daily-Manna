@@ -28,8 +28,7 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 1;
 
-  static QueryExecutor _openConnection() =>
-      driftDatabase(name: 'daily_manna');
+  static QueryExecutor _openConnection() => driftDatabase(name: 'daily_manna');
 
   // Insert a new result
   Future<int> insertResult(ResultsCompanion result) =>
@@ -40,8 +39,9 @@ class AppDatabase extends _$AppDatabase {
       (select(results)..orderBy([(t) => OrderingTerm.desc(t.timestamp)])).get();
 
   // Watch all results (reactive stream)
-  Stream<List<Result>> watchAllResults() =>
-      (select(results)..orderBy([(t) => OrderingTerm.desc(t.timestamp)])).watch();
+  Stream<List<Result>> watchAllResults() => (select(
+    results,
+  )..orderBy([(t) => OrderingTerm.desc(t.timestamp)])).watch();
 
   // Get results for a specific verse
   Future<List<Result>> getResultsForVerse(
@@ -49,18 +49,17 @@ class AppDatabase extends _$AppDatabase {
     int chapter,
     int verse,
   ) =>
-      (select(results)
-            ..where(
-              (t) =>
-                  t.bookId.equals(bookId) &
-                  t.startChapter.equals(chapter) &
-                  t.startVerse.equals(verse),
-            ))
+      (select(results)..where(
+            (t) =>
+                t.bookId.equals(bookId) &
+                t.startChapter.equals(chapter) &
+                t.startVerse.equals(verse),
+          ))
           .get();
 
   // Get unique verses that have been practiced
   Future<List<({String bookId, int chapter, int verse})>>
-      getUniqueVersesPracticed() async {
+  getUniqueVersesPracticed() async {
     final query = selectOnly(results, distinct: true)
       ..addColumns([results.bookId, results.startChapter, results.startVerse]);
     final rows = await query.get();

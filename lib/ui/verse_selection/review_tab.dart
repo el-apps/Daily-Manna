@@ -53,7 +53,9 @@ String _formatReviewDate(DateTime date) {
   final reviewDay = DateTime(date.year, date.month, date.day);
   final difference = reviewDay.difference(today).inDays;
 
-  if (difference < 0) return 'Due ${-difference} day${difference == -1 ? '' : 's'} ago';
+  if (difference < 0) {
+    return 'Due ${-difference} day${difference == -1 ? '' : 's'} ago';
+  }
   if (difference == 0) return 'Due today';
   if (difference == 1) return 'Due tomorrow';
   return 'Due ${ReviewTab._dateFormat.format(date)}';
@@ -62,27 +64,27 @@ String _formatReviewDate(DateTime date) {
 class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.check_circle_outline,
-                size: 64,
-                color: Theme.of(context).disabledColor,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No verses due for review!\nPractice some verses to build your queue.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Theme.of(context).disabledColor,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.check_circle_outline,
+            size: 64,
+            color: Theme.of(context).disabledColor,
           ),
-        ),
-      );
+          const SizedBox(height: 16),
+          Text(
+            'No verses due for review!\nPractice some verses to build your queue.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Theme.of(context).disabledColor,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }

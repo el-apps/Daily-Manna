@@ -1,4 +1,5 @@
-import 'package:daily_manna/models/recitation_result.dart';
+import 'package:daily_manna/models/score_data.dart';
+import 'package:daily_manna/ui/score_emoji.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
@@ -92,8 +93,8 @@ class _DiffViewWrapperState extends State<_DiffViewWrapper> {
                   bibleService.getRangeRefName(widget.ref),
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                // Star rating
-                _StarRating(score: widget.score),
+                // Growth emoji
+                ScoreEmoji(score: ScoreData(value: widget.score), fontSize: 32),
                 // View toggle buttons
                 SegmentedButton<bool>(
                   selected: {_showExpected},
@@ -151,32 +152,6 @@ class _DiffViewWrapperState extends State<_DiffViewWrapper> {
           )
           .toList();
     }
-  }
-}
-
-class _StarRating extends StatelessWidget {
-  final double score;
-
-  const _StarRating({required this.score});
-
-  @override
-  Widget build(BuildContext context) {
-    final stars = scoreToStars(score);
-    final emptyStars = 5 - stars;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ...List.generate(
-          stars,
-          (_) => const Icon(Icons.star, color: Colors.amber),
-        ),
-        ...List.generate(
-          emptyStars,
-          (_) => const Icon(Icons.star_outline, color: Colors.amber),
-        ),
-      ],
-    );
   }
 }
 

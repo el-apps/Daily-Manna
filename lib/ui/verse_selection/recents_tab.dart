@@ -62,27 +62,23 @@ String _formatLastPracticed(DateTime date) {
 class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.history,
-                size: 64,
-                color: Theme.of(context).disabledColor,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No practice history yet.\nComplete a memorization to get started!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Theme.of(context).disabledColor,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.history, size: 64, color: Theme.of(context).disabledColor),
+          const SizedBox(height: 16),
+          Text(
+            'No practice history yet.\nComplete a memorization to get started!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Theme.of(context).disabledColor,
+              fontStyle: FontStyle.italic,
+            ),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }

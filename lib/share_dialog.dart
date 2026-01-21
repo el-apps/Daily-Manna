@@ -1,6 +1,9 @@
 import 'package:daily_manna/models/result_section.dart';
+import 'package:daily_manna/models/score_data.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/results_service.dart';
+import 'package:daily_manna/services/score_display.dart';
+import 'package:daily_manna/ui/score_emoji.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -27,15 +30,15 @@ class ShareDialog extends StatelessWidget {
                   height: 100,
                   child: Center(child: CircularProgressIndicator()),
                 )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: 8,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Daily sharing your results with others is a great way to practice accountability!',
-                    ),
-                    if (hasContent) ...[
+              : SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Daily sharing your results with others is a great way to practice accountability!',
+                      ),
+                      if (hasContent) ...[
                       const Divider(),
                       ...sections.expand(
                         (section) => [
@@ -47,13 +50,18 @@ class ShareDialog extends StatelessWidget {
                             (item) => Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(item.score),
+                                ScoreEmoji(
+                                  score: ScoreData(
+                                    value: item.score,
+                                    attempts: item.attempts,
+                                  ),
+                                  fontSize: 18,
+                                ),
                                 Text(item.reference),
                               ],
                             ),
                           ),
-                          if (section != sections.last)
-                            const SizedBox(height: 8),
+
                         ],
                       ),
                     ] else ...[
@@ -68,6 +76,7 @@ class ShareDialog extends StatelessWidget {
                     ],
                   ],
                 ),
+              ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -92,7 +101,10 @@ class ShareDialog extends StatelessWidget {
         .map(
           (section) => [
             section.title,
-            ...section.items.map((item) => '${item.score} ${item.reference}'),
+            ...section.items.map(
+              (item) =>
+                  '${ScoreDisplay.scoreToEmoji(item.score, attempts: item.attempts)} ${item.reference}',
+            ),
           ].join('\n'),
         )
         .join('\n\n');

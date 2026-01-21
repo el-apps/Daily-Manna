@@ -1,3 +1,4 @@
+import 'package:daily_manna/about_page.dart';
 import 'package:daily_manna/mode_card.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
@@ -49,6 +50,13 @@ class HomePage extends StatelessWidget {
           onTap: () => Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (_) => const SettingsPage())),
+        ),
+        ModeCard(
+          title: 'About',
+          icon: Icons.info_outline,
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const AboutPage())),
         ),
       ],
     ),

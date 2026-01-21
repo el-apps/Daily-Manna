@@ -11,26 +11,26 @@ class VerseSelectionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
-        length: 3,
-        child: AppScaffold(
-          title: 'Select Verse',
-          showShareButton: false,
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Books'),
-              Tab(text: 'Review'),
-              Tab(text: 'Recents'),
-            ],
-          ),
-          body: TabBarView(
-            children: [
-              BooksTab(onVerseSelected: (ref) => _selectVerse(context, ref)),
-              ReviewTab(onVerseSelected: (ref) => _selectVerse(context, ref)),
-              RecentsTab(onVerseSelected: (ref) => _selectVerse(context, ref)),
-            ],
-          ),
-        ),
-      );
+    length: 3,
+    child: AppScaffold(
+      title: 'Select Verse',
+      showShareButton: false,
+      bottom: const TabBar(
+        tabs: [
+          Tab(text: 'Books'),
+          Tab(text: 'Review'),
+          Tab(text: 'Recents'),
+        ],
+      ),
+      body: TabBarView(
+        children: [
+          BooksTab(onVerseSelected: (ref) => _selectVerse(context, ref)),
+          ReviewTab(onVerseSelected: (ref) => _selectVerse(context, ref)),
+          RecentsTab(onVerseSelected: (ref) => _selectVerse(context, ref)),
+        ],
+      ),
+    ),
+  );
 
   void _selectVerse(BuildContext context, ScriptureRef ref) {
     Navigator.of(context).pop(ref);
