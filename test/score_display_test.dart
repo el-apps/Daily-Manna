@@ -10,22 +10,22 @@ void main() {
         expect(ScoreDisplay.scoreToEmoji(1.0), '🌳');
       });
 
-      test('returns 🌿 for 80-89%', () {
-        expect(ScoreDisplay.scoreToEmoji(0.80), '🌿');
-        expect(ScoreDisplay.scoreToEmoji(0.85), '🌿');
-        expect(ScoreDisplay.scoreToEmoji(0.89), '🌿');
+      test('returns 🌲 for 80-89%', () {
+        expect(ScoreDisplay.scoreToEmoji(0.80), '🌲');
+        expect(ScoreDisplay.scoreToEmoji(0.85), '🌲');
+        expect(ScoreDisplay.scoreToEmoji(0.89), '🌲');
       });
 
-      test('returns 🌱 for 70-79%', () {
-        expect(ScoreDisplay.scoreToEmoji(0.70), '🌱');
-        expect(ScoreDisplay.scoreToEmoji(0.75), '🌱');
-        expect(ScoreDisplay.scoreToEmoji(0.79), '🌱');
+      test('returns 🌿 for 70-79%', () {
+        expect(ScoreDisplay.scoreToEmoji(0.70), '🌿');
+        expect(ScoreDisplay.scoreToEmoji(0.75), '🌿');
+        expect(ScoreDisplay.scoreToEmoji(0.79), '🌿');
       });
 
-      test('returns 🌾 for 0-69%', () {
-        expect(ScoreDisplay.scoreToEmoji(0.0), '🌾');
-        expect(ScoreDisplay.scoreToEmoji(0.50), '🌾');
-        expect(ScoreDisplay.scoreToEmoji(0.69), '🌾');
+      test('returns 🌰 for 0-69%', () {
+        expect(ScoreDisplay.scoreToEmoji(0.0), '🌰');
+        expect(ScoreDisplay.scoreToEmoji(0.50), '🌰');
+        expect(ScoreDisplay.scoreToEmoji(0.69), '🌰');
       });
     });
 
