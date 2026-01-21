@@ -30,15 +30,16 @@ class ShareDialog extends StatelessWidget {
                   height: 100,
                   child: Center(child: CircularProgressIndicator()),
                 )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: 8,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Daily sharing your results with others is a great way to practice accountability!',
-                    ),
-                    if (hasContent) ...[
+              : SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 4,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Daily sharing your results with others is a great way to practice accountability!',
+                      ),
+                      if (hasContent) ...[
                       const Divider(),
                       ...sections.expand(
                         (section) => [
@@ -62,7 +63,7 @@ class ShareDialog extends StatelessWidget {
                             ),
                           ),
                           if (section != sections.last)
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 4),
                         ],
                       ),
                     ] else ...[
@@ -77,6 +78,7 @@ class ShareDialog extends StatelessWidget {
                     ],
                   ],
                 ),
+              ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
