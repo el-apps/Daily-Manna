@@ -33,7 +33,6 @@ class ShareDialog extends StatelessWidget {
               : SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    spacing: 4,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
@@ -62,8 +61,7 @@ class ShareDialog extends StatelessWidget {
                               ],
                             ),
                           ),
-                          if (section != sections.last)
-                            const SizedBox(height: 4),
+
                         ],
                       ),
                     ] else ...[
