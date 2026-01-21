@@ -3,6 +3,7 @@ import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/theme_card.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
@@ -129,10 +130,12 @@ class _ContributorsSection extends StatelessWidget {
       children: [
         Text('Contributors', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 4),
-        const ListTile(
+        ListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text('Addison Emig'),
-          subtitle: Text('Kwila Development'),
+          title: const Text('Addison Emig'),
+          subtitle: const Text('Kwila Development'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => launchUrl(Uri.parse('https://kwila.dev')),
         ),
       ],
     ),
