@@ -1,4 +1,3 @@
-import 'package:daily_manna/services/score_display.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
@@ -184,7 +183,8 @@ class _DateGroup extends StatelessWidget {
         (result) => ResultCard(
           result: result,
           reference: _getReference(result),
-          scoreDisplay: _getScoreDisplay(result),
+          score: result.score,
+          attempts: result.attempts ?? 1,
           onPractice: result.type == db.ResultType.memorization
               ? () => _navigateToMemorization(context, result)
               : null,
@@ -218,11 +218,6 @@ class _DateGroup extends StatelessWidget {
     }
     return '$bookTitle ${result.startChapter}:${result.startVerse}';
   }
-
-  String _getScoreDisplay(db.Result result) => ScoreDisplay.displayWithRetry(
-    result.score,
-    attempts: result.attempts ?? 1,
-  );
 }
 
 class _EmptyState extends StatelessWidget {

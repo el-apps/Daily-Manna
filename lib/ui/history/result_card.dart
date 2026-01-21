@@ -1,18 +1,21 @@
 import 'package:daily_manna/services/database/database.dart';
+import 'package:daily_manna/ui/score_emoji.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class ResultCard extends StatelessWidget {
   final Result result;
   final String reference;
-  final String scoreDisplay;
+  final double score;
+  final int attempts;
   final VoidCallback? onPractice;
 
   const ResultCard({
     super.key,
     required this.result,
     required this.reference,
-    required this.scoreDisplay,
+    required this.score,
+    this.attempts = 1,
     this.onPractice,
   });
 
@@ -46,7 +49,7 @@ class ResultCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(scoreDisplay, style: const TextStyle(fontSize: 20)),
+              ScoreEmoji(score: score, attempts: attempts, fontSize: 20),
               if (onPractice != null) ...[
                 const SizedBox(height: 8),
                 OutlinedButton(
