@@ -94,7 +94,7 @@ class _DiffViewWrapperState extends State<_DiffViewWrapper> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 // Growth emoji
-                ScoreEmoji(data: ScoreData(score: widget.score), fontSize: 32),
+                ScoreEmoji(score: ScoreData(value: widget.score), fontSize: 32),
                 // View toggle buttons
                 SegmentedButton<bool>(
                   selected: {_showExpected},

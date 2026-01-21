@@ -117,7 +117,7 @@ class _VerseMemorizationState extends State<VerseMemorization> {
               if (_result == Result.correct && _ref.complete) ...[
                 Center(
                   child: ScoreEmoji(
-                    data: ScoreData(score: _score, attempts: _attempts),
+                    score: ScoreData(value: _score, attempts: _attempts),
                     fontSize: 48,
                   ),
                 ),

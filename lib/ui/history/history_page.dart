@@ -184,8 +184,8 @@ class _DateGroup extends StatelessWidget {
         (result) => ResultCard(
           result: result,
           reference: _getReference(result),
-          scoreData: ScoreData(
-            score: result.score,
+          score: ScoreData(
+            value: result.score,
             attempts: result.attempts ?? 1,
           ),
           onPractice: result.type == db.ResultType.memorization

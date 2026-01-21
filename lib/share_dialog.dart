@@ -51,8 +51,8 @@ class ShareDialog extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 ScoreEmoji(
-                                  data: ScoreData(
-                                    score: item.score,
+                                  score: ScoreData(
+                                    value: item.score,
                                     attempts: item.attempts,
                                   ),
                                   fontSize: 18,

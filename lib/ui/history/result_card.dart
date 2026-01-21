@@ -7,14 +7,14 @@ import 'package:intl/intl.dart';
 class ResultCard extends StatelessWidget {
   final Result result;
   final String reference;
-  final ScoreData scoreData;
+  final ScoreData score;
   final VoidCallback? onPractice;
 
   const ResultCard({
     super.key,
     required this.result,
     required this.reference,
-    required this.scoreData,
+    required this.score,
     this.onPractice,
   });
 
@@ -48,7 +48,7 @@ class ResultCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              ScoreEmoji(data: scoreData, fontSize: 20),
+              ScoreEmoji(score: score, fontSize: 20),
               if (onPractice != null) ...[
                 const SizedBox(height: 8),
                 OutlinedButton(

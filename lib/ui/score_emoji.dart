@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 
 /// Displays growth emoji for a score. Taps open About page.
 class ScoreEmoji extends StatelessWidget {
-  final ScoreData data;
+  final ScoreData score;
   final double fontSize;
 
-  const ScoreEmoji({super.key, required this.data, this.fontSize = 24});
+  const ScoreEmoji({super.key, required this.score, this.fontSize = 24});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
@@ -16,7 +16,7 @@ class ScoreEmoji extends StatelessWidget {
       context,
     ).push(MaterialPageRoute(builder: (_) => const AboutPage())),
     child: Text(
-      ScoreDisplay.scoreToEmoji(data.score, attempts: data.attempts),
+      ScoreDisplay.scoreToEmoji(score.value, attempts: score.attempts),
       style: TextStyle(fontSize: fontSize),
     ),
   );
