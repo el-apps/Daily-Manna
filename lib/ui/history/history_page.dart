@@ -212,14 +212,16 @@ class _DateGroup extends StatelessWidget {
 
   String _getReference(db.Result result) {
     final bookTitle = bibleService.booksMap[result.bookId]?.title ?? 'Unknown';
+    final start = '${result.startChapter}:${result.startVerse}';
 
-    if (result.endChapter != null && result.endVerse != null) {
-      if (result.endChapter == result.startChapter) {
-        return '$bookTitle ${result.startChapter}:${result.startVerse}-${result.endVerse}';
+    if (result.endVerse != null && result.endVerse != result.startVerse) {
+      if (result.endChapter != null &&
+          result.endChapter != result.startChapter) {
+        return '$bookTitle $start-${result.endChapter}:${result.endVerse}';
       }
-      return '$bookTitle ${result.startChapter}:${result.startVerse}-${result.endChapter}:${result.endVerse}';
+      return '$bookTitle $start-${result.endVerse}';
     }
-    return '$bookTitle ${result.startChapter}:${result.startVerse}';
+    return '$bookTitle $start';
   }
 }
 
