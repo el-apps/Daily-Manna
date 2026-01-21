@@ -5,10 +5,10 @@
 class ScoreDisplay {
   /// Convert score (0.0-1.0) to growth emoji.
   ///
-  /// 🌳 Mighty Oak (90-100)
-  /// 🌲 Growing Tree (80-89)
-  /// 🌿 Sapling (70-79)
-  /// 🌰 Acorn (0-69)
+  /// 🌳 Excellent (90-100)
+  /// 🌲 Great (80-89)
+  /// 🌿 Good (70-79)
+  /// 🌰 Keep Practicing (0-69)
   /// ♻️ Multiple attempts
   static String scoreToEmoji(double score, {int attempts = 1}) {
     if (attempts > 1) return '♻️';
@@ -22,10 +22,10 @@ class ScoreDisplay {
 
   /// Grade descriptions for the About page.
   static const grades = [
-    (emoji: '🌳', label: 'Mighty Oak', range: '90-100'),
-    (emoji: '🌲', label: 'Growing Tree', range: '80-89'),
-    (emoji: '🌿', label: 'Sapling', range: '70-79'),
-    (emoji: '🌰', label: 'Acorn', range: '0-69'),
+    (emoji: '🌳', label: 'Excellent', range: '90-100'),
+    (emoji: '🌲', label: 'Great', range: '80-89'),
+    (emoji: '🌿', label: 'Good', range: '70-79'),
+    (emoji: '🌰', label: 'Keep Practicing', range: '0-69'),
     (emoji: '♻️', label: 'Multiple attempts', range: null),
   ];
 }
