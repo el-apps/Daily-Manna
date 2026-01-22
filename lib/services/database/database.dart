@@ -80,7 +80,10 @@ class AppDatabase extends _$AppDatabase {
     final midnight = DateTime(now.year, now.month, now.day);
     return (select(results)
           ..where((t) => t.timestamp.isBiggerOrEqualValue(midnight))
-          ..orderBy([(t) => OrderingTerm.desc(t.timestamp)]))
+          ..orderBy([
+            (t) => OrderingTerm.desc(t.timestamp),
+            (t) => OrderingTerm.desc(t.id),
+          ]))
         .get();
   }
 }
