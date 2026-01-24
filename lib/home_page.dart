@@ -5,6 +5,7 @@ import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/history/history_page.dart';
 import 'package:daily_manna/ui/memorization/verse_memorization.dart';
 import 'package:daily_manna/ui/recitation/recitation_mode.dart';
+import 'package:daily_manna/ui/review/review_card.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatelessWidget {
@@ -29,6 +30,7 @@ class HomePage extends StatelessWidget {
             ).textTheme.titleSmall!.copyWith(fontStyle: FontStyle.italic),
           ),
         ),
+        const ReviewCard(),
         for (final feature in features)
           ModeCard(
             title: feature.title,
