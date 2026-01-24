@@ -44,51 +44,73 @@ class ResultsService {
   }
 
   /// Get sections for the share dialog (today's results only).
+  ///
+  /// Results are ordered by practice time (first to last). Consecutive results
+  /// of the same type are grouped into a single section.
   Future<List<ResultSection>> getTodaySections(
     BibleService bibleService,
   ) async {
     final results = await _db.getTodayResults();
+    if (results.isEmpty) return [];
 
-    final recitationResults = results
-        .where((r) => r.type == ResultType.recitation)
-        .toList();
-    final memorizationResults = results
-        .where((r) => r.type == ResultType.memorization)
-        .toList();
+    // Reverse to get chronological order (first practiced to last)
+    final chronological = results.reversed.toList();
 
-    return [
-      if (recitationResults.isNotEmpty)
-        ResultSection(
-          title: 'Recitation',
-          items: recitationResults
-              .map(
-                (r) => ResultItem(
-                  score: r.score,
-                  reference: bibleService.getRangeRefName(_toRangeRef(r)),
-                ),
-              )
-              .toList(),
+    final sections = <ResultSection>[];
+    ResultType? currentType;
+    var currentItems = <ResultItem>[];
+
+    for (final r in chronological) {
+      if (r.type != currentType) {
+        // Save previous section if it has items
+        if (currentItems.isNotEmpty) {
+          sections.add(ResultSection(
+            title: currentType == ResultType.recitation
+                ? 'Recitation'
+                : 'Memorization',
+            items: currentItems,
+          ));
+        }
+        // Start new section
+        currentType = r.type;
+        currentItems = [];
+      }
+
+      currentItems.add(_resultToItem(r, bibleService));
+    }
+
+    // Add final section
+    if (currentItems.isNotEmpty) {
+      sections.add(ResultSection(
+        title: currentType == ResultType.recitation
+            ? 'Recitation'
+            : 'Memorization',
+        items: currentItems,
+      ));
+    }
+
+    return sections;
+  }
+
+  ResultItem _resultToItem(Result r, BibleService bibleService) {
+    if (r.type == ResultType.recitation) {
+      return ResultItem(
+        score: r.score,
+        reference: bibleService.getRangeRefName(_toRangeRef(r)),
+      );
+    } else {
+      return ResultItem(
+        score: r.score,
+        attempts: r.attempts ?? 1,
+        reference: bibleService.getRefName(
+          ScriptureRef(
+            bookId: r.bookId,
+            chapterNumber: r.startChapter,
+            verseNumber: r.startVerse,
+          ),
         ),
-      if (memorizationResults.isNotEmpty)
-        ResultSection(
-          title: 'Memorization',
-          items: memorizationResults
-              .map(
-                (r) => ResultItem(
-                  score: r.score,
-                  attempts: r.attempts ?? 1,
-                  reference: bibleService.getRefName(
-                    ScriptureRef(
-                      bookId: r.bookId,
-                      chapterNumber: r.startChapter,
-                      verseNumber: r.startVerse,
-                    ),
-                  ),
-                ),
-              )
-              .toList(),
-        ),
-    ];
+      );
+    }
   }
 
   ScriptureRangeRef _toRangeRef(Result r) => ScriptureRangeRef(
