@@ -76,10 +76,6 @@ class ReviewPage extends StatelessWidget {
         title: Text(bibleService.getRefName(ref)),
         content: const Text('How would you like to practice?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
           FilledButton.tonal(
             onPressed: () {
               Navigator.of(context).pop();
@@ -87,7 +83,7 @@ class ReviewPage extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const RecitationMode()),
               );
             },
-            child: const Text('🎤 Recite'),
+            child: const Text('Recite'),
           ),
           FilledButton(
             onPressed: () {
@@ -98,7 +94,11 @@ class ReviewPage extends StatelessWidget {
                 ),
               );
             },
-            child: const Text('⌨️ Memorize'),
+            child: const Text('Memorize'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
           ),
         ],
       ),
