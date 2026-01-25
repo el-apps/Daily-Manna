@@ -5,6 +5,7 @@ import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/history/history_page.dart';
 import 'package:daily_manna/ui/practice/practice_page.dart';
 import 'package:daily_manna/ui/review/review_card.dart';
+import 'package:daily_manna/ui/streak/streak_card.dart';
 import 'package:daily_manna/ui/study/study_log_page.dart';
 import 'package:flutter/material.dart';
 
@@ -29,6 +30,7 @@ class HomePage extends StatelessWidget {
             ).textTheme.titleSmall!.copyWith(fontStyle: FontStyle.italic),
           ),
         ),
+        const StreakCard(),
         ModeCard(
           title: 'Practice',
           icon: Icons.play_arrow,
