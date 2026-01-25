@@ -201,12 +201,8 @@ class _VerseMemorizationState extends State<VerseMemorization> {
 }
 
 enum Result {
-  unknown(color: Colors.brown),
-  learn(color: Colors.blue),
-  incorrect(color: Colors.red),
-  correct(color: Colors.green);
-
-  final Color color;
-
-  const Result({required this.color});
+  unknown,
+  learn,
+  incorrect,
+  correct,
 }
