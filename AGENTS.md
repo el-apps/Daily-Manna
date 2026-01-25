@@ -87,6 +87,8 @@ Verb-first format: `verb-noun`. Simple verbs stand alone: `format`, `test`.
 
 **Always use conventional commit format.** Every commit message must start with a type prefix. Make new commits for fixes—don't use `--amend` + force push to rewrite history.
 
+**Never rebase pushed branches.** Once a branch is pushed, use `git merge origin/main` to incorporate upstream changes, not rebase. Rebase requires force push, which rewrites public history.
+
 Format: `type(scope): description` or `type: description`
 
 Types:
@@ -256,6 +258,10 @@ When testing changes to database behavior in the browser, clear IndexedDB storag
 - Whisper API for speech-to-text
 - OpenRouter LLM for passage recognition
 - Audio: PCM 16-bit at 16kHz, encoded to WAV
+
+## Before Writing Code
+
+**Study existing patterns first.** Before adding new functions or methods, read the surrounding code to understand existing patterns. Reuse existing helpers (e.g., if there's a `_selectRef` that resets state, use it instead of creating `_tryAgain`).
 
 ## Tidy First Principles
 
