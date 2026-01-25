@@ -252,6 +252,10 @@ Custom Python server with CORS headers.
 - `just stop-web-prod` - Stop server
 - `just logs-web-prod` - View logs
 
+### Testing Database Changes
+
+When testing changes to database behavior in the browser, clear IndexedDB storage first. Old persisted data will mask whether your fix works. Use browser devtools or JS to clear storage before testing.
+
 ## Important Notes
 
 - KJV XML ~5MB: initial load may be slow
