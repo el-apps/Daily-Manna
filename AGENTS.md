@@ -86,6 +86,14 @@ just format           # Format code
 just clean            # Clean build artifacts
 ```
 
+## Agent Reminders
+
+- **Reuse existing components** - Check for existing widgets (`VerseSelector`, `ThemeCard`, etc.) before creating new ones
+- **No decorative text** - Don't add emojis or decorative elements to buttons/UI without asking
+- **Flutter dialog conventions** - Cancel button goes last (bottom-right), not first
+- **Prefer existing patterns** - Use push/pop navigation over adding callbacks to existing pages
+- **Regular commits** - Don't use `--amend` + force push; make new commits for fixes
+
 ## Development Guidelines
 
 ### Just Recipe Naming
