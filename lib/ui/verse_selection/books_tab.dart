@@ -5,6 +5,8 @@ import 'package:daily_manna/services/bible_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+const int _gridCrossAxisCount = 5;
+
 /// Browse tab with drill-down navigation: Books → Chapters → Verses.
 class BooksTab extends StatefulWidget {
   final void Function(ScriptureRef)? onVerseSelected;
@@ -443,7 +445,7 @@ class _ChaptersList extends StatelessWidget {
   Widget build(BuildContext context) => GridView.builder(
     padding: const EdgeInsets.all(16),
     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: 5,
+      crossAxisCount: _gridCrossAxisCount,
       mainAxisSpacing: 8,
       crossAxisSpacing: 8,
     ),
@@ -468,7 +470,7 @@ class _VersesList extends StatelessWidget {
   Widget build(BuildContext context) => GridView.builder(
     padding: const EdgeInsets.all(16),
     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: 5,
+      crossAxisCount: _gridCrossAxisCount,
       mainAxisSpacing: 8,
       crossAxisSpacing: 8,
     ),
@@ -498,7 +500,7 @@ class _VersesListRangeEnd extends StatelessWidget {
   Widget build(BuildContext context) => GridView.builder(
     padding: const EdgeInsets.all(16),
     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: 5,
+      crossAxisCount: _gridCrossAxisCount,
       mainAxisSpacing: 8,
       crossAxisSpacing: 8,
     ),
