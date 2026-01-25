@@ -33,55 +33,7 @@ class RecitationPlaybackSection extends StatelessWidget {
             return Column(
               spacing: 24,
               children: [
-                // Playback progress
-                StreamBuilder<Duration?>(
-                  stream: audioPlayer.positionStream,
-                  builder: (context, snapshot) {
-                    final position = snapshot.data ?? Duration.zero;
-                    final duration = audioPlayer.duration ?? Duration.zero;
-                    final durationMs = duration.inMilliseconds.toDouble();
-                    final positionMs = position.inMilliseconds.toDouble().clamp(
-                      0.0,
-                      durationMs,
-                    );
-
-                    return Column(
-                      spacing: 8,
-                      children: [
-                        if (durationMs > 0)
-                          SliderTheme(
-                            data: SliderThemeData(trackHeight: 4),
-                            child: Slider(
-                              min: 0,
-                              max: durationMs,
-                              value: positionMs,
-                              onChanged: (double value) {
-                                audioPlayer.seek(
-                                  Duration(milliseconds: value.toInt()),
-                                );
-                              },
-                            ),
-                          ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _formatDuration(position),
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                              Text(
-                                _formatDuration(duration),
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
+                _PlaybackProgressSlider(audioPlayer: audioPlayer),
                 // Play/Pause button
                 FilledButton.icon(
                   onPressed: onTogglePlayback,
@@ -115,6 +67,63 @@ class RecitationPlaybackSection extends StatelessWidget {
       ],
     ),
   );
+
+}
+
+class _PlaybackProgressSlider extends StatelessWidget {
+  const _PlaybackProgressSlider({required this.audioPlayer});
+
+  final AudioPlayer audioPlayer;
+
+  @override
+  Widget build(BuildContext context) => StreamBuilder<Duration?>(
+      stream: audioPlayer.positionStream,
+      builder: (context, snapshot) {
+        final position = snapshot.data ?? Duration.zero;
+        final duration = audioPlayer.duration ?? Duration.zero;
+        final durationMs = duration.inMilliseconds.toDouble();
+        final positionMs = position.inMilliseconds.toDouble().clamp(
+          0.0,
+          durationMs,
+        );
+
+        return Column(
+          spacing: 8,
+          children: [
+            if (durationMs > 0)
+              SliderTheme(
+                data: SliderThemeData(trackHeight: 4),
+                child: Slider(
+                  min: 0,
+                  max: durationMs,
+                  value: positionMs,
+                  onChanged: (double value) {
+                    audioPlayer.seek(
+                      Duration(milliseconds: value.toInt()),
+                    );
+                  },
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _formatDuration(position),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Text(
+                    _formatDuration(duration),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
 
   String _formatDuration(Duration duration) {
     final minutes = duration.inMinutes;
