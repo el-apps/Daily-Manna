@@ -239,9 +239,11 @@ Update version in `pubspec.yaml`, merge to `main` to trigger automatic workflow:
 
 ## Web Support
 
-Flask web support enabled. Custom Python server with CORS headers.
+Custom Python server with CORS headers.
 
 **Local dev:** `just web` → http://localhost:8000
+
+**Headless browser gotcha:** Locale strings like `en-US@posix` break Flutter's parser, causing silent white-screen failures. Normalization is handled in `web/index.html`.
 
 **Production** (exe.dev VM):
 
