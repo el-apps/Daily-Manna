@@ -11,6 +11,10 @@ class OpenRouterService {
       'https://openrouter.ai/api/v1/chat/completions';
   static const String _appUrl = 'https://github.com/el-apps/Daily-Manna';
   static const String _appTitle = 'Daily Manna';
+  static const String _transcriptionModel = 'google/gemini-3-flash-preview';
+  static const String _recognitionModel = 'openai/gpt-5-mini';
+  static const Duration _transcriptionTimeout = Duration(seconds: 60);
+  static const Duration _recognitionTimeout = Duration(seconds: 30);
 
   OpenRouterService(this.settingsService);
 
@@ -42,7 +46,7 @@ class OpenRouterService {
     final audioFormat = _getAudioFormat(filename);
 
     final requestBody = {
-      'model': 'google/gemini-3-flash-preview',
+      'model': _transcriptionModel,
       'messages': [
         {'role': 'system', 'content': Prompts.bibleAudioTranscriptionSystem},
         {
@@ -64,28 +68,14 @@ class OpenRouterService {
           headers: _getHeaders(apiKey),
           body: jsonEncode(requestBody),
         )
-        .timeout(const Duration(seconds: 60));
+        .timeout(_transcriptionTimeout);
 
     debugPrint('[OpenRouter Audio] Response status: ${response.statusCode}');
     debugPrint('[OpenRouter Audio] Response body: ${response.body}');
 
     if (response.statusCode != 200) {
-      String errorDetail = response.reasonPhrase ?? 'Unknown error';
-      try {
-        final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
-        if (errorBody.containsKey('error')) {
-          final error = errorBody['error'];
-          if (error is Map && error.containsKey('message')) {
-            errorDetail = error['message'] as String;
-          } else if (error is String) {
-            errorDetail = error;
-          }
-        }
-      } catch (_) {
-        // Ignore JSON parse errors, use reasonPhrase
-      }
       throw Exception(
-        'Failed to transcribe audio: ${response.statusCode} - $errorDetail',
+        'Failed to transcribe audio: ${response.statusCode} - ${_parseErrorDetail(response)}',
       );
     }
 
@@ -147,6 +137,23 @@ class OpenRouterService {
     return supportedFormats.contains(ext) ? ext : 'wav';
   }
 
+  String _parseErrorDetail(http.Response response) {
+    try {
+      final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
+      if (errorBody.containsKey('error')) {
+        final error = errorBody['error'];
+        if (error is Map && error.containsKey('message')) {
+          return error['message'] as String;
+        } else if (error is String) {
+          return error;
+        }
+      }
+    } catch (_) {
+      // Ignore JSON parse errors
+    }
+    return response.reasonPhrase ?? 'Unknown error';
+  }
+
   Future<ScriptureRangeRef?> recognizePassage(
     String transcribedText, {
     List<String>? availableBookIds,
@@ -169,7 +176,7 @@ class OpenRouterService {
     );
 
     final requestBody = {
-      'model': 'openai/gpt-5-mini',
+      'model': _recognitionModel,
       'messages': [
         {'role': 'system', 'content': systemPrompt},
         {
@@ -189,28 +196,14 @@ class OpenRouterService {
           headers: _getHeaders(apiKey),
           body: jsonEncode(requestBody),
         )
-        .timeout(const Duration(seconds: 30));
+        .timeout(_recognitionTimeout);
 
     debugPrint('[RecognizePassage] Response status: ${response.statusCode}');
     debugPrint('[RecognizePassage] Response body: ${response.body}');
 
     if (response.statusCode != 200) {
-      String errorDetail = response.reasonPhrase ?? 'Unknown error';
-      try {
-        final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
-        if (errorBody.containsKey('error')) {
-          final error = errorBody['error'];
-          if (error is Map && error.containsKey('message')) {
-            errorDetail = error['message'] as String;
-          } else if (error is String) {
-            errorDetail = error;
-          }
-        }
-      } catch (_) {
-        // Ignore JSON parse errors, use reasonPhrase
-      }
       throw Exception(
-        'Failed to recognize passage: ${response.statusCode} - $errorDetail',
+        'Failed to recognize passage: ${response.statusCode} - ${_parseErrorDetail(response)}',
       );
     }
 
