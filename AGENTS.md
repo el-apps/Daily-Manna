@@ -292,6 +292,22 @@ Apply Kent Beck's "Tidy First?" concepts when refactoring:
 
 **Commit discipline:** Each tidying is one small commit. Don't mix tidyings with behavior changes.
 
+## Subagent Delegation
+
+When using subagents for parallel work:
+
+**Two-phase approach:**
+1. **Analysis phase** - Launch read-only subagents to gather findings. Can overlap.
+2. **Editing phase** - Dispatch subagents with one file each. No overlap.
+
+**Editing subagent rules:**
+- Assign one file per subagent to prevent conflicts
+- Provide exact code snippets to add/replace
+- Run `just analyze` after each batch
+- Commit between batches as checkpoints
+
+**Subagents are workers, not planners.** Do planning yourself, give them precise tasks.
+
 ## TODO Items
 
 See code comments for planned features:
