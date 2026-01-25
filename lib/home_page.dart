@@ -24,7 +24,6 @@ class HomePage extends StatelessWidget {
             ).textTheme.titleSmall!.copyWith(fontStyle: FontStyle.italic),
           ),
         ),
-        const ReviewCard(),
         ModeCard(
           title: 'Practice',
           icon: Icons.play_arrow,
@@ -32,6 +31,7 @@ class HomePage extends StatelessWidget {
             context,
           ).push(MaterialPageRoute(builder: (_) => const PracticePage())),
         ),
+        const ReviewCard(),
         ModeCard(
           title: 'History',
           icon: Icons.history,
