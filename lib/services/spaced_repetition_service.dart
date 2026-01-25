@@ -90,6 +90,10 @@ class SpacedRepetitionService {
     // Calculate SR state for each unique verse
     final states = <VerseReviewState>[];
     for (final entry in verseResults.entries) {
+      // Skip verses that only have study entries (no practice results)
+      final hasPractice = entry.value.any((r) => r.type != ResultType.study);
+      if (!hasPractice) continue;
+
       final parts = entry.key.split(':');
       final ref = ScriptureRef(
         bookId: parts[0],
@@ -120,24 +124,11 @@ class SpacedRepetitionService {
   }
 
   /// Replay result history to calculate current SM-2 state.
+  /// Assumes at least one practice result exists (study-only filtered upstream).
   VerseReviewState _calculateState(ScriptureRef ref, List<Result> results) {
-    // Use most recent timestamp from all results (study or practice)
-    final lastReview = results.last.timestamp;
-
-    // Filter out study entries for SM-2 calculation
+    // Filter out study entries - they don't affect SR intervals
     final practiceResults =
         results.where((r) => r.type != ResultType.study).toList();
-
-    // If only study entries exist, return neutral state
-    if (practiceResults.isEmpty) {
-      return VerseReviewState(
-        ref: ref,
-        lastReview: lastReview,
-        intervalDays: 1,
-        easeFactor: 2.5,
-        repetitions: 0,
-      );
-    }
 
     double ef = 2.5;
     int interval = 1;
@@ -169,7 +160,7 @@ class SpacedRepetitionService {
 
     return VerseReviewState(
       ref: ref,
-      lastReview: lastReview,
+      lastReview: practiceResults.last.timestamp,
       intervalDays: interval,
       easeFactor: ef,
       repetitions: reps,
