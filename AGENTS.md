@@ -267,6 +267,31 @@ When testing changes to database behavior in the browser, clear IndexedDB storag
 - OpenRouter LLM for passage recognition
 - Audio: PCM 16-bit at 16kHz, encoded to WAV
 
+## Tidy First Principles
+
+Apply Kent Beck's "Tidy First?" concepts when refactoring:
+
+**Tidyings** - Small, reversible structural changes that don't alter behavior:
+- **Guard clauses**: Replace nested conditions with early returns
+- **Normalize symmetries**: Make similar code look similar
+- **Extract helper**: Pull out reusable logic into named functions/methods
+- **Dead code removal**: Delete unused code paths
+- **Chunk statements**: Group related lines, separate with blank lines
+- **Explaining variables**: Extract complex expressions into named variables
+- **Explaining constants**: Replace magic numbers/strings with named constants
+
+**When to tidy:**
+- **Before** a behavior change if it makes the change easier
+- **After** if you notice mess while working
+- **Never** if the code works and won't be touched again
+
+**Economics of tidying:**
+- Tidying creates *options* for future changes
+- High-coupling code is expensive to change - tidying reduces coupling
+- Cohesive code (related things together) is cheaper to understand and modify
+
+**Commit discipline:** Each tidying is one small commit. Don't mix tidyings with behavior changes.
+
 ## TODO Items
 
 See code comments for planned features:
