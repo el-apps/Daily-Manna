@@ -298,6 +298,4 @@ When using subagents for parallel work:
 
 **Subagents are workers, not planners.** Do planning yourself, give them precise tasks.
 
-## TODO Items
 
-- "Next" button in verse_memorization should advance to next verse in review queue, not just verse+1

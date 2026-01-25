@@ -124,7 +124,6 @@ class _VerseMemorizationState extends State<VerseMemorization> {
                   ),
                 ),
                 FilledButton(
-                  // TODO: go to the next verse in the user's queue
                   onPressed: () => _selectRef(
                     _ref.copyWith(verseNumber: _ref.verseNumber! + 1),
                   ),
