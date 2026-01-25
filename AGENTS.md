@@ -259,6 +259,8 @@ When testing changes to database behavior in the browser, clear IndexedDB storag
 
 ## Tidy First Principles
 
+**Goal: Write code that is maintainable long-term.** Avoid painting yourself into a corner with unnecessary couplings.
+
 Apply Kent Beck's "Tidy First?" concepts when refactoring:
 
 **Tidyings** - Small, reversible structural changes that don't alter behavior:
