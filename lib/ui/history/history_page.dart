@@ -4,6 +4,7 @@ import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
+import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/history/result_card.dart';
 import 'package:daily_manna/ui/practice_mode_dialog.dart';
 import 'package:flutter/material.dart';
@@ -46,7 +47,12 @@ class _HistoryPageState extends State<HistoryPage> {
                     : results.where((r) => r.type == _filterType).toList();
 
                 if (filtered.isEmpty) {
-                  return _EmptyState(hasFilter: _filterType != null);
+                  return EmptyState(
+                    icon: Icons.history,
+                    message: _filterType != null
+                        ? 'No results match the filter.'
+                        : 'No practice history yet.\nComplete a memorization or recitation to get started!',
+                  );
                 }
 
                 final grouped = _groupByDate(filtered);
@@ -217,32 +223,3 @@ class _DateGroup extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  final bool hasFilter;
-
-  const _EmptyState({required this.hasFilter});
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.history, size: 64, color: Theme.of(context).disabledColor),
-          const SizedBox(height: 16),
-          Text(
-            hasFilter
-                ? 'No results match the filter.'
-                : 'No practice history yet.\nComplete a memorization or recitation to get started!',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(context).disabledColor,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
