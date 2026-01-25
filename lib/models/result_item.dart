@@ -8,5 +8,6 @@ abstract class ResultItem with _$ResultItem {
     required double score,
     required String reference,
     @Default(1) int attempts,
+    String? notes,
   }) = _ResultItem;
 }

@@ -97,6 +97,7 @@ class _TypeBadge extends StatelessWidget {
     final (label, color) = switch (type) {
       ResultType.recitation => ('Recitation', Colors.blue),
       ResultType.memorization => ('Memorization', Colors.green),
+      ResultType.study => ('Study', Colors.orange),
     };
 
     return Container(

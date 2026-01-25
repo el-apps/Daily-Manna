@@ -65,12 +65,7 @@ class ResultsService {
         // Save previous section if it has items
         if (currentItems.isNotEmpty) {
           sections.add(
-            ResultSection(
-              title: currentType == ResultType.recitation
-                  ? 'Recitation'
-                  : 'Memorization',
-              items: currentItems,
-            ),
+            ResultSection(title: _typeToTitle(currentType!), items: currentItems),
           );
         }
         // Start new section
@@ -84,37 +79,36 @@ class ResultsService {
     // Add final section
     if (currentItems.isNotEmpty) {
       sections.add(
-        ResultSection(
-          title: currentType == ResultType.recitation
-              ? 'Recitation'
-              : 'Memorization',
-          items: currentItems,
-        ),
+        ResultSection(title: _typeToTitle(currentType!), items: currentItems),
       );
     }
 
     return sections;
   }
 
+  String _typeToTitle(ResultType type) => switch (type) {
+    ResultType.memorization => 'Memorization',
+    ResultType.recitation => 'Recitation',
+    ResultType.study => 'Study',
+  };
+
   ResultItem _resultToItem(Result r, BibleService bibleService) {
-    if (r.type == ResultType.recitation) {
-      return ResultItem(
-        score: r.score,
-        reference: bibleService.getRangeRefName(_toRangeRef(r)),
-      );
-    } else {
-      return ResultItem(
-        score: r.score,
-        attempts: r.attempts ?? 1,
-        reference: bibleService.getRefName(
-          ScriptureRef(
-            bookId: r.bookId,
-            chapterNumber: r.startChapter,
-            verseNumber: r.startVerse,
-          ),
-        ),
-      );
-    }
+    final reference = r.type == ResultType.memorization
+        ? bibleService.getRefName(
+            ScriptureRef(
+              bookId: r.bookId,
+              chapterNumber: r.startChapter,
+              verseNumber: r.startVerse,
+            ),
+          )
+        : bibleService.getRangeRefName(_toRangeRef(r));
+
+    return ResultItem(
+      score: r.score,
+      attempts: r.attempts ?? 1,
+      reference: reference,
+      notes: r.notes,
+    );
   }
 
   ScriptureRangeRef _toRangeRef(Result r) => ScriptureRangeRef(
