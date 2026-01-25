@@ -22,45 +22,35 @@ lib/
 ├── main.dart
 ├── home_page.dart                 # Feature cards registered here
 ├── settings_page.dart             # API keys config
-├── share_dialog.dart
 ├── prompts.dart                   # LLM prompts
 │
 ├── models/                        # Freezed classes only
-│   ├── scripture_ref.dart
-│   ├── scripture_range_ref.dart
-│   ├── recitation_result.dart
-│   ├── result_item.dart
-│   └── result_section.dart
 │
 ├── services/                      # Business logic & integrations
 │   ├── database/database.dart     # Drift ORM
 │   ├── bible_service.dart
 │   ├── results_service.dart
 │   ├── settings_service.dart
-│   ├── whisper_service.dart       # OpenAI Whisper
-│   └── openrouter_service.dart    # LLM passage recognition
+│   ├── spaced_repetition_service.dart
+│   └── openrouter_service.dart    # LLM transcription & passage recognition
+│
+├── utils/
+│   └── date_utils.dart            # DateOnlyExtension
 │
 ├── ui/
+│   ├── app_scaffold.dart          # Standard page wrapper
 │   ├── theme_card.dart            # Shared container
-│   ├── mode_card.dart             # Home card
+│   ├── empty_state.dart           # Shared empty state
+│   ├── action_button_row.dart     # Cancel/Submit button pair
 │   ├── loading_section.dart       # Shared loading indicator
 │   ├── memorization/
-│   │   ├── verse_memorization.dart
-│   │   ├── verse_selector.dart
-│   │   └── practice_result.dart
-│   └── recitation/                # Audio practice
-│       ├── recitation_mode.dart
-│       ├── recording_card.dart
-│       ├── recitation_playback_section.dart
-│       ├── recitation_confirmation_section.dart
-│       └── results/
-│           ├── recitation_results.dart
-│           ├── diff_comparison.dart
-│           ├── diff_legend.dart
-│           └── diff_colors.dart
+│   ├── recitation/
+│   ├── verse_selection/
+│   ├── history/
+│   ├── review/
+│   ├── practice/
+│   └── study/
 │
-├── bytes_audio_source.dart
-├── wav_encoder.dart
 └── passage_range_selector.dart
 
 assets/
@@ -310,6 +300,4 @@ When using subagents for parallel work:
 
 ## TODO Items
 
-See code comments for planned features:
-
-- User verse queue management
+- User verse queue management (see `lib/ui/memorization/verse_memorization.dart`)
