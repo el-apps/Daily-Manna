@@ -33,6 +33,7 @@ lib/
 │   └── result_section.dart
 │
 ├── services/                      # Business logic & integrations
+│   ├── database/database.dart     # Drift ORM
 │   ├── bible_service.dart
 │   ├── results_service.dart
 │   ├── settings_service.dart
@@ -255,6 +256,7 @@ Custom Python server with CORS headers.
 
 - KJV XML ~5MB: initial load may be slow
 - Web uses CanvasKit renderer (requires WebGL)
+- Drift database: web requires `sqlite3.wasm` and `drift_worker.js` in `web/`
 - `share_plus` handles mobile/web sharing
 - `word_tools` for memorization scoring
 - Whisper API for speech-to-text
