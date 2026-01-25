@@ -18,13 +18,12 @@ class PassageRangeSelector extends StatelessWidget {
     final bibleService = context.read<BibleService>();
 
     String displayText = 'Select passage';
-    try {
-      if (ref.complete) {
+    if (ref.complete) {
+      try {
         displayText = bibleService.getRangeRefName(ref);
+      } catch (e) {
+        debugPrint('[PassageRangeSelector] Error getting range ref name: $e');
       }
-    } catch (e) {
-      debugPrint('[PassageRangeSelector] Error getting range ref name: $e');
-      displayText = 'Select passage';
     }
 
     return ListTile(
