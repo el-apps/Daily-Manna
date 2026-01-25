@@ -123,11 +123,24 @@ class _VerseMemorizationState extends State<VerseMemorization> {
                     fontSize: 48,
                   ),
                 ),
-                FilledButton(
-                  onPressed: () => _selectRef(
-                    _ref.copyWith(verseNumber: _ref.verseNumber! + 1),
-                  ),
-                  child: Text('Next'),
+                Row(
+                  spacing: 8,
+                  children: [
+                    Expanded(
+                      child: FilledButton.tonal(
+                        onPressed: _tryAgain,
+                        child: Text('Try Again'),
+                      ),
+                    ),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => _selectRef(
+                          _ref.copyWith(verseNumber: _ref.verseNumber! + 1),
+                        ),
+                        child: Text('Next'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ],
@@ -160,6 +173,16 @@ class _VerseMemorizationState extends State<VerseMemorization> {
     setState(() {
       _attempts += 1;
       _result = Result.learn;
+    });
+  }
+
+  void _tryAgain() {
+    setState(() {
+      _result = Result.unknown;
+      _clearInput();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _inputFocusNode.requestFocus();
+      });
     });
   }
 
