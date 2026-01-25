@@ -12,6 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:word_tools/word_tools.dart';
 
+const double _passThreshold = 0.6;
+
 class VerseMemorization extends StatefulWidget {
   final ScriptureRef? initialRef;
 
@@ -122,7 +124,6 @@ class _VerseMemorizationState extends State<VerseMemorization> {
                   ),
                 ),
                 FilledButton(
-                  // TODO: go to the next verse in the user's queue
                   onPressed: () => _selectRef(
                     _ref.copyWith(verseNumber: _ref.verseNumber! + 1),
                   ),
@@ -172,7 +173,7 @@ class _VerseMemorizationState extends State<VerseMemorization> {
     setState(() {
       _attempts += 1;
       _score = compareWordSequences(actualVerse, _input);
-      _result = _score >= 0.6 ? Result.correct : Result.incorrect;
+      _result = _score >= _passThreshold ? Result.correct : Result.incorrect;
       if (_result == Result.correct) {
         final result = MemorizationResult(
           ref: _ref,
@@ -199,12 +200,8 @@ class _VerseMemorizationState extends State<VerseMemorization> {
 }
 
 enum Result {
-  unknown(color: Colors.brown),
-  learn(color: Colors.blue),
-  incorrect(color: Colors.red),
-  correct(color: Colors.green);
-
-  final Color color;
-
-  const Result({required this.color});
+  unknown,
+  learn,
+  incorrect,
+  correct,
 }

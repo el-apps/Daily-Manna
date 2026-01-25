@@ -25,6 +25,13 @@ class VerseReviewState {
 
 /// Service for calculating spaced repetition intervals using SM-2 algorithm.
 class SpacedRepetitionService {
+  // SM-2 algorithm constants
+  static const _initialEaseFactor = 2.5;
+  static const _minimumEaseFactor = 1.3;
+  static const _firstInterval = 1;
+  static const _secondInterval = 6;
+  static const _passingQuality = 3;
+
   final AppDatabase _db;
 
   SpacedRepetitionService(this._db);
@@ -130,19 +137,19 @@ class SpacedRepetitionService {
     final practiceResults =
         results.where((r) => r.type != ResultType.study).toList();
 
-    double ef = 2.5;
-    int interval = 1;
+    double ef = _initialEaseFactor;
+    int interval = _firstInterval;
     int reps = 0;
 
     for (final result in practiceResults) {
       final quality = scoreToQuality(result.score);
 
-      if (quality >= 3) {
+      if (quality >= _passingQuality) {
         // Correct response
         if (reps == 0) {
-          interval = 1;
+          interval = _firstInterval;
         } else if (reps == 1) {
-          interval = 6;
+          interval = _secondInterval;
         } else {
           interval = (interval * ef).round();
         }
@@ -150,12 +157,14 @@ class SpacedRepetitionService {
       } else {
         // Incorrect response - reset
         reps = 0;
-        interval = 1;
+        interval = _firstInterval;
       }
 
-      // Update ease factor
-      ef = ef + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-      if (ef < 1.3) ef = 1.3;
+      // Update ease factor using SM-2 formula
+      final qualityDeficit = 5 - quality;
+      final penaltyFactor = 0.08 + qualityDeficit * 0.02;
+      final easeAdjustment = 0.1 - qualityDeficit * penaltyFactor;
+      ef = (ef + easeAdjustment).clamp(_minimumEaseFactor, double.infinity);
     }
 
     return VerseReviewState(

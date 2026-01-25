@@ -1,5 +1,9 @@
 import 'package:intl/intl.dart';
 
+import 'package:daily_manna/utils/date_utils.dart';
+
+import 'package:daily_manna/ui/empty_state.dart';
+
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
@@ -28,7 +32,10 @@ class ReviewTab extends StatelessWidget {
         final verses = snapshot.data ?? [];
 
         if (verses.isEmpty) {
-          return _EmptyState();
+          return const EmptyState(
+          icon: Icons.check_circle_outline,
+          message: 'No verses due for review!\nPractice some verses to build your queue.',
+        );
         }
 
         return ListView.builder(
@@ -49,8 +56,8 @@ class ReviewTab extends StatelessWidget {
 
 String _formatReviewDate(DateTime date) {
   final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final reviewDay = DateTime(date.year, date.month, date.day);
+  final today = now.dateOnly;
+  final reviewDay = date.dateOnly;
   final difference = reviewDay.difference(today).inDays;
 
   if (difference < 0) {
@@ -59,32 +66,4 @@ String _formatReviewDate(DateTime date) {
   if (difference == 0) return 'Due today';
   if (difference == 1) return 'Due tomorrow';
   return 'Due ${ReviewTab._dateFormat.format(date)}';
-}
-
-class _EmptyState extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.check_circle_outline,
-            size: 64,
-            color: Theme.of(context).disabledColor,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No verses due for review!\nPractice some verses to build your queue.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(context).disabledColor,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }

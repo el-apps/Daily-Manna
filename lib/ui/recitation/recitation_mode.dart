@@ -24,6 +24,8 @@ import 'package:provider/provider.dart';
 import 'package:record/record.dart';
 import 'package:word_tools/word_tools.dart';
 
+const Duration _apiTimeout = Duration(seconds: 30);
+
 enum RecitationStep {
   idle,
   recording,
@@ -223,7 +225,7 @@ class _RecitationModeState extends State<RecitationMode> {
 
       final transcribedText = await _openRouterService
           .transcribeAudio(wavData, 'audio.wav')
-          .timeout(const Duration(seconds: 30));
+          .timeout(_apiTimeout);
 
       if (!mounted) return;
       _transcriptionController.text = transcribedText;
@@ -271,7 +273,7 @@ class _RecitationModeState extends State<RecitationMode> {
             transcribedText,
             availableBookIds: bibleService.books.map((b) => b.id).toList(),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(_apiTimeout);
 
       if (!mounted) return;
 

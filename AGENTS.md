@@ -22,45 +22,35 @@ lib/
 ├── main.dart
 ├── home_page.dart                 # Feature cards registered here
 ├── settings_page.dart             # API keys config
-├── share_dialog.dart
 ├── prompts.dart                   # LLM prompts
 │
 ├── models/                        # Freezed classes only
-│   ├── scripture_ref.dart
-│   ├── scripture_range_ref.dart
-│   ├── recitation_result.dart
-│   ├── result_item.dart
-│   └── result_section.dart
 │
 ├── services/                      # Business logic & integrations
 │   ├── database/database.dart     # Drift ORM
 │   ├── bible_service.dart
 │   ├── results_service.dart
 │   ├── settings_service.dart
-│   ├── whisper_service.dart       # OpenAI Whisper
-│   └── openrouter_service.dart    # LLM passage recognition
+│   ├── spaced_repetition_service.dart
+│   └── openrouter_service.dart    # LLM transcription & passage recognition
+│
+├── utils/
+│   └── date_utils.dart            # DateOnlyExtension
 │
 ├── ui/
+│   ├── app_scaffold.dart          # Standard page wrapper
 │   ├── theme_card.dart            # Shared container
-│   ├── mode_card.dart             # Home card
+│   ├── empty_state.dart           # Shared empty state
+│   ├── action_button_row.dart     # Cancel/Submit button pair
 │   ├── loading_section.dart       # Shared loading indicator
 │   ├── memorization/
-│   │   ├── verse_memorization.dart
-│   │   ├── verse_selector.dart
-│   │   └── practice_result.dart
-│   └── recitation/                # Audio practice
-│       ├── recitation_mode.dart
-│       ├── recording_card.dart
-│       ├── recitation_playback_section.dart
-│       ├── recitation_confirmation_section.dart
-│       └── results/
-│           ├── recitation_results.dart
-│           ├── diff_comparison.dart
-│           ├── diff_legend.dart
-│           └── diff_colors.dart
+│   ├── recitation/
+│   ├── verse_selection/
+│   ├── history/
+│   ├── review/
+│   ├── practice/
+│   └── study/
 │
-├── bytes_audio_source.dart
-├── wav_encoder.dart
 └── passage_range_selector.dart
 
 assets/
@@ -267,8 +257,41 @@ When testing changes to database behavior in the browser, clear IndexedDB storag
 - OpenRouter LLM for passage recognition
 - Audio: PCM 16-bit at 16kHz, encoded to WAV
 
-## TODO Items
+## Tidy First Principles
 
-See code comments for planned features:
+**Goal: Write code that is maintainable long-term.** Avoid unnecessary couplings (dependencies between components) that make future changes expensive.
 
-- User verse queue management
+Apply Kent Beck's "Tidy First?" concepts at all times:
+
+**Tidyings** - Small, reversible structural changes that don't alter behavior:
+- **Guard clauses**: Replace nested conditions with early returns
+- **Normalize symmetries**: Make similar code look similar
+- **Extract helper**: Pull out reusable logic into named functions/methods
+- **Dead code removal**: Delete unused code paths
+- **Explaining variables**: Extract complex expressions into named variables
+- **Explaining constants**: Replace magic numbers/strings with named constants
+
+**When to tidy:**
+- **Before** a behavior change if it makes the change easier
+- **After** if you notice mess in code you're modifying
+- **Stay focused**: Don't tidy unrelated code—note it for later
+
+**Commit discipline:** Each tidying is one small commit. Don't mix tidyings with behavior changes.
+
+## Subagent Delegation
+
+When using subagents for parallel work:
+
+**Two-phase approach:**
+1. **Analysis phase** - Launch read-only subagents to gather findings. Can overlap.
+2. **Editing phase** - Dispatch subagents with one file each. No overlap.
+
+**Editing subagent rules:**
+- Assign one file per subagent to prevent conflicts
+- Provide exact code snippets to add/replace
+- Run `just analyze` after each batch
+- Commit between batches as checkpoints
+
+**Subagents are workers, not planners.** Do planning yourself, give them precise tasks.
+
+
