@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:daily_manna/ui/action_button_row.dart';
 
 class TranscriptionReviewSection extends StatelessWidget {
   const TranscriptionReviewSection({
@@ -30,22 +31,11 @@ class TranscriptionReviewSection extends StatelessWidget {
         ),
       ),
       const SizedBox(height: 48),
-      Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: onCancel,
-              child: const Text('Back'),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: FilledButton(
-              onPressed: onSubmit,
-              child: const Text('Submit'),
-            ),
-          ),
-        ],
+      ActionButtonRow(
+        secondaryLabel: 'Back',
+        primaryLabel: 'Submit',
+        onSecondary: onCancel,
+        onPrimary: onSubmit,
       ),
     ],
   );
