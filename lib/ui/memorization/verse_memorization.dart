@@ -128,7 +128,7 @@ class _VerseMemorizationState extends State<VerseMemorization> {
                   children: [
                     Expanded(
                       child: FilledButton.tonal(
-                        onPressed: _tryAgain,
+                        onPressed: () => _selectRef(_ref),
                         child: Text('Try Again'),
                       ),
                     ),
@@ -173,16 +173,6 @@ class _VerseMemorizationState extends State<VerseMemorization> {
     setState(() {
       _attempts += 1;
       _result = Result.learn;
-    });
-  }
-
-  void _tryAgain() {
-    setState(() {
-      _result = Result.unknown;
-      _clearInput();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _inputFocusNode.requestFocus();
-      });
     });
   }
 
