@@ -1,7 +1,7 @@
 # Daily Manna - Agent Guidelines
 
 > **Note:** Essential information only. Keep context window lean.
-> **Updates to this file:** Concise prose only. Include code examples only when high-impact and necessary. No verbose explanations, multiple examples, or unnecessary bulleted lists of benefits.
+> **Updates to this file:** Concise prose only. Include code examples only when high-impact and necessary. No verbose explanations, multiple examples, or unnecessary bulleted lists of benefits. Examples must be general and long-lasting—no references to specific one-time changes.
 
 ## Project Overview
 
@@ -86,6 +86,8 @@ Verb-first format: `verb-noun`. Simple verbs stand alone: `format`, `test`.
 ### Git Commits
 
 **Always use conventional commit format.** Every commit message must start with a type prefix. Make new commits for fixes—don't use `--amend` + force push to rewrite history.
+
+**Never rebase pushed branches.** Once a branch is pushed, use `git merge origin/main` to incorporate upstream changes, not rebase. Rebase requires force push, which rewrites public history.
 
 Format: `type(scope): description` or `type: description`
 
@@ -256,6 +258,10 @@ When testing changes to database behavior in the browser, clear IndexedDB storag
 - Whisper API for speech-to-text
 - OpenRouter LLM for passage recognition
 - Audio: PCM 16-bit at 16kHz, encoded to WAV
+
+## Before Writing Code
+
+**Study existing patterns first.** Before adding new functions or methods, read the surrounding code to understand existing patterns. Reuse existing helpers instead of creating new ones.
 
 ## Tidy First Principles
 
