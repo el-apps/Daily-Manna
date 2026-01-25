@@ -2,8 +2,7 @@ import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
-import 'package:daily_manna/ui/memorization/verse_memorization.dart';
-import 'package:daily_manna/ui/recitation/recitation_mode.dart';
+import 'package:daily_manna/ui/practice_mode_dialog.dart';
 import 'package:daily_manna/ui/theme_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -55,7 +54,7 @@ class _ReviewPageState extends State<ReviewPage> {
                   urgency: _Urgency.overdue,
                   isCollapsed: _collapsedSections.contains(_Urgency.overdue),
                   onToggle: () => _toggleSection(_Urgency.overdue),
-                  onVerseTap: (ref) => _showPracticeDialog(context, ref),
+                  onVerseTap: (ref) => showPracticeModeDialog(context, ref),
                 ),
               if (grouped.dueToday.isNotEmpty)
                 _VerseSection(
@@ -65,7 +64,7 @@ class _ReviewPageState extends State<ReviewPage> {
                   urgency: _Urgency.dueToday,
                   isCollapsed: _collapsedSections.contains(_Urgency.dueToday),
                   onToggle: () => _toggleSection(_Urgency.dueToday),
-                  onVerseTap: (ref) => _showPracticeDialog(context, ref),
+                  onVerseTap: (ref) => showPracticeModeDialog(context, ref),
                 ),
               if (grouped.comingUp.isNotEmpty)
                 _VerseSection(
@@ -75,7 +74,7 @@ class _ReviewPageState extends State<ReviewPage> {
                   urgency: _Urgency.comingUp,
                   isCollapsed: _collapsedSections.contains(_Urgency.comingUp),
                   onToggle: () => _toggleSection(_Urgency.comingUp),
-                  onVerseTap: (ref) => _showPracticeDialog(context, ref),
+                  onVerseTap: (ref) => showPracticeModeDialog(context, ref),
                 ),
             ],
           );
@@ -92,43 +91,6 @@ class _ReviewPageState extends State<ReviewPage> {
         _collapsedSections.add(urgency);
       }
     });
-  }
-
-  void _showPracticeDialog(BuildContext context, ScriptureRef ref) {
-    final bibleService = context.read<BibleService>();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(bibleService.getRefName(ref)),
-        content: const Text('How would you like to practice?'),
-        actions: [
-          FilledButton.tonal(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const RecitationMode()),
-              );
-            },
-            child: const Text('Recite'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => VerseMemorization(initialRef: ref),
-                ),
-              );
-            },
-            child: const Text('Memorize'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
   }
 
   _GroupedVerses _groupByUrgency(List<VerseReviewState> verses) {
