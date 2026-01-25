@@ -2,6 +2,7 @@ import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
+import 'package:daily_manna/ui/count_badge.dart';
 import 'package:daily_manna/ui/practice_mode_dialog.dart';
 import 'package:daily_manna/ui/theme_card.dart';
 import 'package:flutter/material.dart';
@@ -212,12 +213,10 @@ class _VerseSection extends StatelessWidget {
               onTap: onToggle,
               child: Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      '$title (${verses.length})',
-                      style: theme.textTheme.titleSmall,
-                    ),
-                  ),
+                  Text(title, style: theme.textTheme.titleSmall),
+                  const SizedBox(width: 8),
+                  CountBadge(count: verses.length),
+                  const Spacer(),
                   Icon(
                     isCollapsed ? Icons.expand_more : Icons.expand_less,
                     size: 20,
@@ -265,22 +264,30 @@ class _VerseItem extends StatelessWidget {
       _Urgency.comingUp => theme.colorScheme.onSurfaceVariant,
     };
 
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              bibleService.getRefName(verse.ref),
-              style: theme.textTheme.bodyLarge,
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Material(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  bibleService.getRefName(verse.ref),
+                  style: theme.textTheme.bodyLarge,
+                ),
+                Text(
+                  _formatDueDate(verse.nextReviewDate),
+                  style: theme.textTheme.bodySmall?.copyWith(color: dueColor),
+                ),
+              ],
             ),
-            Text(
-              _formatDueDate(verse.nextReviewDate),
-              style: theme.textTheme.bodySmall?.copyWith(color: dueColor),
-            ),
-          ],
+          ),
         ),
       ),
     );
