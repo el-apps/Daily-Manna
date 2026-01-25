@@ -64,12 +64,14 @@ class ResultsService {
       if (r.type != currentType) {
         // Save previous section if it has items
         if (currentItems.isNotEmpty) {
-          sections.add(ResultSection(
-            title: currentType == ResultType.recitation
-                ? 'Recitation'
-                : 'Memorization',
-            items: currentItems,
-          ));
+          sections.add(
+            ResultSection(
+              title: currentType == ResultType.recitation
+                  ? 'Recitation'
+                  : 'Memorization',
+              items: currentItems,
+            ),
+          );
         }
         // Start new section
         currentType = r.type;
@@ -81,12 +83,14 @@ class ResultsService {
 
     // Add final section
     if (currentItems.isNotEmpty) {
-      sections.add(ResultSection(
-        title: currentType == ResultType.recitation
-            ? 'Recitation'
-            : 'Memorization',
-        items: currentItems,
-      ));
+      sections.add(
+        ResultSection(
+          title: currentType == ResultType.recitation
+              ? 'Recitation'
+              : 'Memorization',
+          items: currentItems,
+        ),
+      );
     }
 
     return sections;
