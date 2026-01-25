@@ -120,6 +120,11 @@ class _ResultGroup {
 }
 
 class _FilterChips extends StatelessWidget {
+  static const _filterOptions = [
+    (label: 'Recitation', type: db.ResultType.recitation),
+    (label: 'Memorization', type: db.ResultType.memorization),
+  ];
+
   final db.ResultType? selectedType;
   final ValueChanged<db.ResultType?> onSelected;
 
@@ -136,24 +141,14 @@ class _FilterChips extends StatelessWidget {
           selected: selectedType == null,
           onSelected: (_) => onSelected(null),
         ),
-        FilterChip(
-          label: const Text('Recitation'),
-          selected: selectedType == db.ResultType.recitation,
-          onSelected: (_) => onSelected(
-            selectedType == db.ResultType.recitation
-                ? null
-                : db.ResultType.recitation,
+        for (final option in _filterOptions)
+          FilterChip(
+            label: Text(option.label),
+            selected: selectedType == option.type,
+            onSelected: (_) => onSelected(
+              selectedType == option.type ? null : option.type,
+            ),
           ),
-        ),
-        FilterChip(
-          label: const Text('Memorization'),
-          selected: selectedType == db.ResultType.memorization,
-          onSelected: (_) => onSelected(
-            selectedType == db.ResultType.memorization
-                ? null
-                : db.ResultType.memorization,
-          ),
-        ),
       ],
     ),
   );
