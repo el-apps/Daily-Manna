@@ -43,7 +43,28 @@ class SpacedRepetitionService {
   /// Get all practiced verses sorted by next review date.
   Future<List<VerseReviewState>> getVersesByReviewDate() async {
     final allStates = await _getAllVerseStates();
-    allStates.sort((a, b) {
+    return _sortByReviewDate(allStates);
+  }
+
+  /// Watch all practiced verses sorted by next review date (reactive stream).
+  Stream<List<VerseReviewState>> watchVersesByReviewDate() =>
+      _db.watchAllResults().map((results) {
+        final allStates = _computeAllVerseStates(results);
+        return _sortByReviewDate(allStates);
+      });
+
+  /// Watch count of verses due for review (reactive stream).
+  Stream<int> watchDueCount() => watchVersesByReviewDate().map((states) {
+        final today = DateTime.now();
+        final endOfToday =
+            DateTime(today.year, today.month, today.day, 23, 59, 59);
+        return states
+            .where((s) => !s.nextReviewDate.isAfter(endOfToday))
+            .length;
+      });
+
+  List<VerseReviewState> _sortByReviewDate(List<VerseReviewState> states) {
+    states.sort((a, b) {
       // Primary sort: next review date
       final dateCompare = a.nextReviewDate.compareTo(b.nextReviewDate);
       if (dateCompare != 0) return dateCompare;
@@ -59,7 +80,7 @@ class SpacedRepetitionService {
 
       return a.ref.verseNumber!.compareTo(b.ref.verseNumber!);
     });
-    return allStates;
+    return states;
   }
 
   /// Get count of verses due for review (overdue + due today).
@@ -81,7 +102,11 @@ class SpacedRepetitionService {
   /// Expands passage ranges into individual verses.
   Future<List<VerseReviewState>> _getAllVerseStates() async {
     final allResults = await _db.getAllResults();
+    return _computeAllVerseStates(allResults);
+  }
 
+  /// Compute SR states from a list of results (synchronous, for use with streams).
+  List<VerseReviewState> _computeAllVerseStates(List<Result> allResults) {
     // Expand all results into individual verses and group by verse
     final verseResults = <String, List<Result>>{};
 

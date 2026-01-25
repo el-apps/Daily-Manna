@@ -29,8 +29,8 @@ class _ReviewPageState extends State<ReviewPage> {
     return AppScaffold(
       title: 'Review',
       showShareButton: false,
-      body: FutureBuilder<List<VerseReviewState>>(
-        future: srService.getVersesByReviewDate(),
+      body: StreamBuilder<List<VerseReviewState>>(
+        stream: srService.watchVersesByReviewDate(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

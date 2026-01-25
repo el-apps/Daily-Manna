@@ -12,8 +12,8 @@ class ReviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final srService = context.read<SpacedRepetitionService>();
 
-    return FutureBuilder<int>(
-      future: srService.getDueCount(),
+    return StreamBuilder<int>(
+      stream: srService.watchDueCount(),
       builder: (context, snapshot) {
         final dueCount = snapshot.data ?? 0;
 
