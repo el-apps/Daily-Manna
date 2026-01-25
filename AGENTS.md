@@ -261,7 +261,7 @@ When testing changes to database behavior in the browser, clear IndexedDB storag
 
 ## Before Writing Code
 
-**Study existing patterns first.** Before adding new functions or methods, read the surrounding code to understand existing patterns. Reuse existing helpers (e.g., if there's a `_selectRef` that resets state, use it instead of creating `_tryAgain`).
+**Study existing patterns first.** Before adding new functions or methods, read the surrounding code to understand existing patterns. Reuse existing helpers instead of creating new ones.
 
 ## Tidy First Principles
 
