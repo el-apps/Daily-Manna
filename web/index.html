@@ -33,6 +33,36 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <script>
+    // Fix for non-standard locale format (e.g., en-US@posix in headless browsers)
+    (function() {
+      const origLanguages = Object.getOwnPropertyDescriptor(Navigator.prototype, 'languages');
+      const origLanguage = Object.getOwnPropertyDescriptor(Navigator.prototype, 'language');
+      
+      function normalizeLocale(locale) {
+        if (!locale) return locale;
+        // Remove @posix or other suffixes after @
+        return locale.split('@')[0];
+      }
+      
+      if (origLanguages) {
+        Object.defineProperty(Navigator.prototype, 'languages', {
+          get: function() {
+            const langs = origLanguages.get.call(this);
+            return langs ? langs.map(normalizeLocale) : langs;
+          }
+        });
+      }
+      
+      if (origLanguage) {
+        Object.defineProperty(Navigator.prototype, 'language', {
+          get: function() {
+            return normalizeLocale(origLanguage.get.call(this));
+          }
+        });
+      }
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
