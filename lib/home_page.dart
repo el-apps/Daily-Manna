@@ -11,6 +11,10 @@ import 'package:flutter/material.dart';
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
+  void _navigateTo(BuildContext context, Widget page) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  }
+
   @override
   Widget build(BuildContext context) => AppScaffold(
     title: 'Daily Manna',
@@ -28,38 +32,28 @@ class HomePage extends StatelessWidget {
         ModeCard(
           title: 'Practice',
           icon: Icons.play_arrow,
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const PracticePage())),
+          onTap: () => _navigateTo(context, const PracticePage()),
         ),
         const ReviewCard(),
         ModeCard(
           title: 'Study Log',
           icon: Icons.menu_book,
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const StudyLogPage())),
+          onTap: () => _navigateTo(context, const StudyLogPage()),
         ),
         ModeCard(
           title: 'History',
           icon: Icons.history,
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const HistoryPage())),
+          onTap: () => _navigateTo(context, const HistoryPage()),
         ),
         ModeCard(
           title: 'Settings',
           icon: Icons.settings,
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const SettingsPage())),
+          onTap: () => _navigateTo(context, const SettingsPage()),
         ),
         ModeCard(
           title: 'About',
           icon: Icons.info_outline,
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const AboutPage())),
+          onTap: () => _navigateTo(context, const AboutPage()),
         ),
       ],
     ),
