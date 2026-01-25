@@ -259,7 +259,7 @@ When testing changes to database behavior in the browser, clear IndexedDB storag
 
 ## Tidy First Principles
 
-**Goal: Write code that is maintainable long-term.** Avoid painting yourself into a corner with unnecessary couplings.
+**Goal: Write code that is maintainable long-term.** Avoid unnecessary couplings (dependencies between components) that make future changes expensive.
 
 Apply Kent Beck's "Tidy First?" concepts at all times:
 
@@ -268,19 +268,13 @@ Apply Kent Beck's "Tidy First?" concepts at all times:
 - **Normalize symmetries**: Make similar code look similar
 - **Extract helper**: Pull out reusable logic into named functions/methods
 - **Dead code removal**: Delete unused code paths
-- **Chunk statements**: Group related lines, separate with blank lines
 - **Explaining variables**: Extract complex expressions into named variables
 - **Explaining constants**: Replace magic numbers/strings with named constants
 
 **When to tidy:**
 - **Before** a behavior change if it makes the change easier
-- **After** if you notice mess while working
-- **Never** if the code works and won't be touched again
-
-**Economics of tidying:**
-- Tidying creates *options* for future changes
-- High-coupling code is expensive to change - tidying reduces coupling
-- Cohesive code (related things together) is cheaper to understand and modify
+- **After** if you notice mess in code you're modifying
+- **Stay focused**: Don't tidy unrelated code—note it for later
 
 **Commit discipline:** Each tidying is one small commit. Don't mix tidyings with behavior changes.
 
