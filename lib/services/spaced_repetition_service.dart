@@ -1,5 +1,6 @@
 import 'package:daily_manna/models/scripture_ref.dart';
-import 'package:daily_manna/services/database/database.dart';
+import 'package:daily_manna/services/database/database.dart'
+    show AppDatabase, Result, ResultType;
 
 /// Represents the spaced repetition state for a verse.
 class VerseReviewState {
@@ -120,14 +121,30 @@ class SpacedRepetitionService {
 
   /// Replay result history to calculate current SM-2 state.
   VerseReviewState _calculateState(ScriptureRef ref, List<Result> results) {
+    // Use most recent timestamp from all results (study or practice)
+    final lastReview = results.last.timestamp;
+
+    // Filter out study entries for SM-2 calculation
+    final practiceResults =
+        results.where((r) => r.type != ResultType.study).toList();
+
+    // If only study entries exist, return neutral state
+    if (practiceResults.isEmpty) {
+      return VerseReviewState(
+        ref: ref,
+        lastReview: lastReview,
+        intervalDays: 1,
+        easeFactor: 2.5,
+        repetitions: 0,
+      );
+    }
+
     double ef = 2.5;
     int interval = 1;
     int reps = 0;
-    DateTime lastReview = results.last.timestamp;
 
-    for (final result in results) {
+    for (final result in practiceResults) {
       final quality = scoreToQuality(result.score);
-      lastReview = result.timestamp;
 
       if (quality >= 3) {
         // Correct response

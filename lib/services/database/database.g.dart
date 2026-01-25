@@ -114,6 +114,15 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -126,6 +135,7 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
     endVerse,
     score,
     attempts,
+    notes,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -203,6 +213,12 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
         attempts.isAcceptableOrUnknown(data['attempts']!, _attemptsMeta),
       );
     }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
     return context;
   }
 
@@ -254,6 +270,10 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
         DriftSqlType.int,
         data['${effectivePrefix}attempts'],
       ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
     );
   }
 
@@ -277,6 +297,7 @@ class Result extends DataClass implements Insertable<Result> {
   final int? endVerse;
   final double score;
   final int? attempts;
+  final String? notes;
   const Result({
     required this.id,
     required this.timestamp,
@@ -288,6 +309,7 @@ class Result extends DataClass implements Insertable<Result> {
     this.endVerse,
     required this.score,
     this.attempts,
+    this.notes,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -310,6 +332,9 @@ class Result extends DataClass implements Insertable<Result> {
     if (!nullToAbsent || attempts != null) {
       map['attempts'] = Variable<int>(attempts);
     }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
     return map;
   }
 
@@ -331,6 +356,9 @@ class Result extends DataClass implements Insertable<Result> {
       attempts: attempts == null && nullToAbsent
           ? const Value.absent()
           : Value(attempts),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
     );
   }
 
@@ -352,6 +380,7 @@ class Result extends DataClass implements Insertable<Result> {
       endVerse: serializer.fromJson<int?>(json['endVerse']),
       score: serializer.fromJson<double>(json['score']),
       attempts: serializer.fromJson<int?>(json['attempts']),
+      notes: serializer.fromJson<String?>(json['notes']),
     );
   }
   @override
@@ -368,6 +397,7 @@ class Result extends DataClass implements Insertable<Result> {
       'endVerse': serializer.toJson<int?>(endVerse),
       'score': serializer.toJson<double>(score),
       'attempts': serializer.toJson<int?>(attempts),
+      'notes': serializer.toJson<String?>(notes),
     };
   }
 
@@ -382,6 +412,7 @@ class Result extends DataClass implements Insertable<Result> {
     Value<int?> endVerse = const Value.absent(),
     double? score,
     Value<int?> attempts = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
   }) => Result(
     id: id ?? this.id,
     timestamp: timestamp ?? this.timestamp,
@@ -393,6 +424,7 @@ class Result extends DataClass implements Insertable<Result> {
     endVerse: endVerse.present ? endVerse.value : this.endVerse,
     score: score ?? this.score,
     attempts: attempts.present ? attempts.value : this.attempts,
+    notes: notes.present ? notes.value : this.notes,
   );
   Result copyWithCompanion(ResultsCompanion data) {
     return Result(
@@ -412,6 +444,7 @@ class Result extends DataClass implements Insertable<Result> {
       endVerse: data.endVerse.present ? data.endVerse.value : this.endVerse,
       score: data.score.present ? data.score.value : this.score,
       attempts: data.attempts.present ? data.attempts.value : this.attempts,
+      notes: data.notes.present ? data.notes.value : this.notes,
     );
   }
 
@@ -427,7 +460,8 @@ class Result extends DataClass implements Insertable<Result> {
           ..write('endChapter: $endChapter, ')
           ..write('endVerse: $endVerse, ')
           ..write('score: $score, ')
-          ..write('attempts: $attempts')
+          ..write('attempts: $attempts, ')
+          ..write('notes: $notes')
           ..write(')'))
         .toString();
   }
@@ -444,6 +478,7 @@ class Result extends DataClass implements Insertable<Result> {
     endVerse,
     score,
     attempts,
+    notes,
   );
   @override
   bool operator ==(Object other) =>
@@ -458,7 +493,8 @@ class Result extends DataClass implements Insertable<Result> {
           other.endChapter == this.endChapter &&
           other.endVerse == this.endVerse &&
           other.score == this.score &&
-          other.attempts == this.attempts);
+          other.attempts == this.attempts &&
+          other.notes == this.notes);
 }
 
 class ResultsCompanion extends UpdateCompanion<Result> {
@@ -472,6 +508,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
   final Value<int?> endVerse;
   final Value<double> score;
   final Value<int?> attempts;
+  final Value<String?> notes;
   const ResultsCompanion({
     this.id = const Value.absent(),
     this.timestamp = const Value.absent(),
@@ -483,6 +520,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     this.endVerse = const Value.absent(),
     this.score = const Value.absent(),
     this.attempts = const Value.absent(),
+    this.notes = const Value.absent(),
   });
   ResultsCompanion.insert({
     this.id = const Value.absent(),
@@ -495,6 +533,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     this.endVerse = const Value.absent(),
     required double score,
     this.attempts = const Value.absent(),
+    this.notes = const Value.absent(),
   }) : timestamp = Value(timestamp),
        type = Value(type),
        bookId = Value(bookId),
@@ -512,6 +551,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     Expression<int>? endVerse,
     Expression<double>? score,
     Expression<int>? attempts,
+    Expression<String>? notes,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -524,6 +564,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
       if (endVerse != null) 'end_verse': endVerse,
       if (score != null) 'score': score,
       if (attempts != null) 'attempts': attempts,
+      if (notes != null) 'notes': notes,
     });
   }
 
@@ -538,6 +579,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     Value<int?>? endVerse,
     Value<double>? score,
     Value<int?>? attempts,
+    Value<String?>? notes,
   }) {
     return ResultsCompanion(
       id: id ?? this.id,
@@ -550,6 +592,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
       endVerse: endVerse ?? this.endVerse,
       score: score ?? this.score,
       attempts: attempts ?? this.attempts,
+      notes: notes ?? this.notes,
     );
   }
 
@@ -588,6 +631,9 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     if (attempts.present) {
       map['attempts'] = Variable<int>(attempts.value);
     }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
     return map;
   }
 
@@ -603,7 +649,8 @@ class ResultsCompanion extends UpdateCompanion<Result> {
           ..write('endChapter: $endChapter, ')
           ..write('endVerse: $endVerse, ')
           ..write('score: $score, ')
-          ..write('attempts: $attempts')
+          ..write('attempts: $attempts, ')
+          ..write('notes: $notes')
           ..write(')'))
         .toString();
   }
@@ -632,6 +679,7 @@ typedef $$ResultsTableCreateCompanionBuilder =
       Value<int?> endVerse,
       required double score,
       Value<int?> attempts,
+      Value<String?> notes,
     });
 typedef $$ResultsTableUpdateCompanionBuilder =
     ResultsCompanion Function({
@@ -645,6 +693,7 @@ typedef $$ResultsTableUpdateCompanionBuilder =
       Value<int?> endVerse,
       Value<double> score,
       Value<int?> attempts,
+      Value<String?> notes,
     });
 
 class $$ResultsTableFilterComposer
@@ -704,6 +753,11 @@ class $$ResultsTableFilterComposer
 
   ColumnFilters<int> get attempts => $composableBuilder(
     column: $table.attempts,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -766,6 +820,11 @@ class $$ResultsTableOrderingComposer
     column: $table.attempts,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ResultsTableAnnotationComposer
@@ -812,6 +871,9 @@ class $$ResultsTableAnnotationComposer
 
   GeneratedColumn<int> get attempts =>
       $composableBuilder(column: $table.attempts, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
 }
 
 class $$ResultsTableTableManager
@@ -852,6 +914,7 @@ class $$ResultsTableTableManager
                 Value<int?> endVerse = const Value.absent(),
                 Value<double> score = const Value.absent(),
                 Value<int?> attempts = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
               }) => ResultsCompanion(
                 id: id,
                 timestamp: timestamp,
@@ -863,6 +926,7 @@ class $$ResultsTableTableManager
                 endVerse: endVerse,
                 score: score,
                 attempts: attempts,
+                notes: notes,
               ),
           createCompanionCallback:
               ({
@@ -876,6 +940,7 @@ class $$ResultsTableTableManager
                 Value<int?> endVerse = const Value.absent(),
                 required double score,
                 Value<int?> attempts = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
               }) => ResultsCompanion.insert(
                 id: id,
                 timestamp: timestamp,
@@ -887,6 +952,7 @@ class $$ResultsTableTableManager
                 endVerse: endVerse,
                 score: score,
                 attempts: attempts,
+                notes: notes,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

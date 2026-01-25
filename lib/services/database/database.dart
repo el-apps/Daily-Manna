@@ -1,10 +1,9 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 part 'database.g.dart';
 
-enum ResultType { memorization, recitation }
+enum ResultType { memorization, recitation, study }
 
 class Results extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -17,6 +16,7 @@ class Results extends Table {
   IntColumn get endVerse => integer().nullable()();
   RealColumn get score => real()();
   IntColumn get attempts => integer().nullable()();
+  TextColumn get notes => text().nullable()();
 }
 
 @DriftDatabase(tables: [Results])
@@ -27,7 +27,17 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(results, results.notes);
+      }
+    },
+  );
 
   static QueryExecutor _openConnection() => driftDatabase(
     name: 'daily_manna',
