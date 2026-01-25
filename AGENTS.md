@@ -94,7 +94,7 @@ Verb-first format: `verb-noun`. Simple verbs stand alone: `format`, `test`.
 
 ### Git Commits
 
-**Always use conventional commit format.** Every commit message must start with a type prefix.
+**Always use conventional commit format.** Every commit message must start with a type prefix. Make new commits for fixes—don't use `--amend` + force push to rewrite history.
 
 Format: `type(scope): description` or `type: description`
 
@@ -160,6 +160,8 @@ Format and transform data in service classes, not widgets. Example: `ResultsServ
 
 ### Widget Creation and Organization
 
+**Reuse existing widgets** before creating new ones. Check `lib/ui/` for shared components like `ThemeCard`, `VerseSelector`, `LoadingSection`.
+
 **Critical:** Prefer separate widgets over helper methods.
 
 **Why:** Helper methods create new widget instances on every parent rebuild, bypassing Flutter's widget tree diffing. Actual Widget classes enable the framework to skip unnecessary rebuilds—fundamental to rendering performance.
@@ -195,6 +197,8 @@ Format and transform data in service classes, not widgets. Example: `ResultsServ
 
 **Always use `AppScaffold` (not `Scaffold` directly).** It provides consistent AppBar and share button. Set `showShareButton: false` only on Settings page.
 
+**Prefer existing navigation patterns.** Use push/pop with return values rather than adding callbacks to existing pages.
+
 ### Adding New Features
 
 1. Create feature widget in `lib/`
@@ -222,6 +226,12 @@ if (ref.complete) { /* all fields set */ }
 Always show helpful feedback when data is empty. Don't leave views blank.
 
 Examples: "No results to share yet", loading indicators, error messages.
+
+### UI Conventions
+
+- **Button text**: Clean text only, no emojis or decorative elements
+- **Dialog actions**: Cancel button goes last (right-most), primary actions first
+- **Don't assume styling**: Ask before adding decorative elements
 
 ## Releases
 

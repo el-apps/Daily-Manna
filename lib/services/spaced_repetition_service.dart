@@ -54,6 +54,14 @@ class SpacedRepetitionService {
     return allStates;
   }
 
+  /// Get count of verses due for review (overdue + due today).
+  Future<int> getDueCount() async {
+    final allStates = await _getAllVerseStates();
+    final today = DateTime.now();
+    final endOfToday = DateTime(today.year, today.month, today.day, 23, 59, 59);
+    return allStates.where((s) => !s.nextReviewDate.isAfter(endOfToday)).length;
+  }
+
   /// Get recently practiced verses (by last review date).
   Future<List<VerseReviewState>> getRecentVerses({int limit = 20}) async {
     final allStates = await _getAllVerseStates();

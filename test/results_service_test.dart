@@ -125,8 +125,9 @@ void main() {
     });
 
     test('getTodaySections returns empty list when no results', () async {
-      final sections =
-          await resultsService.getTodaySections(FakeBibleService());
+      final sections = await resultsService.getTodaySections(
+        FakeBibleService(),
+      );
       expect(sections, isEmpty);
     });
 
@@ -143,8 +144,9 @@ void main() {
         ),
       );
 
-      final sections =
-          await resultsService.getTodaySections(FakeBibleService());
+      final sections = await resultsService.getTodaySections(
+        FakeBibleService(),
+      );
 
       expect(sections, hasLength(1));
       expect(sections[0].title, 'Memorization');
@@ -166,8 +168,9 @@ void main() {
         ),
       );
 
-      final sections =
-          await resultsService.getTodaySections(FakeBibleService());
+      final sections = await resultsService.getTodaySections(
+        FakeBibleService(),
+      );
 
       expect(sections, hasLength(1));
       expect(sections[0].title, 'Recitation');
@@ -211,8 +214,9 @@ void main() {
         ),
       );
 
-      final sections =
-          await resultsService.getTodaySections(FakeBibleService());
+      final sections = await resultsService.getTodaySections(
+        FakeBibleService(),
+      );
 
       // All same type should be in one section
       expect(sections, hasLength(1));
@@ -247,8 +251,9 @@ void main() {
         ),
       );
 
-      final sections =
-          await resultsService.getTodaySections(FakeBibleService());
+      final sections = await resultsService.getTodaySections(
+        FakeBibleService(),
+      );
 
       expect(sections, hasLength(1));
       expect(sections[0].title, 'Recitation');
@@ -257,60 +262,63 @@ void main() {
       expect(sections[0].items[1].reference, 'Psa 100:1-5');
     });
 
-    test('getTodaySections preserves practice order with alternating types',
-        () async {
-      // Add results in specific order: memorization, recitation, memorization
-      await resultsService.addMemorizationResult(
-        MemorizationResult(
-          ref: const ScriptureRef(
-            bookId: 'Gen',
-            chapterNumber: 1,
-            verseNumber: 1,
+    test(
+      'getTodaySections preserves practice order with alternating types',
+      () async {
+        // Add results in specific order: memorization, recitation, memorization
+        await resultsService.addMemorizationResult(
+          MemorizationResult(
+            ref: const ScriptureRef(
+              bookId: 'Gen',
+              chapterNumber: 1,
+              verseNumber: 1,
+            ),
+            attempts: 1,
+            score: 0.9,
           ),
-          attempts: 1,
-          score: 0.9,
-        ),
-      );
-      await resultsService.addRecitationResult(
-        RecitationResult(
-          ref: const ScriptureRangeRef(
-            bookId: 'Psa',
-            chapter: 23,
-            startVerse: 1,
-            endVerse: 6,
+        );
+        await resultsService.addRecitationResult(
+          RecitationResult(
+            ref: const ScriptureRangeRef(
+              bookId: 'Psa',
+              chapter: 23,
+              startVerse: 1,
+              endVerse: 6,
+            ),
+            score: 0.85,
           ),
-          score: 0.85,
-        ),
-      );
-      await resultsService.addMemorizationResult(
-        MemorizationResult(
-          ref: const ScriptureRef(
-            bookId: 'John',
-            chapterNumber: 3,
-            verseNumber: 16,
+        );
+        await resultsService.addMemorizationResult(
+          MemorizationResult(
+            ref: const ScriptureRef(
+              bookId: 'John',
+              chapterNumber: 3,
+              verseNumber: 16,
+            ),
+            attempts: 2,
+            score: 0.95,
           ),
-          attempts: 2,
-          score: 0.95,
-        ),
-      );
+        );
 
-      final sections =
-          await resultsService.getTodaySections(FakeBibleService());
+        final sections = await resultsService.getTodaySections(
+          FakeBibleService(),
+        );
 
-      // Should have 3 sections (type changes each time)
-      expect(sections, hasLength(3));
-      expect(sections[0].title, 'Memorization');
-      expect(sections[0].items, hasLength(1));
-      expect(sections[0].items[0].reference, 'Gen 1:1');
+        // Should have 3 sections (type changes each time)
+        expect(sections, hasLength(3));
+        expect(sections[0].title, 'Memorization');
+        expect(sections[0].items, hasLength(1));
+        expect(sections[0].items[0].reference, 'Gen 1:1');
 
-      expect(sections[1].title, 'Recitation');
-      expect(sections[1].items, hasLength(1));
-      expect(sections[1].items[0].reference, 'Psa 23:1-6');
+        expect(sections[1].title, 'Recitation');
+        expect(sections[1].items, hasLength(1));
+        expect(sections[1].items[0].reference, 'Psa 23:1-6');
 
-      expect(sections[2].title, 'Memorization');
-      expect(sections[2].items, hasLength(1));
-      expect(sections[2].items[0].reference, 'John 3:16');
-    });
+        expect(sections[2].title, 'Memorization');
+        expect(sections[2].items, hasLength(1));
+        expect(sections[2].items[0].reference, 'John 3:16');
+      },
+    );
 
     test('getTodaySections collapses consecutive same-type results', () async {
       // Add two memorizations, then two recitations
@@ -359,8 +367,9 @@ void main() {
         ),
       );
 
-      final sections =
-          await resultsService.getTodaySections(FakeBibleService());
+      final sections = await resultsService.getTodaySections(
+        FakeBibleService(),
+      );
 
       // Should have 2 sections (consecutive same-types collapsed)
       expect(sections, hasLength(2));
@@ -456,8 +465,9 @@ void main() {
         ),
       );
 
-      final sections =
-          await resultsService.getTodaySections(FakeBibleService());
+      final sections = await resultsService.getTodaySections(
+        FakeBibleService(),
+      );
 
       // Should have 5 sections: [mem,mem], [rec], [mem], [rec,rec], [mem]
       expect(sections, hasLength(5));
@@ -502,8 +512,9 @@ void main() {
         ),
       );
 
-      final sections =
-          await resultsService.getTodaySections(FakeBibleService());
+      final sections = await resultsService.getTodaySections(
+        FakeBibleService(),
+      );
 
       expect(sections[0].items[0].score, 0.95);
       expect(sections[1].items[0].score, 0.72);
@@ -533,8 +544,9 @@ void main() {
         ),
       );
 
-      final sections =
-          await resultsService.getTodaySections(FakeBibleService());
+      final sections = await resultsService.getTodaySections(
+        FakeBibleService(),
+      );
 
       expect(sections[0].items[0].attempts, 3);
       expect(sections[0].items[1].attempts, 1);
@@ -553,50 +565,56 @@ void main() {
         ),
       );
 
-      final sections =
-          await resultsService.getTodaySections(FakeBibleService());
+      final sections = await resultsService.getTodaySections(
+        FakeBibleService(),
+      );
 
       expect(sections[0].items[0].attempts, 1);
     });
 
-    test('getTodaySections formats single verse recitation reference',
-        () async {
-      await resultsService.addRecitationResult(
-        RecitationResult(
-          ref: const ScriptureRangeRef(
-            bookId: 'John',
-            chapter: 3,
-            startVerse: 16,
+    test(
+      'getTodaySections formats single verse recitation reference',
+      () async {
+        await resultsService.addRecitationResult(
+          RecitationResult(
+            ref: const ScriptureRangeRef(
+              bookId: 'John',
+              chapter: 3,
+              startVerse: 16,
+            ),
+            score: 0.9,
           ),
-          score: 0.9,
-        ),
-      );
+        );
 
-      final sections =
-          await resultsService.getTodaySections(FakeBibleService());
+        final sections = await resultsService.getTodaySections(
+          FakeBibleService(),
+        );
 
-      expect(sections[0].items[0].reference, 'John 3:16');
-    });
+        expect(sections[0].items[0].reference, 'John 3:16');
+      },
+    );
 
     test(
-        'getTodaySections formats single verse when endVerse equals startVerse',
-        () async {
-      await resultsService.addRecitationResult(
-        RecitationResult(
-          ref: const ScriptureRangeRef(
-            bookId: 'John',
-            chapter: 3,
-            startVerse: 16,
-            endVerse: 16,
+      'getTodaySections formats single verse when endVerse equals startVerse',
+      () async {
+        await resultsService.addRecitationResult(
+          RecitationResult(
+            ref: const ScriptureRangeRef(
+              bookId: 'John',
+              chapter: 3,
+              startVerse: 16,
+              endVerse: 16,
+            ),
+            score: 0.9,
           ),
-          score: 0.9,
-        ),
-      );
+        );
 
-      final sections =
-          await resultsService.getTodaySections(FakeBibleService());
+        final sections = await resultsService.getTodaySections(
+          FakeBibleService(),
+        );
 
-      expect(sections[0].items[0].reference, 'John 3:16');
-    });
+        expect(sections[0].items[0].reference, 'John 3:16');
+      },
+    );
   });
 }

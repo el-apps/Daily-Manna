@@ -5,7 +5,7 @@ import 'package:daily_manna/services/database/database.dart' as db;
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/history/result_card.dart';
-import 'package:daily_manna/ui/memorization/verse_memorization.dart';
+import 'package:daily_manna/ui/practice_mode_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -184,28 +184,20 @@ class _DateGroup extends StatelessWidget {
         (result) => ResultCard(
           result: result,
           reference: _getReference(result),
-          score: ScoreData(
-            value: result.score,
-            attempts: result.attempts ?? 1,
-          ),
-          onPractice: result.type == db.ResultType.memorization
-              ? () => _navigateToMemorization(context, result)
-              : null,
+          score: ScoreData(value: result.score, attempts: result.attempts ?? 1),
+          onPractice: () => _showPracticeDialog(context, result),
         ),
       ),
     ],
   );
 
-  void _navigateToMemorization(BuildContext context, db.Result result) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => VerseMemorization(
-          initialRef: ScriptureRef(
-            bookId: result.bookId,
-            chapterNumber: result.startChapter,
-            verseNumber: result.startVerse,
-          ),
-        ),
+  void _showPracticeDialog(BuildContext context, db.Result result) {
+    showPracticeModeDialog(
+      context,
+      ScriptureRef(
+        bookId: result.bookId,
+        chapterNumber: result.startChapter,
+        verseNumber: result.startVerse,
       ),
     );
   }

@@ -3,17 +3,12 @@ import 'package:daily_manna/mode_card.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/history/history_page.dart';
-import 'package:daily_manna/ui/memorization/verse_memorization.dart';
-import 'package:daily_manna/ui/recitation/recitation_mode.dart';
+import 'package:daily_manna/ui/practice/practice_page.dart';
+import 'package:daily_manna/ui/review/review_card.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
-
-  final List<Feature> features = const [
-    (title: 'Recite', icon: Icons.mic, widget: RecitationMode()),
-    (title: 'Memorize', icon: Icons.voice_chat, widget: VerseMemorization()),
-  ];
 
   @override
   Widget build(BuildContext context) => AppScaffold(
@@ -29,14 +24,14 @@ class HomePage extends StatelessWidget {
             ).textTheme.titleSmall!.copyWith(fontStyle: FontStyle.italic),
           ),
         ),
-        for (final feature in features)
-          ModeCard(
-            title: feature.title,
-            icon: feature.icon,
-            onTap: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => feature.widget)),
-          ),
+        ModeCard(
+          title: 'Practice',
+          icon: Icons.play_arrow,
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const PracticePage())),
+        ),
+        const ReviewCard(),
         ModeCard(
           title: 'History',
           icon: Icons.history,
@@ -62,5 +57,3 @@ class HomePage extends StatelessWidget {
     ),
   );
 }
-
-typedef Feature = ({String title, IconData icon, Widget widget});

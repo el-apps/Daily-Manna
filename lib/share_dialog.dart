@@ -39,44 +39,44 @@ class ShareDialog extends StatelessWidget {
                         'Daily sharing your results with others is a great way to practice accountability!',
                       ),
                       if (hasContent) ...[
-                      const Divider(),
-                      ...sections.expand(
-                        (section) => [
-                          Text(
-                            section.title,
-                            style: Theme.of(context).textTheme.titleSmall,
-                          ),
-                          ...section.items.map(
-                            (item) => Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                ScoreEmoji(
-                                  score: ScoreData(
-                                    value: item.score,
-                                    attempts: item.attempts,
-                                  ),
-                                  fontSize: 18,
-                                ),
-                                Text(item.reference),
-                              ],
+                        const Divider(),
+                        ...sections.expand(
+                          (section) => [
+                            Text(
+                              section.title,
+                              style: Theme.of(context).textTheme.titleSmall,
                             ),
-                          ),
-
-                        ],
-                      ),
-                    ] else ...[
-                      const Divider(),
-                      Text(
-                        'No results to share yet today. Complete a memorization or recitation to get started.',
-                        style: TextStyle(
-                          color: Theme.of(context).disabledColor,
-                          fontStyle: FontStyle.italic,
+                            ...section.items.map(
+                              (item) => Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  ScoreEmoji(
+                                    score: ScoreData(
+                                      value: item.score,
+                                      attempts: item.attempts,
+                                    ),
+                                    fontSize: 18,
+                                  ),
+                                  Text(item.reference),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
+                      ] else ...[
+                        const Divider(),
+                        Text(
+                          'No results to share yet today. Complete a memorization or recitation to get started.',
+                          style: TextStyle(
+                            color: Theme.of(context).disabledColor,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
