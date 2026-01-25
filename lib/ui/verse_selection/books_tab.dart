@@ -1,4 +1,5 @@
 import 'package:bible_parser_flutter/bible_parser_flutter.dart';
+import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:flutter/material.dart';
@@ -6,9 +7,15 @@ import 'package:provider/provider.dart';
 
 /// Browse tab with drill-down navigation: Books → Chapters → Verses.
 class BooksTab extends StatefulWidget {
-  final void Function(ScriptureRef) onVerseSelected;
+  final void Function(ScriptureRef)? onVerseSelected;
+  final void Function(ScriptureRangeRef)? onRangeSelected;
 
-  const BooksTab({super.key, required this.onVerseSelected});
+  const BooksTab({super.key, required this.onVerseSelected}) : onRangeSelected = null;
+
+  const BooksTab.range({super.key, required this.onRangeSelected})
+      : onVerseSelected = null;
+
+  bool get rangeMode => onRangeSelected != null;
 
   @override
   State<BooksTab> createState() => _BooksTabState();
@@ -18,6 +25,7 @@ class _BooksTabState extends State<BooksTab> {
   String? _selectedBookId;
   String? _selectedBookTitle;
   int? _selectedChapter;
+  int? _startVerse; // For range mode: the start verse being selected
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +44,13 @@ class _BooksTabState extends State<BooksTab> {
           onHomeTap: _goToBooks,
           onBookTap: _goToChapters,
         ),
+        if (_startVerse != null)
+          _RangeHeader(
+            bookTitle: _selectedBookTitle!,
+            chapter: _selectedChapter!,
+            startVerse: _startVerse!,
+            onJustThisVerse: _selectSingleVerseAsRange,
+          ),
         Expanded(child: _buildContent(bibleService)),
       ],
     );
@@ -61,14 +76,56 @@ class _BooksTabState extends State<BooksTab> {
       );
     }
 
+    final verses = bibleService.getVerses(_selectedBookId!, _selectedChapter!);
+
+    if (_startVerse != null) {
+      return _VersesListRangeEnd(
+        verses: verses,
+        startVerse: _startVerse!,
+        onEndVerseSelected: _selectEndVerse,
+      );
+    }
+
     return _VersesList(
-      verses: bibleService.getVerses(_selectedBookId!, _selectedChapter!),
-      onVerseSelected: (verse) => widget.onVerseSelected(
+      verses: verses,
+      onVerseSelected: _handleVerseSelected,
+    );
+  }
+
+  void _handleVerseSelected(int verse) {
+    if (widget.rangeMode) {
+      setState(() {
+        _startVerse = verse;
+      });
+    } else {
+      widget.onVerseSelected!(
         ScriptureRef(
           bookId: _selectedBookId,
           chapterNumber: _selectedChapter,
           verseNumber: verse,
         ),
+      );
+    }
+  }
+
+  void _selectSingleVerseAsRange() {
+    widget.onRangeSelected!(
+      ScriptureRangeRef(
+        bookId: _selectedBookId!,
+        chapter: _selectedChapter!,
+        startVerse: _startVerse!,
+        endVerse: null,
+      ),
+    );
+  }
+
+  void _selectEndVerse(int endVerse) {
+    widget.onRangeSelected!(
+      ScriptureRangeRef(
+        bookId: _selectedBookId!,
+        chapter: _selectedChapter!,
+        startVerse: _startVerse!,
+        endVerse: endVerse,
       ),
     );
   }
@@ -77,11 +134,53 @@ class _BooksTabState extends State<BooksTab> {
     _selectedBookId = null;
     _selectedBookTitle = null;
     _selectedChapter = null;
+    _startVerse = null;
   });
 
   void _goToChapters() => setState(() {
     _selectedChapter = null;
+    _startVerse = null;
   });
+}
+
+class _RangeHeader extends StatelessWidget {
+  final String bookTitle;
+  final int chapter;
+  final int startVerse;
+  final VoidCallback onJustThisVerse;
+
+  const _RangeHeader({
+    required this.bookTitle,
+    required this.chapter,
+    required this.startVerse,
+    required this.onJustThisVerse,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      width: double.infinity,
+      color: theme.colorScheme.primaryContainer,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '$bookTitle $chapter:$startVerse – Select end verse',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onJustThisVerse,
+            child: const Text('Just this verse'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Breadcrumbs extends StatelessWidget {
@@ -384,6 +483,40 @@ class _VersesList extends StatelessWidget {
   );
 }
 
+class _VersesListRangeEnd extends StatelessWidget {
+  final List<Verse> verses;
+  final int startVerse;
+  final void Function(int) onEndVerseSelected;
+
+  const _VersesListRangeEnd({
+    required this.verses,
+    required this.startVerse,
+    required this.onEndVerseSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) => GridView.builder(
+    padding: const EdgeInsets.all(16),
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 5,
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+    ),
+    itemCount: verses.length,
+    itemBuilder: (context, index) {
+      final verse = verses[index];
+      final isSelectable = verse.num >= startVerse;
+      final isStartVerse = verse.num == startVerse;
+      return _NumberButtonRangeEnd(
+        number: verse.num,
+        isSelectable: isSelectable,
+        isStartVerse: isStartVerse,
+        onTap: isSelectable ? () => onEndVerseSelected(verse.num) : null,
+      );
+    },
+  );
+}
+
 class _NumberButton extends StatelessWidget {
   final int number;
   final VoidCallback onTap;
@@ -405,4 +538,51 @@ class _NumberButton extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _NumberButtonRangeEnd extends StatelessWidget {
+  final int number;
+  final bool isSelectable;
+  final bool isStartVerse;
+  final VoidCallback? onTap;
+
+  const _NumberButtonRangeEnd({
+    required this.number,
+    required this.isSelectable,
+    required this.isStartVerse,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final Color backgroundColor;
+    final Color textColor;
+
+    if (isStartVerse) {
+      backgroundColor = theme.colorScheme.primary;
+      textColor = theme.colorScheme.onPrimary;
+    } else if (isSelectable) {
+      backgroundColor = theme.colorScheme.surfaceContainerHighest;
+      textColor = theme.colorScheme.onSurface;
+    } else {
+      backgroundColor = theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5);
+      textColor = theme.colorScheme.onSurface.withValues(alpha: 0.38);
+    }
+
+    return Material(
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Center(
+          child: Text(
+            number.toString(),
+            style: theme.textTheme.titleMedium?.copyWith(color: textColor),
+          ),
+        ),
+      ),
+    );
+  }
 }

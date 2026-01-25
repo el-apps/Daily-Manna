@@ -1,7 +1,7 @@
 import 'package:daily_manna/models/scripture_range_ref.dart';
-import 'package:daily_manna/passage_range_selector.dart';
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
+import 'package:daily_manna/ui/memorization/verse_selector.dart';
 import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -81,10 +81,10 @@ class _PassageSelector extends StatelessWidget {
   final ValueChanged<ScriptureRangeRef> onSelected;
 
   @override
-  Widget build(BuildContext context) => PassageRangeSelector(
-    ref: selectedPassage ??
+  Widget build(BuildContext context) => VerseSelector.range(
+    rangeRef: selectedPassage ??
         const ScriptureRangeRef(bookId: '', chapter: 0, startVerse: 0),
-    onSelected: onSelected,
+    onRangeSelected: onSelected,
   );
 }
 
