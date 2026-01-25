@@ -300,4 +300,4 @@ When using subagents for parallel work:
 
 ## TODO Items
 
-- User verse queue management (see `lib/ui/memorization/verse_memorization.dart`)
+- "Next" button in verse_memorization should advance to next verse in review queue, not just verse+1
