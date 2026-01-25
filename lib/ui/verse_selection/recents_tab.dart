@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+import 'package:daily_manna/utils/date_utils.dart';
+
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/services/bible_service.dart';
@@ -54,8 +56,8 @@ class RecentsTab extends StatelessWidget {
 
 String _formatLastPracticed(DateTime date) {
   final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final practiceDay = DateTime(date.year, date.month, date.day);
+  final today = now.dateOnly;
+  final practiceDay = date.dateOnly;
   final difference = today.difference(practiceDay).inDays;
 
   if (difference == 0) return 'Practiced today';

@@ -1,4 +1,5 @@
 import 'package:daily_manna/models/score_data.dart';
+import 'package:daily_manna/utils/date_utils.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
@@ -79,7 +80,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   List<_ResultGroup> _groupByDate(List<db.Result> results) {
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final today = now.dateOnly;
     final yesterday = today.subtract(const Duration(days: 1));
     final weekAgo = today.subtract(const Duration(days: 7));
 
@@ -91,11 +92,7 @@ class _HistoryPageState extends State<HistoryPage> {
     };
 
     for (final result in results) {
-      final date = DateTime(
-        result.timestamp.year,
-        result.timestamp.month,
-        result.timestamp.day,
-      );
+      final date = result.timestamp.dateOnly;
 
       if (date == today) {
         groups['Today']!.add(result);

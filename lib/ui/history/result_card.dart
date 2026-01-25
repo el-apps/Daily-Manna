@@ -1,4 +1,5 @@
 import 'package:daily_manna/models/score_data.dart';
+import 'package:daily_manna/utils/date_utils.dart';
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/ui/score_emoji.dart';
 import 'package:flutter/material.dart';
@@ -77,8 +78,8 @@ class ResultCard extends StatelessWidget {
 
   String _formatTime(DateTime timestamp) {
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final date = DateTime(timestamp.year, timestamp.month, timestamp.day);
+    final today = now.dateOnly;
+    final date = timestamp.dateOnly;
 
     if (date == today) {
       return DateFormat.jm().format(timestamp);

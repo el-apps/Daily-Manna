@@ -1,4 +1,5 @@
 import 'package:daily_manna/models/scripture_ref.dart';
+import 'package:daily_manna/utils/date_utils.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
@@ -101,7 +102,7 @@ class _ReviewPageState extends State<ReviewPage> {
 
   _GroupedVerses _groupByUrgency(List<VerseReviewState> verses) {
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final today = now.dateOnly;
     final tomorrow = today.add(const Duration(days: 1));
 
     final overdue = <VerseReviewState>[];
@@ -109,11 +110,7 @@ class _ReviewPageState extends State<ReviewPage> {
     final comingUp = <VerseReviewState>[];
 
     for (final verse in verses) {
-      final dueDate = DateTime(
-        verse.nextReviewDate.year,
-        verse.nextReviewDate.month,
-        verse.nextReviewDate.day,
-      );
+      final dueDate = verse.nextReviewDate.dateOnly;
 
       if (dueDate.isBefore(today)) {
         overdue.add(verse);
@@ -300,8 +297,8 @@ class _VerseItem extends StatelessWidget {
 
   String _formatDueDate(DateTime date) {
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final dueDay = DateTime(date.year, date.month, date.day);
+    final today = now.dateOnly;
+    final dueDay = date.dateOnly;
     final difference = dueDay.difference(today).inDays;
 
     if (difference < -1) return '${-difference} days ago';

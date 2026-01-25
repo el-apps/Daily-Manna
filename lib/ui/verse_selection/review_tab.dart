@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+import 'package:daily_manna/utils/date_utils.dart';
+
 import 'package:daily_manna/ui/empty_state.dart';
 
 import 'package:daily_manna/models/scripture_ref.dart';
@@ -54,8 +56,8 @@ class ReviewTab extends StatelessWidget {
 
 String _formatReviewDate(DateTime date) {
   final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final reviewDay = DateTime(date.year, date.month, date.day);
+  final today = now.dateOnly;
+  final reviewDay = date.dateOnly;
   final difference = reviewDay.difference(today).inDays;
 
   if (difference < 0) {
