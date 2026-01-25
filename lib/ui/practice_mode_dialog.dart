@@ -14,15 +14,6 @@ void showPracticeModeDialog(BuildContext context, ScriptureRef ref) {
       title: Text(bibleService.getRefName(ref)),
       content: const Text('How would you like to practice?'),
       actions: [
-        FilledButton.tonal(
-          onPressed: () {
-            Navigator.of(context).pop();
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const RecitationMode()),
-            );
-          },
-          child: const Text('Recite'),
-        ),
         FilledButton(
           onPressed: () {
             Navigator.of(context).pop();
@@ -33,6 +24,15 @@ void showPracticeModeDialog(BuildContext context, ScriptureRef ref) {
             );
           },
           child: const Text('Memorize'),
+        ),
+        FilledButton.tonal(
+          onPressed: () {
+            Navigator.of(context).pop();
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const RecitationMode()),
+            );
+          },
+          child: const Text('Recite'),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
