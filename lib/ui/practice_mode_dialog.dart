@@ -28,9 +28,9 @@ void showPracticeModeDialog(BuildContext context, ScriptureRef ref) {
         FilledButton.tonal(
           onPressed: () {
             Navigator.of(context).pop();
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const RecitationMode()),
-            );
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const RecitationMode()));
           },
           child: const Text('Recite'),
         ),

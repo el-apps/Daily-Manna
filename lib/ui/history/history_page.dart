@@ -184,10 +184,7 @@ class _DateGroup extends StatelessWidget {
         (result) => ResultCard(
           result: result,
           reference: _getReference(result),
-          score: ScoreData(
-            value: result.score,
-            attempts: result.attempts ?? 1,
-          ),
+          score: ScoreData(value: result.score, attempts: result.attempts ?? 1),
           onPractice: () => _showPracticeDialog(context, result),
         ),
       ),

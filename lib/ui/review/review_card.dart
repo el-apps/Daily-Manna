@@ -39,9 +39,9 @@ class ReviewCard extends StatelessWidget {
                 ],
               ),
               trailing: const Icon(Icons.assignment),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ReviewPage()),
-              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const ReviewPage())),
             ),
           ),
         );
