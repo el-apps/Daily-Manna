@@ -3,6 +3,7 @@ import 'package:daily_manna/mode_card.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/history/history_page.dart';
+import 'package:daily_manna/ui/practice/practice_page.dart';
 import 'package:daily_manna/ui/review/review_card.dart';
 import 'package:flutter/material.dart';
 
@@ -24,6 +25,13 @@ class HomePage extends StatelessWidget {
           ),
         ),
         const ReviewCard(),
+        ModeCard(
+          title: 'Practice',
+          icon: Icons.play_arrow,
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const PracticePage())),
+        ),
         ModeCard(
           title: 'History',
           icon: Icons.history,
