@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 part 'database.g.dart';
 
@@ -28,7 +29,13 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 1;
 
-  static QueryExecutor _openConnection() => driftDatabase(name: 'daily_manna');
+  static QueryExecutor _openConnection() => driftDatabase(
+    name: 'daily_manna',
+    web: DriftWebOptions(
+      sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+      driftWorker: Uri.parse('drift_worker.js'),
+    ),
+  );
 
   // Insert a new result
   Future<int> insertResult(ResultsCompanion result) =>

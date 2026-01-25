@@ -33,6 +33,7 @@ lib/
 │   └── result_section.dart
 │
 ├── services/                      # Business logic & integrations
+│   ├── database/database.dart     # Drift ORM
 │   ├── bible_service.dart
 │   ├── results_service.dart
 │   ├── settings_service.dart
@@ -239,9 +240,11 @@ Update version in `pubspec.yaml`, merge to `main` to trigger automatic workflow:
 
 ## Web Support
 
-Flask web support enabled. Custom Python server with CORS headers.
+Custom Python server with CORS headers.
 
 **Local dev:** `just web` → http://localhost:8000
+
+**Headless browser gotcha:** Locale strings like `en-US@posix` break Flutter's parser, causing silent white-screen failures. Normalization is handled in `web/index.html`.
 
 **Production** (exe.dev VM):
 
@@ -253,6 +256,7 @@ Flask web support enabled. Custom Python server with CORS headers.
 
 - KJV XML ~5MB: initial load may be slow
 - Web uses CanvasKit renderer (requires WebGL)
+- Drift database: web requires `sqlite3.wasm` and `drift_worker.js` in `web/`
 - `share_plus` handles mobile/web sharing
 - `word_tools` for memorization scoring
 - Whisper API for speech-to-text
