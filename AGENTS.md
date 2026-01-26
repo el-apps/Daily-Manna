@@ -84,6 +84,10 @@ just clean            # Clean build artifacts
 
 **One question at a time.** Ask design questions sequentially rather than overwhelming with multiple options. Use mockups (iframe tool) for UI decisions.
 
+### Adding Dependencies
+
+**Verify package compatibility before adding.** Check pub.dev for recent activity, GitHub issues, and Flutter/Kotlin version compatibility. Prefer simpler solutions that avoid extra platform-specific packages.
+
 ### Just Recipe Naming
 
 Verb-first format: `verb-noun`. Simple verbs stand alone: `format`, `test`.
