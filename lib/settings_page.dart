@@ -10,6 +10,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'ui/settings/notification_card.dart';
+
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -30,6 +32,8 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const NotificationCard(),
+            const SizedBox(height: 16),
             _ApiKeySection(),
             const SizedBox(height: 16),
             ListenableBuilder(

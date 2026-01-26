@@ -6,6 +6,7 @@ import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/settings_service.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/services/streak_service.dart';
+import 'package:daily_manna/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -28,6 +29,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
   late ErrorLoggerService _errorLoggerService;
   late SpacedRepetitionService _spacedRepetitionService;
   late StreakService _streakService;
+  late NotificationService _notificationService;
   late Future _initFuture;
 
   @override
@@ -40,10 +42,18 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
     _errorLoggerService = ErrorLoggerService();
     _spacedRepetitionService = SpacedRepetitionService(_database);
     _streakService = StreakService(_database);
+    _notificationService = NotificationService(
+      settingsService: _settingsService,
+      streakService: _streakService,
+      spacedRepetitionService: _spacedRepetitionService,
+    );
     _initFuture = Future.wait([
       _settingsService.init(),
       _errorLoggerService.init(),
       _bibleService.load(context),
+      _notificationService.initialize().then((_) {
+        _notificationService.scheduleDailyNotification();
+      }),
     ]);
   }
 
@@ -59,6 +69,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
               Provider.value(value: _resultsService),
               Provider.value(value: _spacedRepetitionService),
               Provider.value(value: _streakService),
+              Provider.value(value: _notificationService),
               ChangeNotifierProvider.value(value: _errorLoggerService),
             ],
             child: MaterialApp(
