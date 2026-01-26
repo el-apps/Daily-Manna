@@ -1,7 +1,7 @@
 # Daily Manna - Agent Guidelines
 
 > **Note:** Essential information only. Keep context window lean.
-> **Updates to this file:** Concise prose only. Include code examples only when high-impact and necessary. No verbose explanations, multiple examples, or unnecessary bulleted lists of benefits. Examples must be general and long-lasting—no references to specific one-time changes.
+> **Updates to this file:** Concise prose only. Weave new information into existing sections—don't append new sections. Include code examples only when high-impact and necessary. No verbose explanations or unnecessary bulleted lists. End every conversation by updating this file with lessons learned.
 
 ## Project Overview
 
@@ -72,12 +72,21 @@ just stop-web-prod    # Stop production server
 just logs-web-prod    # View production logs
 just build-apk-prod   # Android release APK
 just test             # Run tests
-just analyze          # Lint analysis
+just analyze          # Lint analysis (must pass before commit)
+just fix              # Auto-fix lint issues
 just format           # Format code
 just clean            # Clean build artifacts
 ```
 
 ## Development Guidelines
+
+### Design Discussions
+
+**One question at a time.** Ask design questions sequentially rather than overwhelming with multiple options. Use mockups (iframe tool) for UI decisions.
+
+### Adding Dependencies
+
+**Verify package compatibility before adding.** Check pub.dev for recent activity, GitHub issues, and Flutter/Kotlin version compatibility. Prefer simpler solutions that avoid extra platform-specific packages.
 
 ### Just Recipe Naming
 
@@ -166,7 +175,9 @@ Format and transform data in service classes, not widgets. Example: `ResultsServ
 - Has parameters or state management
 - Is more than a few lines
 
-**When NOT to extract:** Trivial spacing (`SizedBox(height: 16)`) or single widgets (`Text('Hello')`).
+**When NOT to extract:** Single widgets (`Text('Hello')`).
+
+**Use spacing parameters.** Prefer `Column(spacing: 12)` or `Row(spacing: 8)` over `SizedBox` for consistent spacing between children.
 
 **File organization:**
 

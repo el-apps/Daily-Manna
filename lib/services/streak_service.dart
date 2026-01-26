@@ -19,6 +19,12 @@ class StreakService {
   Stream<StreakState> watchStreak() =>
       _db.watchAllResults().map(_computeStreak);
 
+  /// Get the current streak state (one-time).
+  Future<StreakState> getStreak() async {
+    final results = await _db.getAllResults();
+    return _computeStreak(results);
+  }
+
   /// Compute streak from results.
   StreakState _computeStreak(List<Result> results) {
     if (results.isEmpty) {
