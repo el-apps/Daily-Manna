@@ -3,7 +3,6 @@ import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/ui/memorization/practice_result.dart';
 import 'package:daily_manna/services/results_service.dart';
-import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -17,8 +17,7 @@ void main() {
       fakeResultsService = _FakeResultsService();
     });
 
-    Widget createTestWidget({ScriptureRef? initialRef}) {
-      return MultiProvider(
+    Widget createTestWidget({ScriptureRef? initialRef}) => MultiProvider(
         providers: [
           Provider<BibleService>.value(value: fakeBibleService),
           Provider<ResultsService>.value(value: fakeResultsService),
@@ -27,7 +26,6 @@ void main() {
           home: VerseMemorization(initialRef: initialRef),
         ),
       );
-    }
 
     testWidgets('shows Try Again and Next buttons after correct answer',
         (tester) async {
