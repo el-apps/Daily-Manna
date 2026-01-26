@@ -126,10 +126,12 @@ void main() {
     });
 
     test('multiple results on same day count as one day', () async {
-      final now = DateTime.now();
-      await addResultOnDate(now);
-      await addResultOnDate(now.subtract(const Duration(hours: 2)));
-      await addResultOnDate(now.subtract(const Duration(hours: 5)));
+      // Use a fixed time in the middle of the day to avoid crossing day boundaries
+      final today = DateTime.now();
+      final middleOfDay = DateTime(today.year, today.month, today.day, 12, 0);
+      await addResultOnDate(middleOfDay);
+      await addResultOnDate(middleOfDay.subtract(const Duration(hours: 2)));
+      await addResultOnDate(middleOfDay.subtract(const Duration(hours: 4)));
 
       final states = <StreakState>[];
       final subscription = streakService.watchStreak().listen(states.add);
