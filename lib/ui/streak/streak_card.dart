@@ -77,13 +77,13 @@ class StreakCard extends StatelessWidget {
 
   String _getDialogMessage(StreakState state) {
     if (state.streakDays == 0) {
-      return 'Complete any practice, review, or study activity to start your streak.';
+      return 'Interact with the Word today to start building a daily habit.';
     }
 
     if (!state.activityToday) {
-      return 'Complete an activity today to keep your ${state.streakDays} day streak going!';
+      return 'Interact with the Word today to keep your ${state.streakDays} day streak going!';
     }
 
-    return "You've extended your streak to ${state.streakDays} days! Keep it up!";
+    return "You've built a ${state.streakDays} day habit of interacting with the Word! Keep it up!";
   }
 }
