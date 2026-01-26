@@ -149,12 +149,10 @@ class NotificationService {
 
     if (hasReviews && hasStreak) {
       final verseText = _pluralize(reviewCount, 'verse', 'verses');
-      final dayText = _pluralize(streakDays, 'day', 'days');
       return 'You have $reviewCount $verseText to review. '
-          'Keep your $streakDays $dayText streak going!';
+          'Keep your $streakDays day streak going!';
     } else if (hasStreak) {
-      final dayText = _pluralize(streakDays, 'day', 'days');
-      return 'Keep your $streakDays $dayText streak going!';
+      return 'Keep your $streakDays day streak going!';
     } else if (hasReviews) {
       final verseText = _pluralize(reviewCount, 'verse', 'verses');
       return 'You have $reviewCount $verseText to review.';
