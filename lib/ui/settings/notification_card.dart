@@ -18,6 +18,7 @@ class _NotificationCardState extends State<NotificationCard> {
   late NotificationService _notificationService;
   late bool _notificationsEnabled;
   late TimeOfDay _notificationTime;
+  bool _systemNotificationsEnabled = true;
 
   @override
   void initState() {
@@ -26,6 +27,16 @@ class _NotificationCardState extends State<NotificationCard> {
     _notificationService = context.read<NotificationService>();
     _notificationsEnabled = _settingsService.getNotificationsEnabled();
     _notificationTime = _settingsService.getNotificationTime();
+    _checkSystemNotifications();
+  }
+
+  Future<void> _checkSystemNotifications() async {
+    final enabled = await _notificationService.areNotificationsEnabled();
+    if (mounted) {
+      setState(() {
+        _systemNotificationsEnabled = enabled;
+      });
+    }
   }
 
   Future<void> _onEnabledChanged(bool value) async {
@@ -67,6 +78,26 @@ class _NotificationCardState extends State<NotificationCard> {
               'Daily Reminder',
               style: Theme.of(context).textTheme.titleMedium,
             ),
+            if (!_systemNotificationsEnabled)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber, color: Colors.orange),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Notifications are blocked in system settings',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Enable notifications'),

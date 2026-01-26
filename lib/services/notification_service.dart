@@ -148,6 +148,17 @@ class NotificationService {
     await _notificationsPlugin.cancel(id: _dailyNotificationId);
   }
 
+  /// Checks if notifications are enabled at the system level.
+  Future<bool> areNotificationsEnabled() async {
+    final androidPlugin =
+        _notificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin != null) {
+      return await androidPlugin.areNotificationsEnabled() ?? false;
+    }
+    return true; // Assume enabled on non-Android
+  }
+
   /// Builds the notification body based on review count and streak days.
   String buildNotificationBody(int reviewCount, int streakDays) {
     final hasReviews = reviewCount > 0;
