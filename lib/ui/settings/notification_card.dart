@@ -61,12 +61,12 @@ class _NotificationCardState extends State<NotificationCard> {
   Widget build(BuildContext context) => ThemeCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 12,
           children: [
             Text(
               'Daily Reminder',
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 12),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Enable notifications'),
@@ -78,18 +78,17 @@ class _NotificationCardState extends State<NotificationCard> {
               value: _notificationsEnabled,
               onChanged: _onEnabledChanged,
             ),
-            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 4,
                     children: [
                       Text(
                         'Reminder Time',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                      const SizedBox(height: 4),
                       Text(
                         _formatTime(_notificationTime),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
