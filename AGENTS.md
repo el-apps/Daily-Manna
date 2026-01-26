@@ -300,4 +300,14 @@ When using subagents for parallel work:
 
 **Subagents are workers, not planners.** Do planning yourself, give them precise tasks.
 
+## Conversation Best Practices
+
+**One question at a time.** When discussing design, ask questions sequentially rather than overwhelming with multiple options at once. Use mockups (iframe tool) for UI decisions.
+
+**Always fix lint issues.** Don't ignore warnings even if pre-existing. Run `dart fix --apply` to auto-fix.
+
+**Use spacing parameters.** Prefer `Column(spacing: 12)` or `Row(spacing: 8)` over `SizedBox` for consistent spacing between children.
+
+**End every conversation with AGENTS.md update.** This file is long-term memory. Add lessons learned to avoid repeating mistakes.
+
 
