@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 
+import 'error_logger_service.dart';
 import 'settings_service.dart';
 import 'streak_service.dart';
 import 'spaced_repetition_service.dart';
@@ -18,6 +19,7 @@ class NotificationService {
   final SettingsService _settingsService;
   final StreakService _streakService;
   final SpacedRepetitionService _spacedRepetitionService;
+  final ErrorLoggerService? _errorLogger;
 
   bool _isInitialized = false;
 
@@ -25,48 +27,61 @@ class NotificationService {
     required SettingsService settingsService,
     required StreakService streakService,
     required SpacedRepetitionService spacedRepetitionService,
+    ErrorLoggerService? errorLogger,
     FlutterLocalNotificationsPlugin? notificationsPlugin,
   })  : _settingsService = settingsService,
         _streakService = streakService,
         _spacedRepetitionService = spacedRepetitionService,
+        _errorLogger = errorLogger,
         _notificationsPlugin =
             notificationsPlugin ?? FlutterLocalNotificationsPlugin();
+
+  void _log(String message) {
+    _errorLogger?.logError(message, context: 'Notification');
+  }
 
   /// Initializes the notification plugin, timezone, and requests permissions.
   Future<void> initialize() async {
     if (_isInitialized) return;
 
-    // Initialize timezone data
-    tz_data.initializeTimeZones();
-    // Use device's UTC offset to find matching timezone
-    final now = DateTime.now();
-    final offsetDuration = now.timeZoneOffset;
-    tz.setLocalLocation(
-      tz.timeZoneDatabase.locations.values.firstWhere(
+    try {
+      // Initialize timezone data
+      tz_data.initializeTimeZones();
+      // Use device's UTC offset to find matching timezone
+      final now = DateTime.now();
+      final offsetDuration = now.timeZoneOffset;
+      final location = tz.timeZoneDatabase.locations.values.firstWhere(
         (location) => location.currentTimeZone.offset == offsetDuration.inMilliseconds,
         orElse: () => tz.UTC,
-      ),
-    );
+      );
+      tz.setLocalLocation(location);
+      _log('Timezone set to ${location.name}');
 
-    // Initialize the plugin with platform-specific settings
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-    const initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
+      // Initialize the plugin with platform-specific settings
+      const androidSettings =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+      const initSettings = InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      );
 
-    await _notificationsPlugin.initialize(settings: initSettings);
+      await _notificationsPlugin.initialize(settings: initSettings);
+      _log('Plugin initialized');
 
-    // Request permissions on Android 13+
-    await _requestPermissions();
+      // Request permissions on Android 13+
+      await _requestPermissions();
 
-    _isInitialized = true;
+      _isInitialized = true;
+      _log('Initialization complete');
+    } catch (e) {
+      _log('Initialize error: $e');
+      rethrow;
+    }
   }
 
   Future<void> _requestPermissions() async {
@@ -75,7 +90,8 @@ class NotificationService {
         _notificationsPlugin.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
     if (androidPlugin != null) {
-      await androidPlugin.requestNotificationsPermission();
+      final granted = await androidPlugin.requestNotificationsPermission();
+      _log('Android permission granted: $granted');
     }
 
     // Request iOS permissions
@@ -83,11 +99,12 @@ class NotificationService {
         _notificationsPlugin.resolvePlatformSpecificImplementation<
             IOSFlutterLocalNotificationsPlugin>();
     if (iosPlugin != null) {
-      await iosPlugin.requestPermissions(
+      final granted = await iosPlugin.requestPermissions(
         alert: true,
         badge: true,
         sound: true,
       );
+      _log('iOS permission granted: $granted');
     }
   }
 
@@ -132,15 +149,21 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    await _notificationsPlugin.zonedSchedule(
-      id: _dailyNotificationId,
-      title: _notificationTitle,
-      body: body,
-      scheduledDate: scheduledTime,
-      notificationDetails: notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id: _dailyNotificationId,
+        title: _notificationTitle,
+        body: body,
+        scheduledDate: scheduledTime,
+        notificationDetails: notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+      _log('Scheduled for ${scheduledTime.toString()}: $body');
+    } catch (e) {
+      _log('Schedule error: $e');
+      rethrow;
+    }
   }
 
   /// Cancels the scheduled daily notification.
@@ -157,6 +180,43 @@ class NotificationService {
       return await androidPlugin.areNotificationsEnabled() ?? false;
     }
     return true; // Assume enabled on non-Android
+  }
+
+  /// Shows a test notification immediately.
+  Future<void> showTestNotification() async {
+    if (!_isInitialized) {
+      await initialize();
+    }
+
+    const androidDetails = AndroidNotificationDetails(
+      _channelId,
+      _channelName,
+      channelDescription: 'Daily reminder notifications for verse review',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    try {
+      await _notificationsPlugin.show(
+        id: 99, // Different ID for test
+        title: _notificationTitle,
+        body: 'Test notification - notifications are working!',
+        notificationDetails: notificationDetails,
+      );
+      _log('Test notification sent');
+    } catch (e) {
+      _log('Test notification error: $e');
+      rethrow;
+    }
   }
 
   /// Builds the notification body based on review count and streak days.
