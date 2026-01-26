@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 
@@ -39,8 +38,15 @@ class NotificationService {
 
     // Initialize timezone data
     tz_data.initializeTimeZones();
-    final timeZoneName = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(timeZoneName));
+    // Use device's UTC offset to find matching timezone
+    final now = DateTime.now();
+    final offsetDuration = now.timeZoneOffset;
+    tz.setLocalLocation(
+      tz.timeZoneDatabase.locations.values.firstWhere(
+        (location) => location.currentTimeZone.offset == offsetDuration.inMilliseconds,
+        orElse: () => tz.UTC,
+      ),
+    );
 
     // Initialize the plugin with platform-specific settings
     const androidSettings =
