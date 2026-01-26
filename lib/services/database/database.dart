@@ -51,6 +51,11 @@ class AppDatabase extends _$AppDatabase {
   Future<int> insertResult(ResultsCompanion result) =>
       into(results).insert(result);
 
+  /// Update notes for a result.
+  Future<void> updateResultNotes(int id, String? notes) =>
+      (update(results)..where((r) => r.id.equals(id)))
+          .write(ResultsCompanion(notes: Value(notes)));
+
   // Get all results, newest first
   Future<List<Result>> getAllResults() =>
       (select(results)..orderBy([(t) => OrderingTerm.desc(t.timestamp)])).get();
@@ -59,6 +64,12 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<Result>> watchAllResults() => (select(
     results,
   )..orderBy([(t) => OrderingTerm.desc(t.timestamp)])).watch();
+
+  /// Watch all study results (for study log history).
+  Stream<List<Result>> watchStudyResults() => (select(results)
+        ..where((r) => r.type.equals(ResultType.study.index))
+        ..orderBy([(r) => OrderingTerm.desc(r.timestamp)]))
+      .watch();
 
   // Get results for a specific verse
   Future<List<Result>> getResultsForVerse(
