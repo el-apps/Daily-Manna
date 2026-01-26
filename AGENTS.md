@@ -73,7 +73,7 @@ just logs-web-prod    # View production logs
 just build-apk-prod   # Android release APK
 just test             # Run tests
 just analyze          # Lint analysis (must pass before commit)
-dart fix --apply      # Auto-fix lint issues
+just fix              # Auto-fix lint issues
 just format           # Format code
 just clean            # Clean build artifacts
 ```
