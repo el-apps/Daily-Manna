@@ -182,43 +182,6 @@ class NotificationService {
     return true; // Assume enabled on non-Android
   }
 
-  /// Shows a test notification immediately.
-  Future<void> showTestNotification() async {
-    if (!_isInitialized) {
-      await initialize();
-    }
-
-    const androidDetails = AndroidNotificationDetails(
-      _channelId,
-      _channelName,
-      channelDescription: 'Daily reminder notifications for verse review',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-    const notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
-    try {
-      await _notificationsPlugin.show(
-        id: 99, // Different ID for test
-        title: _notificationTitle,
-        body: 'Test notification - notifications are working!',
-        notificationDetails: notificationDetails,
-      );
-      _log('Test notification sent');
-    } catch (e) {
-      _log('Test notification error: $e');
-      rethrow;
-    }
-  }
-
   /// Builds the notification body based on review count and streak days.
   String buildNotificationBody(int reviewCount, int streakDays) {
     final hasReviews = reviewCount > 0;
