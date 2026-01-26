@@ -1,7 +1,7 @@
 # Daily Manna - Agent Guidelines
 
 > **Note:** Essential information only. Keep context window lean.
-> **Updates to this file:** Concise prose only. Include code examples only when high-impact and necessary. No verbose explanations, multiple examples, or unnecessary bulleted lists of benefits. Examples must be general and long-lasting—no references to specific one-time changes.
+> **Updates to this file:** Concise prose only. Weave new information into existing sections—don't append new sections. Include code examples only when high-impact and necessary. No verbose explanations or unnecessary bulleted lists. End every conversation by updating this file with lessons learned.
 
 ## Project Overview
 
@@ -72,12 +72,17 @@ just stop-web-prod    # Stop production server
 just logs-web-prod    # View production logs
 just build-apk-prod   # Android release APK
 just test             # Run tests
-just analyze          # Lint analysis
+just analyze          # Lint analysis (must pass before commit)
+dart fix --apply      # Auto-fix lint issues
 just format           # Format code
 just clean            # Clean build artifacts
 ```
 
 ## Development Guidelines
+
+### Design Discussions
+
+**One question at a time.** Ask design questions sequentially rather than overwhelming with multiple options. Use mockups (iframe tool) for UI decisions.
 
 ### Just Recipe Naming
 
@@ -166,7 +171,9 @@ Format and transform data in service classes, not widgets. Example: `ResultsServ
 - Has parameters or state management
 - Is more than a few lines
 
-**When NOT to extract:** Trivial spacing (`SizedBox(height: 16)`) or single widgets (`Text('Hello')`).
+**When NOT to extract:** Single widgets (`Text('Hello')`).
+
+**Use spacing parameters.** Prefer `Column(spacing: 12)` or `Row(spacing: 8)` over `SizedBox` for consistent spacing between children.
 
 **File organization:**
 
@@ -299,15 +306,5 @@ When using subagents for parallel work:
 - Commit between batches as checkpoints
 
 **Subagents are workers, not planners.** Do planning yourself, give them precise tasks.
-
-## Conversation Best Practices
-
-**One question at a time.** When discussing design, ask questions sequentially rather than overwhelming with multiple options at once. Use mockups (iframe tool) for UI decisions.
-
-**Always fix lint issues.** Don't ignore warnings even if pre-existing. Run `dart fix --apply` to auto-fix.
-
-**Use spacing parameters.** Prefer `Column(spacing: 12)` or `Row(spacing: 8)` over `SizedBox` for consistent spacing between children.
-
-**End every conversation with AGENTS.md update.** This file is long-term memory. Add lessons learned to avoid repeating mistakes.
 
 
