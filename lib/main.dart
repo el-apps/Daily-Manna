@@ -48,12 +48,12 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
       spacedRepetitionService: _spacedRepetitionService,
     );
     _initFuture = Future.wait([
-      _settingsService.init(),
+      _settingsService.init().then((_) async {
+        await _notificationService.initialize();
+        await _notificationService.scheduleDailyNotification();
+      }),
       _errorLoggerService.init(),
       _bibleService.load(context),
-      _notificationService.initialize().then((_) {
-        _notificationService.scheduleDailyNotification();
-      }),
     ]);
   }
 
