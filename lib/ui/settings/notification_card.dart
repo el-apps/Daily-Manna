@@ -137,28 +137,7 @@ class _NotificationCardState extends State<NotificationCard> {
                 ),
               ],
             ),
-            FilledButton.tonal(
-              onPressed: _onTestPressed,
-              child: const Text('Send Test Notification'),
-            ),
           ],
         ),
       );
-
-  Future<void> _onTestPressed() async {
-    try {
-      await _notificationService.showTestNotification();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Test notification sent')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    }
-  }
 }
