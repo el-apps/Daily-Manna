@@ -1,4 +1,5 @@
 import 'package:daily_manna/models/score_data.dart';
+import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
 import 'package:daily_manna/utils/date_utils.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
@@ -179,12 +180,26 @@ class _DateGroup extends StatelessWidget {
         ),
       ),
       ...results.map(
-        (result) => ResultCard(
-          result: result,
-          reference: _getReference(result),
-          score: ScoreData(value: result.score, attempts: result.attempts ?? 1),
-          onPractice: () => _showPracticeDialog(context, result),
-        ),
+        (result) {
+          final card = ResultCard(
+            result: result,
+            reference: _getReference(result),
+            score: ScoreData(value: result.score, attempts: result.attempts ?? 1),
+            onPractice: () => _showPracticeDialog(context, result),
+          );
+          
+          if (result.type == db.ResultType.study) {
+            return GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => StudyNotesDetailPage(result: result),
+                ),
+              ),
+              child: card,
+            );
+          }
+          return card;
+        },
       ),
     ],
   );
