@@ -13,6 +13,7 @@ Daily Manna is a Flutter app for building strong daily habits in interacting wit
 - **State Management**: Provider
 - **Code Generation**: Freezed (immutable data classes)
 - **Bible Data**: bible_parser_flutter (KJV XML parser)
+- **Background Tasks**: workmanager (daily notifications)
 - **Platforms**: Android, Web
 
 ## Project Structure
@@ -87,6 +88,8 @@ just clean            # Clean build artifacts
 ### Adding Dependencies
 
 **Verify package compatibility before adding.** Check pub.dev for recent activity, GitHub issues, and Flutter/Kotlin version compatibility. Prefer simpler solutions that avoid extra platform-specific packages.
+
+**For scheduled/background work:** Use `workmanager` for tasks that must run even when the app is closed (e.g., daily notifications). Scheduled notifications via `flutter_local_notifications` alone won't reliably fire if the user doesn't open the app—the content is computed at schedule time, not fire time.
 
 ### Just Recipe Naming
 
