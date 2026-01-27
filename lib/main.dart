@@ -44,8 +44,6 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
     _streakService = StreakService(_database);
     _notificationService = NotificationService(
       settingsService: _settingsService,
-      streakService: _streakService,
-      spacedRepetitionService: _spacedRepetitionService,
       errorLogger: _errorLoggerService,
     );
     _initFuture = Future.wait([

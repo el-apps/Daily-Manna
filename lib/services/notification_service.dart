@@ -12,6 +12,10 @@ import 'streak_service.dart';
 /// Task name for the daily notification background task.
 const String dailyNotificationTask = 'dailyNotificationTask';
 
+/// Time buffer in seconds to prevent same-day rescheduling when called
+/// very close to the scheduled time.
+const int _schedulingBufferSeconds = 60;
+
 /// Top-level callback dispatcher for workmanager.
 /// Must be a top-level function with @pragma annotation.
 @pragma('vm:entry-point')
@@ -113,29 +117,50 @@ Future<void> _scheduleNextNotification(TimeOfDay time) async {
 }
 
 /// Calculates the duration until the given time tomorrow.
+/// Uses Duration addition to properly handle month/year boundaries and DST.
 Duration _calculateDelayUntilTomorrow(TimeOfDay time) {
   final now = DateTime.now();
-  final tomorrow = DateTime(now.year, now.month, now.day + 1, time.hour, time.minute);
-  return tomorrow.difference(now);
+  final todayAtTime = DateTime(now.year, now.month, now.day, time.hour, time.minute);
+  final tomorrowAtTime = todayAtTime.add(const Duration(days: 1));
+  return tomorrowAtTime.difference(now);
 }
 
 /// Service for managing daily reminder notifications.
 class NotificationService {
   final SettingsService _settingsService;
   final ErrorLoggerService? _errorLogger;
+  final FlutterLocalNotificationsPlugin _notificationsPlugin;
   bool _workmanagerInitialized = false;
+  bool _pluginInitialized = false;
 
   NotificationService({
     required SettingsService settingsService,
-    required StreakService streakService,
-    required SpacedRepetitionService spacedRepetitionService,
     ErrorLoggerService? errorLogger,
-    FlutterLocalNotificationsPlugin? notificationsPlugin,
   })  : _settingsService = settingsService,
-        _errorLogger = errorLogger;
+        _errorLogger = errorLogger,
+        _notificationsPlugin = FlutterLocalNotificationsPlugin();
 
   void _log(String message) {
     _errorLogger?.logError(message, context: 'Notification');
+  }
+
+  /// Initializes the notification plugin once.
+  Future<void> _ensurePluginInitialized() async {
+    if (_pluginInitialized) return;
+
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/launcher_icon');
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
+    await _notificationsPlugin.initialize(settings: initSettings);
+    _pluginInitialized = true;
   }
 
   /// Initializes the notification system and requests permissions.
@@ -158,24 +183,10 @@ class NotificationService {
   }
 
   Future<void> _requestPermissions() async {
-    final plugin = FlutterLocalNotificationsPlugin();
-
-    // Initialize plugin to access platform-specific implementations
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/launcher_icon');
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-    const initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
-    await plugin.initialize(settings: initSettings);
+    await _ensurePluginInitialized();
 
     // Request Android notification permissions (Android 13+)
-    final androidPlugin = plugin
+    final androidPlugin = _notificationsPlugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
     if (androidPlugin != null) {
@@ -184,7 +195,7 @@ class NotificationService {
     }
 
     // Request iOS permissions
-    final iosPlugin = plugin
+    final iosPlugin = _notificationsPlugin
         .resolvePlatformSpecificImplementation<
             IOSFlutterLocalNotificationsPlugin>();
     if (iosPlugin != null) {
@@ -208,7 +219,7 @@ class NotificationService {
     }
 
     final notificationTime = _settingsService.getNotificationTime();
-    final delay = _calculateDelayUntilTime(notificationTime);
+    final delay = calculateDelayUntilTime(notificationTime);
 
     try {
       await Workmanager().registerOneOffTask(
@@ -235,13 +246,9 @@ class NotificationService {
 
   /// Checks if notifications are enabled at the system level.
   Future<bool> areNotificationsEnabled() async {
-    final plugin = FlutterLocalNotificationsPlugin();
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/launcher_icon');
-    const initSettings = InitializationSettings(android: androidSettings);
-    await plugin.initialize(settings: initSettings);
+    await _ensurePluginInitialized();
 
-    final androidPlugin = plugin
+    final androidPlugin = _notificationsPlugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
     if (androidPlugin != null) {
@@ -273,12 +280,32 @@ class NotificationService {
       count == 1 ? singular : plural;
 
   /// Calculates the duration until the next occurrence of the given time.
-  Duration _calculateDelayUntilTime(TimeOfDay time) {
-    final now = DateTime.now();
-    var target = DateTime(now.year, now.month, now.day, time.hour, time.minute);
-    if (target.isBefore(now) || target.isAtSameMomentAs(now)) {
-      target = target.add(const Duration(days: 1));
+  /// Uses Duration addition to properly handle month/year boundaries and DST.
+  /// Includes a small buffer to prevent same-day rescheduling when called
+  /// very close to the scheduled time.
+  @visibleForTesting
+  static Duration calculateDelayUntilTime(TimeOfDay time, {DateTime? now}) {
+    final currentTime = now ?? DateTime.now();
+    final todayAtTime = DateTime(
+      currentTime.year,
+      currentTime.month,
+      currentTime.day,
+      time.hour,
+      time.minute,
+    );
+
+    // Add buffer to prevent edge case where we schedule for "now"
+    final bufferTime = currentTime.add(
+      const Duration(seconds: _schedulingBufferSeconds),
+    );
+
+    if (todayAtTime.isAfter(bufferTime)) {
+      // Schedule for today
+      return todayAtTime.difference(currentTime);
+    } else {
+      // Schedule for tomorrow
+      final tomorrowAtTime = todayAtTime.add(const Duration(days: 1));
+      return tomorrowAtTime.difference(currentTime);
     }
-    return target.difference(now);
   }
 }

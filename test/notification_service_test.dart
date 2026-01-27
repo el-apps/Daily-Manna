@@ -1,4 +1,5 @@
 import 'package:daily_manna/services/notification_service.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -44,4 +45,77 @@ void main() {
       );
     });
   });
+
+  group('NotificationService.calculateDelayUntilTime', () {
+    test('schedules for today when time is in the future', () {
+      // Current time: 8:00 AM, scheduled time: 10:00 AM
+      final now = DateTime(2024, 6, 15, 8, 0);
+      const time = TimeOfDay(hour: 10, minute: 0);
+
+      final delay = NotificationService.calculateDelayUntilTime(time, now: now);
+
+      // Should be 2 hours
+      expect(delay.inMinutes, 120);
+    });
+
+    test('schedules for tomorrow when time has passed', () {
+      // Current time: 10:00 AM, scheduled time: 8:00 AM
+      final now = DateTime(2024, 6, 15, 10, 0);
+      const time = TimeOfDay(hour: 8, minute: 0);
+
+      final delay = NotificationService.calculateDelayUntilTime(time, now: now);
+
+      // Should be 22 hours (until 8am tomorrow)
+      expect(delay.inMinutes, 22 * 60);
+    });
+
+    test('schedules for tomorrow when time equals current time', () {
+      // Current time: exactly 8:00 AM, scheduled time: 8:00 AM
+      final now = DateTime(2024, 6, 15, 8, 0);
+      const time = TimeOfDay(hour: 8, minute: 0);
+
+      final delay = NotificationService.calculateDelayUntilTime(time, now: now);
+
+      // Should be 24 hours (tomorrow)
+      expect(delay.inMinutes, 24 * 60);
+    });
+
+    test('schedules for tomorrow when within buffer time', () {
+      // Current time: 7:59:30 AM (30 seconds before 8am)
+      // Scheduled time: 8:00 AM
+      // Buffer is 60 seconds, so 8:00 AM is within buffer
+      final now = DateTime(2024, 6, 15, 7, 59, 30);
+      const time = TimeOfDay(hour: 8, minute: 0);
+
+      final delay = NotificationService.calculateDelayUntilTime(time, now: now);
+
+      // Should schedule for tomorrow (~24 hours from now)
+      // 24 hours = 1440 minutes, minus 30 seconds we're before 8am = ~1439.5 minutes
+      expect(delay.inHours, 24);
+      expect(delay.inMinutes, closeTo(24 * 60, 1));
+    });
+
+    test('handles month boundary correctly', () {
+      // Current time: Jan 31, 10:00 PM, scheduled time: 6:00 AM
+      final now = DateTime(2024, 1, 31, 22, 0);
+      const time = TimeOfDay(hour: 6, minute: 0);
+
+      final delay = NotificationService.calculateDelayUntilTime(time, now: now);
+
+      // Should be 8 hours (to Feb 1 at 6am)
+      expect(delay.inMinutes, 8 * 60);
+    });
+
+    test('handles year boundary correctly', () {
+      // Current time: Dec 31, 10:00 PM, scheduled time: 6:00 AM
+      final now = DateTime(2024, 12, 31, 22, 0);
+      const time = TimeOfDay(hour: 6, minute: 0);
+
+      final delay = NotificationService.calculateDelayUntilTime(time, now: now);
+
+      // Should be 8 hours (to Jan 1 at 6am)
+      expect(delay.inMinutes, 8 * 60);
+    });
+  });
 }
+
