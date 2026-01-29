@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:word_tools/word_tools.dart';
 
 const Duration _apiTimeout = Duration(seconds: 30);
@@ -71,6 +72,9 @@ class _RecitationModeState extends State<RecitationMode> {
       startVerse: 1,
     );
 
+    // Keep screen on during recitation flow
+    WakelockPlus.enable();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkApiKeys();
     });
@@ -78,6 +82,7 @@ class _RecitationModeState extends State<RecitationMode> {
 
   @override
   void dispose() {
+    WakelockPlus.disable();
     _audioSub?.cancel();
     _recorder.dispose();
     _audioPlayer.dispose();
