@@ -32,7 +32,7 @@ class SpacedRepetitionService {
   static const _firstInterval = 1;
   static const _secondInterval = 2;
   static const _maximumInterval = 32; // ~1 month max
-  static const _passingQuality = 3;
+  static const _passingQuality = 4;
 
   final AppDatabase _db;
 
