@@ -6,6 +6,12 @@ import 'package:daily_manna/services/results_service.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+const _testRef = ScriptureRef(
+  bookId: 'Gen',
+  chapterNumber: 1,
+  verseNumber: 1,
+);
+
 void main() {
   late AppDatabase database;
   late SpacedRepetitionService srService;
@@ -133,4 +139,125 @@ void main() {
       await subscription.cancel();
     });
   });
+
+  group('interval progression with perfect scores', () {
+    test('first review schedules 1 day out', () async {
+      await _addResult(resultsService, score: 1.0);
+
+      final states = await srService.getVersesByReviewDate();
+      expect(states.length, equals(1));
+      expect(states.first.intervalDays, equals(1));
+    });
+
+    test('second perfect review schedules 2 days out', () async {
+      await _addResult(resultsService, score: 1.0);
+      await _addResult(resultsService, score: 1.0);
+
+      final states = await srService.getVersesByReviewDate();
+      expect(states.first.intervalDays, equals(2));
+    });
+
+    test('progression doubles: 1, 2, 4, 8, 16, 32', () async {
+      // 6 perfect reviews
+      for (var i = 0; i < 6; i++) {
+        await _addResult(resultsService, score: 1.0);
+      }
+
+      final states = await srService.getVersesByReviewDate();
+      expect(states.first.intervalDays, equals(32));
+    });
+
+    test('interval caps at 32 days', () async {
+      // 10 perfect reviews - should cap at 32
+      for (var i = 0; i < 10; i++) {
+        await _addResult(resultsService, score: 1.0);
+      }
+
+      final states = await srService.getVersesByReviewDate();
+      expect(states.first.intervalDays, equals(32));
+    });
+  });
+
+  group('interval reset on low scores', () {
+    test('score below 90% resets interval to 1', () async {
+      // Build up interval with perfect scores
+      for (var i = 0; i < 4; i++) {
+        await _addResult(resultsService, score: 1.0);
+      }
+
+      // Verify interval is at 8 days
+      var states = await srService.getVersesByReviewDate();
+      expect(states.first.intervalDays, equals(8));
+
+      // Fail with 89% score
+      await _addResult(resultsService, score: 0.89);
+
+      states = await srService.getVersesByReviewDate();
+      expect(states.first.intervalDays, equals(1));
+    });
+
+    test('90% score advances interval', () async {
+      await _addResult(resultsService, score: 0.90); // passes, reps = 1, interval = 1
+      await _addResult(resultsService, score: 0.90); // passes, reps = 2, interval = 2
+
+      final states = await srService.getVersesByReviewDate();
+      expect(states.first.intervalDays, equals(2));
+    });
+  });
+
+  group('recovery after failure', () {
+    test('rebuilds interval from 1 after reset', () async {
+      // Build up to 8 days (4 passes)
+      for (var i = 0; i < 4; i++) {
+        await _addResult(resultsService, score: 1.0);
+      }
+
+      // Fail - resets to reps=0
+      await _addResult(resultsService, score: 0.70);
+
+      var states = await srService.getVersesByReviewDate();
+      expect(states.first.intervalDays, equals(1));
+
+      // Recover - first pass after failure: reps=1 -> interval=1
+      await _addResult(resultsService, score: 1.0);
+      states = await srService.getVersesByReviewDate();
+      expect(states.first.intervalDays, equals(1));
+
+      // Second pass: reps=2 -> interval=2
+      await _addResult(resultsService, score: 1.0);
+      states = await srService.getVersesByReviewDate();
+      expect(states.first.intervalDays, equals(2));
+    });
+  });
+
+  group('repetition tracking', () {
+    test('tracks consecutive successful repetitions', () async {
+      for (var i = 0; i < 5; i++) {
+        await _addResult(resultsService, score: 1.0);
+      }
+
+      final states = await srService.getVersesByReviewDate();
+      expect(states.first.repetitions, equals(5));
+    });
+
+    test('resets repetitions on failure', () async {
+      for (var i = 0; i < 5; i++) {
+        await _addResult(resultsService, score: 1.0);
+      }
+      await _addResult(resultsService, score: 0.70);
+
+      final states = await srService.getVersesByReviewDate();
+      expect(states.first.repetitions, equals(0));
+    });
+  });
+}
+
+Future<void> _addResult(
+  ResultsService resultsService, {
+  required double score,
+  ScriptureRef ref = _testRef,
+}) async {
+  await resultsService.addMemorizationResult(
+    MemorizationResult(ref: ref, attempts: 1, score: score),
+  );
 }
