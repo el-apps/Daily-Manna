@@ -28,8 +28,10 @@ class SpacedRepetitionService {
   // SM-2 algorithm constants
   static const _initialEaseFactor = 2.5;
   static const _minimumEaseFactor = 1.3;
+  static const _maximumEaseFactor = 2.5;
   static const _firstInterval = 1;
   static const _secondInterval = 6;
+  static const _maximumInterval = 180; // 6 months max
   static const _passingQuality = 3;
 
   final AppDatabase _db;
@@ -189,7 +191,10 @@ class SpacedRepetitionService {
       final qualityDeficit = 5 - quality;
       final penaltyFactor = 0.08 + qualityDeficit * 0.02;
       final easeAdjustment = 0.1 - qualityDeficit * penaltyFactor;
-      ef = (ef + easeAdjustment).clamp(_minimumEaseFactor, double.infinity);
+      ef = (ef + easeAdjustment).clamp(_minimumEaseFactor, _maximumEaseFactor);
+
+      // Cap interval to prevent multi-year gaps
+      interval = interval.clamp(1, _maximumInterval);
     }
 
     return VerseReviewState(
