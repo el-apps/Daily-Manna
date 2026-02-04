@@ -7,14 +7,12 @@ class VerseReviewState {
   final ScriptureRef ref;
   final DateTime lastReview;
   final int intervalDays;
-  final double easeFactor;
   final int repetitions;
 
   VerseReviewState({
     required this.ref,
     required this.lastReview,
     required this.intervalDays,
-    required this.easeFactor,
     required this.repetitions,
   });
 
@@ -23,24 +21,17 @@ class VerseReviewState {
   bool get isDue => !DateTime.now().isBefore(nextReviewDate);
 }
 
-/// Service for calculating spaced repetition intervals using SM-2 algorithm.
+/// Service for calculating spaced repetition intervals.
+///
+/// Uses a simple doubling algorithm: 1, 2, 4, 8, 16, 32 days.
+/// Scores below 90% reset the interval back to 1 day.
 class SpacedRepetitionService {
-  // SM-2 algorithm constants (tuned for Bible memorization)
-  static const _initialEaseFactor = 2.0;
-  static const _minimumEaseFactor = 1.3;
-  static const _maximumEaseFactor = 2.0;
-  static const _firstInterval = 1;
-  static const _secondInterval = 2;
-  static const _maximumInterval = 32; // ~1 month max
-  static const _passingQuality = 4;
+  static const _intervals = [1, 2, 4, 8, 16, 32];
+  static const _passingScore = 0.90;
 
   final AppDatabase _db;
 
   SpacedRepetitionService(this._db);
-
-  /// Convert score (0.5-1.0) to SM-2 quality (0-5).
-  static int scoreToQuality(double score) =>
-      ((score * 10) - 5).round().clamp(0, 5);
 
   /// Get all practiced verses sorted by next review date.
   Future<List<VerseReviewState>> getVersesByReviewDate() async {
@@ -157,51 +148,35 @@ class SpacedRepetitionService {
     ];
   }
 
-  /// Replay result history to calculate current SM-2 state.
+  /// Replay result history to calculate current interval.
   /// Assumes at least one practice result exists (study-only filtered upstream).
   VerseReviewState _calculateState(ScriptureRef ref, List<Result> results) {
     // Filter out study entries - they don't affect SR intervals
     final practiceResults =
         results.where((r) => r.type != ResultType.study).toList();
 
-    double ef = _initialEaseFactor;
-    int interval = _firstInterval;
     int reps = 0;
 
     for (final result in practiceResults) {
-      final quality = scoreToQuality(result.score);
-
-      if (quality >= _passingQuality) {
-        // Correct response
-        if (reps == 0) {
-          interval = _firstInterval;
-        } else if (reps == 1) {
-          interval = _secondInterval;
-        } else {
-          interval = (interval * ef).round();
-        }
+      if (result.score >= _passingScore) {
+        // Passing score - advance reps (no cap during counting)
         reps++;
       } else {
-        // Incorrect response - reset
+        // Failing score - reset to beginning
         reps = 0;
-        interval = _firstInterval;
       }
-
-      // Update ease factor using SM-2 formula
-      final qualityDeficit = 5 - quality;
-      final penaltyFactor = 0.08 + qualityDeficit * 0.02;
-      final easeAdjustment = 0.1 - qualityDeficit * penaltyFactor;
-      ef = (ef + easeAdjustment).clamp(_minimumEaseFactor, _maximumEaseFactor);
-
-      // Cap interval to prevent multi-year gaps
-      interval = interval.clamp(1, _maximumInterval);
     }
+
+    // Map reps to interval index (1-indexed reps to 0-indexed array)
+    // reps=1 -> index 0 -> interval 1
+    // reps=6 -> index 5 -> interval 32
+    // reps=10 -> index 5 (capped) -> interval 32
+    final intervalIndex = (reps - 1).clamp(0, _intervals.length - 1);
 
     return VerseReviewState(
       ref: ref,
       lastReview: practiceResults.last.timestamp,
-      intervalDays: interval,
-      easeFactor: ef,
+      intervalDays: reps == 0 ? _intervals[0] : _intervals[intervalIndex],
       repetitions: reps,
     );
   }
