@@ -25,13 +25,13 @@ class VerseReviewState {
 
 /// Service for calculating spaced repetition intervals using SM-2 algorithm.
 class SpacedRepetitionService {
-  // SM-2 algorithm constants
-  static const _initialEaseFactor = 2.5;
+  // SM-2 algorithm constants (tuned for Bible memorization)
+  static const _initialEaseFactor = 2.0;
   static const _minimumEaseFactor = 1.3;
-  static const _maximumEaseFactor = 2.5;
+  static const _maximumEaseFactor = 2.0;
   static const _firstInterval = 1;
-  static const _secondInterval = 6;
-  static const _maximumInterval = 180; // 6 months max
+  static const _secondInterval = 2;
+  static const _maximumInterval = 32; // ~1 month max
   static const _passingQuality = 3;
 
   final AppDatabase _db;
