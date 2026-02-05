@@ -11,7 +11,13 @@ class ErrorLoggerService extends ChangeNotifier {
     _prefs = await SharedPreferences.getInstance();
   }
 
-  void logError(String message, {String? context}) {
+  void logError(String message, {String? context}) =>
+      _log(message, context: context);
+
+  void logInfo(String message, {String? context}) =>
+      _log(message, context: context);
+
+  void _log(String message, {String? context}) {
     final timestamp = DateTime.now().toIso8601String();
     final contextPart = context != null ? ' [$context]' : '';
     final logEntry = '[$timestamp]$contextPart $message';
