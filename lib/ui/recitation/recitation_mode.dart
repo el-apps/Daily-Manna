@@ -216,16 +216,18 @@ class _RecitationModeState extends State<RecitationMode> {
 
     setState(() => _step = RecitationStep.transcribing);
 
-    try {
-      final wavData =
-          _wavData ??
-          Uint8List.fromList(
-            WavEncoder.encodePcm16ToWav(
-              _audioBytes!.toList(),
-              sampleRate: 16000,
-            ),
-          );
+    final wavData =
+        _wavData ??
+        Uint8List.fromList(
+          WavEncoder.encodePcm16ToWav(
+            _audioBytes!.toList(),
+            sampleRate: 16000,
+          ),
+        );
+    final audioSize = wavData.length;
+    final audioDuration = _audioBytes!.length / (16000 * 2);
 
+    try {
       final transcribedText = await _openRouterService
           .transcribeAudio(wavData, 'audio.wav');
 
@@ -236,19 +238,32 @@ class _RecitationModeState extends State<RecitationMode> {
       if (!mounted) return;
       setState(() => _step = RecitationStep.playback);
       _handleError(
-        'Network timeout. Please check your connection and try again.',
+        'Your connection is too slow to upload the recording. '
+        'Please try again with a stronger internet connection.',
         context: 'transcription_timeout',
-        errorDetails: '$e\n$st',
+        errorDetails:
+            'TimeoutException after 60s\n'
+            'Audio size: $audioSize bytes (WAV), '
+            'Duration: ${audioDuration.toStringAsFixed(1)}s\n'
+            '$e\n$st',
       );
     } catch (e, st) {
       if (!mounted) return;
       setState(() => _step = RecitationStep.playback);
 
-      final msg = e.toString().contains('OpenRouter API key not configured')
+      final errorStr = e.toString();
+      final msg = errorStr.contains('OpenRouter API key not configured')
           ? 'OpenRouter API key is not configured. Please update it in Settings, then try again.'
           : 'Something went wrong transcribing your recitation. Check Settings > Logs for details.';
 
-      _handleError(msg, context: 'transcription', errorDetails: '$e\n$st');
+      _handleError(
+        msg,
+        context: 'transcription',
+        errorDetails:
+            'Audio size: $audioSize bytes (WAV), '
+            'Duration: ${audioDuration.toStringAsFixed(1)}s\n'
+            '$e\n$st',
+      );
     }
   }
 
@@ -257,19 +272,20 @@ class _RecitationModeState extends State<RecitationMode> {
 
     setState(() => _step = RecitationStep.recognizing);
 
-    try {
-      final bibleService = context.read<BibleService>();
-      if (!bibleService.isLoaded) {
-        if (!mounted) return;
-        setState(() => _step = RecitationStep.transcriptionReview);
-        _handleError(
-          'Bible data is still loading. Please try again in a moment.',
-          context: 'recognition',
-        );
-        return;
-      }
+    final bibleService = context.read<BibleService>();
+    if (!bibleService.isLoaded) {
+      if (!mounted) return;
+      setState(() => _step = RecitationStep.transcriptionReview);
+      _handleError(
+        'Bible data is still loading. Please try again in a moment.',
+        context: 'recognition',
+      );
+      return;
+    }
 
-      final transcribedText = _transcriptionController.text;
+    final transcribedText = _transcriptionController.text;
+
+    try {
       final recognizedRef = await _openRouterService
           .recognizePassage(
             transcribedText,
@@ -295,9 +311,12 @@ class _RecitationModeState extends State<RecitationMode> {
       if (!mounted) return;
       setState(() => _step = RecitationStep.transcriptionReview);
       _handleError(
-        'Network timeout. Please check your connection and try again.',
+        'Your connection is too slow. Please try again with a stronger internet connection.',
         context: 'recognition_timeout',
-        errorDetails: '$e\n$st',
+        errorDetails:
+            'TimeoutException after 30s\n'
+            'Transcription length: ${transcribedText.length} chars\n'
+            '$e\n$st',
       );
     } catch (e, st) {
       if (!mounted) return;
@@ -305,7 +324,9 @@ class _RecitationModeState extends State<RecitationMode> {
       _handleError(
         'Something went wrong recognizing the passage. Check Settings > Logs for details.',
         context: 'recognition',
-        errorDetails: '$e\n$st',
+        errorDetails:
+            'Transcription length: ${transcribedText.length} chars\n'
+            '$e\n$st',
       );
     }
   }
