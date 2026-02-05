@@ -227,6 +227,12 @@ class _RecitationModeState extends State<RecitationMode> {
     final audioSize = wavData.length;
     final audioDuration = _audioBytes!.length / (16000 * 2);
 
+    context.read<ErrorLoggerService>().logInfo(
+      'Uploading audio: ${(audioSize / 1024).toStringAsFixed(1)} KB, '
+      '${audioDuration.toStringAsFixed(1)}s',
+      context: 'transcription_start',
+    );
+
     try {
       final transcribedText = await _openRouterService
           .transcribeAudio(wavData, 'audio.wav');
