@@ -242,7 +242,7 @@ class _RecitationModeState extends State<RecitationMode> {
         'Please try again with a stronger internet connection.',
         context: 'transcription_timeout',
         errorDetails:
-            'TimeoutException after 60s\n'
+            'TimeoutException after ${OpenRouterService.transcriptionTimeout.inSeconds}s\n'
             'Audio size: $audioSize bytes (WAV), '
             'Duration: ${audioDuration.toStringAsFixed(1)}s\n'
             '$e\n$st',
@@ -314,7 +314,7 @@ class _RecitationModeState extends State<RecitationMode> {
         'Your connection is too slow. Please try again with a stronger internet connection.',
         context: 'recognition_timeout',
         errorDetails:
-            'TimeoutException after 30s\n'
+            'TimeoutException after ${OpenRouterService.recognitionTimeout.inSeconds}s\n'
             'Transcription length: ${transcribedText.length} chars\n'
             '$e\n$st',
       );

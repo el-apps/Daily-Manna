@@ -13,8 +13,8 @@ class OpenRouterService {
   static const String _appTitle = 'Daily Manna';
   static const String _transcriptionModel = 'google/gemini-3-flash-preview';
   static const String _recognitionModel = 'openai/gpt-5-mini';
-  static const Duration _transcriptionTimeout = Duration(seconds: 60);
-  static const Duration _recognitionTimeout = Duration(seconds: 30);
+  static const transcriptionTimeout = Duration(seconds: 60);
+  static const recognitionTimeout = Duration(seconds: 30);
 
   OpenRouterService(this.settingsService);
 
@@ -68,7 +68,7 @@ class OpenRouterService {
           headers: _getHeaders(apiKey),
           body: jsonEncode(requestBody),
         )
-        .timeout(_transcriptionTimeout);
+        .timeout(transcriptionTimeout);
 
     debugPrint('[OpenRouter Audio] Response status: ${response.statusCode}');
     debugPrint('[OpenRouter Audio] Response body: ${response.body}');
@@ -196,7 +196,7 @@ class OpenRouterService {
           headers: _getHeaders(apiKey),
           body: jsonEncode(requestBody),
         )
-        .timeout(_recognitionTimeout);
+        .timeout(recognitionTimeout);
 
     debugPrint('[RecognizePassage] Response status: ${response.statusCode}');
     debugPrint('[RecognizePassage] Response body: ${response.body}');
