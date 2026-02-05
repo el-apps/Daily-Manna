@@ -226,10 +226,14 @@ class _RecitationModeState extends State<RecitationMode> {
         );
     final audioSize = wavData.length;
     final audioDuration = _audioBytes!.length / (16000 * 2);
+    // Base64 encoding adds ~33% overhead
+    final base64Size = (audioSize * 4 / 3).ceil();
 
     context.read<ErrorLoggerService>().logInfo(
-      'Uploading audio: ${(audioSize / 1024).toStringAsFixed(1)} KB, '
-      '${audioDuration.toStringAsFixed(1)}s',
+      'WAV: ${(audioSize / 1024).toStringAsFixed(1)} KB, '
+      'base64: ${(base64Size / 1024).toStringAsFixed(1)} KB, '
+      'duration: ${audioDuration.toStringAsFixed(1)}s, '
+      'model: ${OpenRouterService.transcriptionModel}',
       context: 'transcription_start',
     );
 

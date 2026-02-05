@@ -11,7 +11,7 @@ class OpenRouterService {
       'https://openrouter.ai/api/v1/chat/completions';
   static const String _appUrl = 'https://github.com/el-apps/Daily-Manna';
   static const String _appTitle = 'Daily Manna';
-  static const String _transcriptionModel = 'google/gemini-3-flash-preview';
+  static const transcriptionModel = 'google/gemini-3-flash-preview';
   static const String _recognitionModel = 'openai/gpt-5-mini';
   static const transcriptionTimeout = Duration(seconds: 60);
   static const recognitionTimeout = Duration(seconds: 30);
@@ -46,7 +46,7 @@ class OpenRouterService {
     final audioFormat = _getAudioFormat(filename);
 
     final requestBody = {
-      'model': _transcriptionModel,
+      'model': transcriptionModel,
       'messages': [
         {'role': 'system', 'content': Prompts.bibleAudioTranscriptionSystem},
         {
