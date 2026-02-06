@@ -50,16 +50,14 @@ class _RecitationModeState extends State<RecitationMode> {
   late OpenRouterService _openRouterService;
 
   RecitationStep _step = RecitationStep.idle;
-  final List<String> _audioSegmentPaths = [];
-  final List<Uint8List> _audioSegments = [];
-  Duration _totalDuration = Duration.zero;
-  Timer? _segmentTimer;
-  DateTime? _segmentStartTime;
+  String? _audioFilePath;
+  Uint8List? _audioData;
+  Duration? _audioDuration;
   late TextEditingController _transcriptionController;
   late ScriptureRangeRef _selectedPassageRef;
 
-  // Max 4 minutes per segment to stay under API limits
-  static const _maxSegmentDuration = Duration(minutes: 4);
+  // Max chunk size for API limits (at 64kbps, 4 min ≈ 1.9MB)
+  static const _maxChunkBytes = 2 * 1024 * 1024; // 2MB
 
   @override
   void initState() {
@@ -86,7 +84,6 @@ class _RecitationModeState extends State<RecitationMode> {
   @override
   void dispose() {
     WakelockPlus.disable();
-    _segmentTimer?.cancel();
     _clearAudio();
     _recorder.dispose();
     _audioPlayer.dispose();
@@ -147,12 +144,20 @@ class _RecitationModeState extends State<RecitationMode> {
     try {
       if (await _recorder.hasPermission()) {
         _clearAudio();
-        await _startNewSegment();
-        
-        // Monitor segment duration and auto-split if needed
-        _segmentTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-          _checkSegmentDuration();
-        });
+
+        // Use AAC compression for much smaller file sizes
+        final config = const RecordConfig(
+          encoder: AudioEncoder.aacLc,
+          sampleRate: 16000,
+          numChannels: 1,
+          bitRate: 64000,
+        );
+
+        final tempDir = await getTemporaryDirectory();
+        _audioFilePath = '${tempDir.path}/recitation_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+        debugPrint('[RecitationMode] Starting recording at $_audioFilePath');
+        await _recorder.start(config, path: _audioFilePath!);
 
         setState(() => _step = RecitationStep.recording);
       } else {
@@ -163,77 +168,25 @@ class _RecitationModeState extends State<RecitationMode> {
     }
   }
 
-  Future<void> _startNewSegment() async {
-    // Use AAC compression for much smaller file sizes
-    final config = const RecordConfig(
-      encoder: AudioEncoder.aacLc,
-      sampleRate: 16000,
-      numChannels: 1,
-      bitRate: 64000,
-    );
-
-    final tempDir = await getTemporaryDirectory();
-    final segmentPath = '${tempDir.path}/recitation_${DateTime.now().millisecondsSinceEpoch}_${_audioSegmentPaths.length}.m4a';
-    _audioSegmentPaths.add(segmentPath);
-    _segmentStartTime = DateTime.now();
-
-    debugPrint('[RecitationMode] Starting segment ${_audioSegmentPaths.length} at $segmentPath');
-    await _recorder.start(config, path: segmentPath);
-  }
-
-  void _checkSegmentDuration() {
-    if (_segmentStartTime == null) return;
-    
-    final elapsed = DateTime.now().difference(_segmentStartTime!);
-    if (elapsed >= _maxSegmentDuration) {
-      debugPrint('[RecitationMode] Segment limit reached, starting new segment');
-      _splitSegment();
-    }
-  }
-
-  Future<void> _splitSegment() async {
-    // Stop current segment and start a new one (seamlessly)
-    await _recorder.stop();
-    await _startNewSegment();
-  }
-
   Future<void> _stopRecording() async {
     try {
-      _segmentTimer?.cancel();
-      _segmentTimer = null;
-      
-      await _recorder.stop();
+      final path = await _recorder.stop();
 
-      if (_audioSegmentPaths.isEmpty) {
+      if (path == null || path.isEmpty) {
         _safeShowError('No audio data recorded');
         return;
       }
 
-      // Read all segments
-      _audioSegments.clear();
-      _totalDuration = Duration.zero;
-      
-      for (final path in _audioSegmentPaths) {
-        final file = File(path);
-        if (await file.exists()) {
-          final bytes = await file.readAsBytes();
-          _audioSegments.add(bytes);
-          debugPrint('[RecitationMode] Segment: ${bytes.length} bytes');
-        }
-      }
+      _audioFilePath = path;
+      final file = File(_audioFilePath!);
+      _audioData = await file.readAsBytes();
 
-      final totalSize = _audioSegments.fold<int>(0, (sum, s) => sum + s.length);
-      debugPrint('[RecitationMode] Total AAC size: $totalSize bytes (${_audioSegments.length} segments)');
+      debugPrint('[RecitationMode] AAC file size: ${_audioData!.length} bytes');
 
-      // Set up audio player with the first segment for preview
-      // (For multi-segment, we'd need a playlist, but single segment playback is fine for now)
-      if (_audioSegmentPaths.isNotEmpty) {
-        await _audioPlayer.setFilePath(_audioSegmentPaths.first);
-        // Estimate total duration from all segments
-        final firstDuration = _audioPlayer.duration ?? Duration.zero;
-        _totalDuration = firstDuration * _audioSegments.length;
-        debugPrint('[RecitationMode] Estimated total duration: ${_totalDuration.inSeconds}s');
-      }
+      // Set up audio player with the recorded file
+      await _audioPlayer.setFilePath(_audioFilePath!);
+      _audioDuration = _audioPlayer.duration;
+      debugPrint('[RecitationMode] Duration: ${_audioDuration?.inSeconds}s');
 
       if (!mounted) return;
       setState(() => _step = RecitationStep.playback);
@@ -243,32 +196,53 @@ class _RecitationModeState extends State<RecitationMode> {
     }
   }
 
+  /// Split audio data into chunks under the size limit
+  List<Uint8List> _chunkAudioData(Uint8List data) {
+    if (data.length <= _maxChunkBytes) {
+      return [data];
+    }
+
+    final chunks = <Uint8List>[];
+    var offset = 0;
+    while (offset < data.length) {
+      final end = (offset + _maxChunkBytes).clamp(0, data.length);
+      chunks.add(Uint8List.sublistView(data, offset, end));
+      offset = end;
+    }
+    debugPrint('[RecitationMode] Split ${data.length} bytes into ${chunks.length} chunks');
+    return chunks;
+  }
+
   Future<void> _transcribeAudio() async {
     if (!mounted) return;
 
     setState(() => _step = RecitationStep.transcribing);
 
-    final totalSize = _audioSegments.fold<int>(0, (sum, s) => sum + s.length);
-    final audioDuration = _totalDuration.inSeconds.toDouble();
-    final segmentCount = _audioSegments.length;
+    final audioData = _audioData!;
+    final totalSize = audioData.length;
+    final audioDuration = _audioDuration?.inSeconds.toDouble() ?? 0;
+    
+    // Split into chunks if needed for API limits
+    final chunks = _chunkAudioData(audioData);
+    final chunkCount = chunks.length;
 
     context.read<ErrorLoggerService>().logInfo(
       'AAC: ${(totalSize / 1024).toStringAsFixed(1)} KB, '
-      'segments: $segmentCount, '
+      'chunks: $chunkCount, '
       'duration: ${audioDuration.toStringAsFixed(1)}s, '
       'model: ${OpenRouterService.transcriptionModel}',
       context: 'transcription_start',
     );
 
     try {
-      // Transcribe each segment and concatenate results
+      // Transcribe each chunk and concatenate results
       final transcriptions = <String>[];
       
-      for (var i = 0; i < _audioSegments.length; i++) {
-        debugPrint('[RecitationMode] Transcribing segment ${i + 1}/$segmentCount');
-        final segmentText = await _openRouterService
-            .transcribeAudio(_audioSegments[i], 'audio.m4a');
-        transcriptions.add(segmentText.trim());
+      for (var i = 0; i < chunks.length; i++) {
+        debugPrint('[RecitationMode] Transcribing chunk ${i + 1}/$chunkCount (${chunks[i].length} bytes)');
+        final chunkText = await _openRouterService
+            .transcribeAudio(chunks[i], 'audio.m4a');
+        transcriptions.add(chunkText.trim());
         
         if (!mounted) return;
       }
@@ -309,7 +283,7 @@ class _RecitationModeState extends State<RecitationMode> {
         context: 'transcription',
         errorDetails:
             'Audio size: $totalSize bytes (AAC), '
-            'Segments: $segmentCount, '
+            'Chunks: $chunkCount, '
             'Duration: ${audioDuration.toStringAsFixed(1)}s\n'
             '$e\n$st',
       );
@@ -493,14 +467,13 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   void _clearAudio() {
-    // Clean up temp files
-    for (final path in _audioSegmentPaths) {
-      File(path).delete().ignore();
+    // Clean up temp file
+    if (_audioFilePath != null) {
+      File(_audioFilePath!).delete().ignore();
     }
-    _audioSegmentPaths.clear();
-    _audioSegments.clear();
-    _totalDuration = Duration.zero;
-    _segmentStartTime = null;
+    _audioFilePath = null;
+    _audioData = null;
+    _audioDuration = null;
   }
 
   void _showError(String message) {
