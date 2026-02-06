@@ -61,7 +61,7 @@ class OpenRouterService {
       ],
     };
 
-    debugPrint('[OpenRouter Audio] Sending audio to chat API');
+    debugPrint('[OpenRouter Audio] Sending audio to chat API, format: $audioFormat');
     final response = await http
         .post(
           Uri.parse(_chatBaseUrl),
@@ -124,6 +124,10 @@ class OpenRouterService {
 
   String _getAudioFormat(String filename) {
     final ext = filename.split('.').last.toLowerCase();
+    // Map file extensions to API format names
+    // m4a container uses AAC codec - report as 'aac'
+    if (ext == 'm4a') return 'aac';
+    
     const supportedFormats = [
       'wav',
       'mp3',
@@ -131,7 +135,6 @@ class OpenRouterService {
       'aac',
       'ogg',
       'flac',
-      'm4a',
       'pcm16',
       'pcm24',
     ];
