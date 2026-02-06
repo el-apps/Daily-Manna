@@ -74,6 +74,7 @@ class OpenRouterService {
     debugPrint('[OpenRouter Audio] Response body: ${response.body}');
 
     if (response.statusCode != 200) {
+      debugPrint('[OpenRouter Audio] Error response body: ${response.body}');
       throw Exception(
         'Failed to transcribe audio: ${response.statusCode} - ${_parseErrorDetail(response)}',
       );
@@ -142,8 +143,15 @@ class OpenRouterService {
       final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
       if (errorBody.containsKey('error')) {
         final error = errorBody['error'];
-        if (error is Map && error.containsKey('message')) {
-          return error['message'] as String;
+        if (error is Map) {
+          // Try to get detailed message, code, and metadata
+          final message = error['message'] as String? ?? '';
+          final code = error['code']?.toString() ?? '';
+          final metadata = error['metadata']?.toString() ?? '';
+          final parts = [message, if (code.isNotEmpty) 'code: $code', if (metadata.isNotEmpty) metadata]
+              .where((s) => s.isNotEmpty)
+              .join(', ');
+          if (parts.isNotEmpty) return parts;
         } else if (error is String) {
           return error;
         }

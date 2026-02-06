@@ -242,9 +242,15 @@ class _RecitationModeState extends State<RecitationMode> {
       setState(() => _step = RecitationStep.playback);
 
       final errorStr = e.toString();
-      final msg = errorStr.contains('OpenRouter API key not configured')
-          ? 'OpenRouter API key is not configured. Please update it in Settings, then try again.'
-          : 'Something went wrong transcribing your recitation. Check Settings > Logs for details.';
+      String msg;
+      if (errorStr.contains('OpenRouter API key not configured')) {
+        msg = 'OpenRouter API key is not configured. Please update it in Settings, then try again.';
+      } else if (errorStr.contains('400') && audioDuration > 300) {
+        // Likely hit API limits for long recordings
+        msg = 'Recording too long. Try recording passages under 5 minutes.';
+      } else {
+        msg = 'Something went wrong transcribing your recitation. Check Settings > Logs for details.';
+      }
 
       _handleError(
         msg,
