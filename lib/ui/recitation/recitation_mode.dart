@@ -145,16 +145,16 @@ class _RecitationModeState extends State<RecitationMode> {
       if (await _recorder.hasPermission()) {
         _clearAudio();
 
-        // Use AAC compression for much smaller file sizes
+        // Use Opus compression - smaller files and Gemini-compatible
         final config = const RecordConfig(
-          encoder: AudioEncoder.aacLc,
+          encoder: AudioEncoder.opus,
           sampleRate: 16000,
           numChannels: 1,
           bitRate: 64000,
         );
 
         final tempDir = await getTemporaryDirectory();
-        _audioFilePath = '${tempDir.path}/recitation_${DateTime.now().millisecondsSinceEpoch}.m4a';
+        _audioFilePath = '${tempDir.path}/recitation_${DateTime.now().millisecondsSinceEpoch}.opus';
 
         debugPrint('[RecitationMode] Starting recording at $_audioFilePath');
         await _recorder.start(config, path: _audioFilePath!);
@@ -241,7 +241,7 @@ class _RecitationModeState extends State<RecitationMode> {
       for (var i = 0; i < chunks.length; i++) {
         debugPrint('[RecitationMode] Transcribing chunk ${i + 1}/$chunkCount (${chunks[i].length} bytes)');
         final chunkText = await _openRouterService
-            .transcribeAudio(chunks[i], 'audio.m4a');
+            .transcribeAudio(chunks[i], 'audio.opus');
         transcriptions.add(chunkText.trim());
         
         if (!mounted) return;

@@ -125,8 +125,8 @@ class OpenRouterService {
   String _getAudioFormat(String filename) {
     final ext = filename.split('.').last.toLowerCase();
     // Map file extensions to API format names
-    // m4a container uses AAC codec - report as 'aac'
     if (ext == 'm4a') return 'aac';
+    if (ext == 'opus') return 'ogg'; // Opus codec in OGG container
     
     const supportedFormats = [
       'wav',
