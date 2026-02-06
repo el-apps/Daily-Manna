@@ -1,6 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
-import 'package:daily_manna/bytes_audio_source.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:daily_manna/models/recitation_result.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
@@ -16,7 +17,7 @@ import 'package:daily_manna/ui/recitation/recitation_playback_section.dart';
 import 'package:daily_manna/ui/recitation/recitation_results.dart';
 import 'package:daily_manna/ui/recitation/recording_card.dart';
 import 'package:daily_manna/ui/recitation/transcription_review_section.dart';
-import 'package:daily_manna/wav_encoder.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
@@ -49,12 +50,11 @@ class _RecitationModeState extends State<RecitationMode> {
   late OpenRouterService _openRouterService;
 
   RecitationStep _step = RecitationStep.idle;
-  List<int>? _audioBytes;
-  Uint8List? _wavData;
-  final List<List<int>> _audioChunks = [];
+  String? _audioFilePath;
+  Uint8List? _audioData;
+  Duration? _audioDuration;
   late TextEditingController _transcriptionController;
   late ScriptureRangeRef _selectedPassageRef;
-  StreamSubscription<Uint8List>? _audioSub;
 
   @override
   void initState() {
@@ -81,7 +81,7 @@ class _RecitationModeState extends State<RecitationMode> {
   @override
   void dispose() {
     WakelockPlus.disable();
-    _audioSub?.cancel();
+    _clearAudio();
     _recorder.dispose();
     _audioPlayer.dispose();
     _transcriptionController.dispose();
@@ -140,29 +140,25 @@ class _RecitationModeState extends State<RecitationMode> {
   Future<void> _startRecording() async {
     try {
       if (await _recorder.hasPermission()) {
+        // Use AAC compression for much smaller file sizes
+        // AAC-LC at 64kbps is ~10-20x smaller than PCM WAV
         final config = const RecordConfig(
-          encoder: AudioEncoder.pcm16bits,
+          encoder: AudioEncoder.aacLc,
           sampleRate: 16000,
           numChannels: 1,
+          bitRate: 64000,
         );
 
         debugPrint(
-          '[RecitationMode] Recording config: sampleRate=${config.sampleRate}, numChannels=${config.numChannels}, encoder=${config.encoder}',
+          '[RecitationMode] Recording config: encoder=${config.encoder}, '
+          'sampleRate=${config.sampleRate}, bitRate=${config.bitRate}',
         );
 
-        // Clear previous chunks
-        _audioChunks.clear();
+        // Get temp file path for recording
+        final tempDir = await getTemporaryDirectory();
+        _audioFilePath = '${tempDir.path}/recitation_${DateTime.now().millisecondsSinceEpoch}.m4a';
 
-        // Record to stream on all platforms
-        final audioStream = await _recorder.startStream(config);
-
-        // Listen to stream and collect chunks
-        _audioSub = audioStream.listen((chunk) {
-          _audioChunks.add(chunk);
-          debugPrint(
-            '[RecitationMode] Received audio chunk: ${chunk.length} bytes',
-          );
-        });
+        await _recorder.start(config, path: _audioFilePath!);
 
         setState(() => _step = RecitationStep.recording);
       } else {
@@ -175,33 +171,24 @@ class _RecitationModeState extends State<RecitationMode> {
 
   Future<void> _stopRecording() async {
     try {
-      await _audioSub?.cancel();
-      _audioSub = null;
-      await _recorder.stop();
+      final path = await _recorder.stop();
 
-      if (_audioChunks.isEmpty) {
+      if (path == null || path.isEmpty) {
         _safeShowError('No audio data recorded');
         return;
       }
 
-      // Combine all chunks into single byte array
-      _audioBytes = Uint8List.fromList(
-        _audioChunks.expand((chunk) => chunk).toList(),
-      );
+      _audioFilePath = path;
+      final file = File(_audioFilePath!);
+      _audioData = await file.readAsBytes();
 
-      debugPrint('[RecitationMode] Total PCM bytes: ${_audioBytes!.length}');
-      debugPrint(
-        '[RecitationMode] Expected duration at 16kHz: ${_audioBytes!.length / (16000 * 2)} seconds',
-      );
+      debugPrint('[RecitationMode] AAC file size: ${_audioData!.length} bytes');
+      debugPrint('[RecitationMode] File path: $_audioFilePath');
 
-      // Encode to WAV once and reuse for playback and transcription
-      _wavData = Uint8List.fromList(
-        WavEncoder.encodePcm16ToWav(_audioBytes!.toList(), sampleRate: 16000),
-      );
-      debugPrint('[RecitationMode] WAV file size: ${_wavData!.length} bytes');
-
-      final audioSource = await createBytesAudioSource(_wavData!);
-      await _audioPlayer.setAudioSource(audioSource);
+      // Set up audio player with the recorded file
+      await _audioPlayer.setFilePath(_audioFilePath!);
+      _audioDuration = _audioPlayer.duration;
+      debugPrint('[RecitationMode] Duration: ${_audioDuration?.inSeconds}s');
 
       if (!mounted) return;
       setState(() => _step = RecitationStep.playback);
@@ -216,21 +203,14 @@ class _RecitationModeState extends State<RecitationMode> {
 
     setState(() => _step = RecitationStep.transcribing);
 
-    final wavData =
-        _wavData ??
-        Uint8List.fromList(
-          WavEncoder.encodePcm16ToWav(
-            _audioBytes!.toList(),
-            sampleRate: 16000,
-          ),
-        );
-    final audioSize = wavData.length;
-    final audioDuration = _audioBytes!.length / (16000 * 2);
+    final audioData = _audioData!;
+    final audioSize = audioData.length;
+    final audioDuration = _audioDuration?.inSeconds.toDouble() ?? 0;
     // Base64 encoding adds ~33% overhead
     final base64Size = (audioSize * 4 / 3).ceil();
 
     context.read<ErrorLoggerService>().logInfo(
-      'WAV: ${(audioSize / 1024).toStringAsFixed(1)} KB, '
+      'AAC: ${(audioSize / 1024).toStringAsFixed(1)} KB, '
       'base64: ${(base64Size / 1024).toStringAsFixed(1)} KB, '
       'duration: ${audioDuration.toStringAsFixed(1)}s, '
       'model: ${OpenRouterService.transcriptionModel}',
@@ -239,7 +219,7 @@ class _RecitationModeState extends State<RecitationMode> {
 
     try {
       final transcribedText = await _openRouterService
-          .transcribeAudio(wavData, 'audio.wav');
+          .transcribeAudio(audioData, 'audio.m4a');
 
       if (!mounted) return;
       _transcriptionController.text = transcribedText;
@@ -253,7 +233,7 @@ class _RecitationModeState extends State<RecitationMode> {
         context: 'transcription_timeout',
         errorDetails:
             'TimeoutException after ${OpenRouterService.transcriptionTimeout.inSeconds}s\n'
-            'Audio size: $audioSize bytes (WAV), '
+            'Audio size: $audioSize bytes (AAC), '
             'Duration: ${audioDuration.toStringAsFixed(1)}s\n'
             '$e\n$st',
       );
@@ -270,7 +250,7 @@ class _RecitationModeState extends State<RecitationMode> {
         msg,
         context: 'transcription',
         errorDetails:
-            'Audio size: $audioSize bytes (WAV), '
+            'Audio size: $audioSize bytes (AAC), '
             'Duration: ${audioDuration.toStringAsFixed(1)}s\n'
             '$e\n$st',
       );
@@ -454,9 +434,13 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   void _clearAudio() {
-    _audioBytes = null;
-    _wavData = null;
-    _audioChunks.clear();
+    // Clean up temp file
+    if (_audioFilePath != null) {
+      File(_audioFilePath!).delete().ignore();
+    }
+    _audioFilePath = null;
+    _audioData = null;
+    _audioDuration = null;
   }
 
   void _showError(String message) {
