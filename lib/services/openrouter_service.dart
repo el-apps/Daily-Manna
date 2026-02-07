@@ -13,7 +13,7 @@ class OpenRouterService {
   static const String _appTitle = 'Daily Manna';
   static const transcriptionModel = 'google/gemini-3-flash-preview';
   static const String _recognitionModel = 'openai/gpt-5-mini';
-  static const transcriptionTimeout = Duration(seconds: 60);
+  static const transcriptionTimeout = Duration(seconds: 120);
   static const recognitionTimeout = Duration(seconds: 30);
 
   OpenRouterService(this.settingsService);

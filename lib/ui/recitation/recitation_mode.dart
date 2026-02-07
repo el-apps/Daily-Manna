@@ -56,8 +56,10 @@ class _RecitationModeState extends State<RecitationMode> {
   late TextEditingController _transcriptionController;
   late ScriptureRangeRef _selectedPassageRef;
 
-  // Max chunk size for API limits (at 64kbps, 4 min ≈ 1.9MB)
-  static const _maxChunkBytes = 2 * 1024 * 1024; // 2MB
+  // Max chunk size for API limits
+  // WAV at 16kHz mono 16-bit = 32KB/s, so ~2 min per chunk = 3.8MB
+  // Keep under OpenRouter's ~20MB limit with base64 overhead
+  static const _maxChunkBytes = 4 * 1024 * 1024; // 4MB (~2 min of audio)
 
   @override
   void initState() {
@@ -145,16 +147,15 @@ class _RecitationModeState extends State<RecitationMode> {
       if (await _recorder.hasPermission()) {
         _clearAudio();
 
-        // Use Opus compression - smaller files and Gemini-compatible
+        // Use WAV format - supported by OpenRouter/Gemini API
         final config = const RecordConfig(
-          encoder: AudioEncoder.opus,
+          encoder: AudioEncoder.wav,
           sampleRate: 16000,
           numChannels: 1,
-          bitRate: 64000,
         );
 
         final tempDir = await getTemporaryDirectory();
-        _audioFilePath = '${tempDir.path}/recitation_${DateTime.now().millisecondsSinceEpoch}.opus';
+        _audioFilePath = '${tempDir.path}/recitation_${DateTime.now().millisecondsSinceEpoch}.wav';
 
         debugPrint('[RecitationMode] Starting recording at $_audioFilePath');
         await _recorder.start(config, path: _audioFilePath!);
@@ -227,7 +228,7 @@ class _RecitationModeState extends State<RecitationMode> {
     final chunkCount = chunks.length;
 
     context.read<ErrorLoggerService>().logInfo(
-      'AAC: ${(totalSize / 1024).toStringAsFixed(1)} KB, '
+      'WAV: ${(totalSize / 1024).toStringAsFixed(1)} KB, '
       'chunks: $chunkCount, '
       'duration: ${audioDuration.toStringAsFixed(1)}s, '
       'model: ${OpenRouterService.transcriptionModel}',
@@ -241,7 +242,7 @@ class _RecitationModeState extends State<RecitationMode> {
       for (var i = 0; i < chunks.length; i++) {
         debugPrint('[RecitationMode] Transcribing chunk ${i + 1}/$chunkCount (${chunks[i].length} bytes)');
         final chunkText = await _openRouterService
-            .transcribeAudio(chunks[i], 'audio.opus');
+            .transcribeAudio(chunks[i], 'audio.wav');
         transcriptions.add(chunkText.trim());
         
         if (!mounted) return;
@@ -262,7 +263,7 @@ class _RecitationModeState extends State<RecitationMode> {
         context: 'transcription_timeout',
         errorDetails:
             'TimeoutException after ${OpenRouterService.transcriptionTimeout.inSeconds}s\n'
-            'Audio size: $totalSize bytes (AAC), '
+            'Audio size: $totalSize bytes (WAV), '
             'Duration: ${audioDuration.toStringAsFixed(1)}s\n'
             '$e\n$st',
       );
@@ -282,7 +283,7 @@ class _RecitationModeState extends State<RecitationMode> {
         msg,
         context: 'transcription',
         errorDetails:
-            'Audio size: $totalSize bytes (AAC), '
+            'Audio size: $totalSize bytes (WAV), '
             'Chunks: $chunkCount, '
             'Duration: ${audioDuration.toStringAsFixed(1)}s\n'
             '$e\n$st',
