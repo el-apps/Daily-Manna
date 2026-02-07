@@ -197,21 +197,79 @@ class _RecitationModeState extends State<RecitationMode> {
     }
   }
 
-  /// Split audio data into chunks under the size limit
-  List<Uint8List> _chunkAudioData(Uint8List data) {
-    if (data.length <= _maxChunkBytes) {
-      return [data];
+  /// Split WAV audio data into chunks, preserving WAV headers for each chunk
+  List<Uint8List> _chunkWavData(Uint8List wavData, ErrorLoggerService logger) {
+    // WAV header is 44 bytes for standard PCM
+    const wavHeaderSize = 44;
+    
+    if (wavData.length <= _maxChunkBytes) {
+      logger.logInfo(
+        'Single chunk: ${wavData.length} bytes, no splitting needed',
+        context: 'chunking',
+      );
+      return [wavData];
     }
 
+    // Extract the original header
+    final originalHeader = wavData.sublist(0, wavHeaderSize);
+    final audioDataStart = wavHeaderSize;
+    final audioDataLength = wavData.length - wavHeaderSize;
+    
+    // Calculate chunk size for audio data (excluding header)
+    final maxAudioPerChunk = _maxChunkBytes - wavHeaderSize;
+    
     final chunks = <Uint8List>[];
     var offset = 0;
-    while (offset < data.length) {
-      final end = (offset + _maxChunkBytes).clamp(0, data.length);
-      chunks.add(Uint8List.sublistView(data, offset, end));
-      offset = end;
+    
+    while (offset < audioDataLength) {
+      final chunkAudioLength = (audioDataLength - offset).clamp(0, maxAudioPerChunk);
+      final chunkAudioEnd = offset + chunkAudioLength;
+      
+      // Create new WAV with updated header for this chunk's size
+      final chunkData = _createWavChunk(
+        originalHeader,
+        wavData.sublist(audioDataStart + offset, audioDataStart + chunkAudioEnd),
+      );
+      
+      chunks.add(chunkData);
+      offset = chunkAudioEnd;
     }
-    debugPrint('[RecitationMode] Split ${data.length} bytes into ${chunks.length} chunks');
+    
+    // Log detailed chunk info
+    final chunkSizes = chunks.map((c) => '${(c.length / 1024).toStringAsFixed(1)}KB').join(', ');
+    logger.logInfo(
+      'Split ${wavData.length} bytes into ${chunks.length} chunks: [$chunkSizes]',
+      context: 'chunking',
+    );
+    
     return chunks;
+  }
+  
+  /// Create a valid WAV chunk with proper header for the given audio data
+  Uint8List _createWavChunk(Uint8List originalHeader, Uint8List audioData) {
+    // Copy header and update size fields
+    final header = Uint8List.fromList(originalHeader);
+    final fileSize = audioData.length + 36; // 44 - 8 for RIFF header
+    final dataSize = audioData.length;
+    
+    // Update file size at offset 4 (little-endian)
+    header[4] = fileSize & 0xFF;
+    header[5] = (fileSize >> 8) & 0xFF;
+    header[6] = (fileSize >> 16) & 0xFF;
+    header[7] = (fileSize >> 24) & 0xFF;
+    
+    // Update data chunk size at offset 40 (little-endian)
+    header[40] = dataSize & 0xFF;
+    header[41] = (dataSize >> 8) & 0xFF;
+    header[42] = (dataSize >> 16) & 0xFF;
+    header[43] = (dataSize >> 24) & 0xFF;
+    
+    // Combine header and audio data
+    final result = Uint8List(header.length + audioData.length);
+    result.setRange(0, header.length, header);
+    result.setRange(header.length, result.length, audioData);
+    
+    return result;
   }
 
   Future<void> _transcribeAudio() async {
@@ -219,15 +277,16 @@ class _RecitationModeState extends State<RecitationMode> {
 
     setState(() => _step = RecitationStep.transcribing);
 
+    final logger = context.read<ErrorLoggerService>();
     final audioData = _audioData!;
     final totalSize = audioData.length;
     final audioDuration = _audioDuration?.inSeconds.toDouble() ?? 0;
     
-    // Split into chunks if needed for API limits
-    final chunks = _chunkAudioData(audioData);
+    // Split into chunks if needed for API limits (with proper WAV headers)
+    final chunks = _chunkWavData(audioData, logger);
     final chunkCount = chunks.length;
 
-    context.read<ErrorLoggerService>().logInfo(
+    logger.logInfo(
       'WAV: ${(totalSize / 1024).toStringAsFixed(1)} KB, '
       'chunks: $chunkCount, '
       'duration: ${audioDuration.toStringAsFixed(1)}s, '
@@ -240,16 +299,37 @@ class _RecitationModeState extends State<RecitationMode> {
       final transcriptions = <String>[];
       
       for (var i = 0; i < chunks.length; i++) {
-        debugPrint('[RecitationMode] Transcribing chunk ${i + 1}/$chunkCount (${chunks[i].length} bytes)');
+        final chunkSize = chunks[i].length;
+        final chunkDurationEst = (chunkSize - 44) / (16000 * 2); // 16kHz, 16-bit mono
+        
+        logger.logInfo(
+          'Chunk ${i + 1}/$chunkCount: ${(chunkSize / 1024).toStringAsFixed(1)} KB, '
+          '~${chunkDurationEst.toStringAsFixed(1)}s',
+          context: 'chunk_start',
+        );
+        
         final chunkText = await _openRouterService
             .transcribeAudio(chunks[i], 'audio.wav');
-        transcriptions.add(chunkText.trim());
+        final trimmedText = chunkText.trim();
+        transcriptions.add(trimmedText);
+        
+        // Log first/last 100 chars of each chunk's transcription
+        final preview = trimmedText.length > 100 
+            ? '${trimmedText.substring(0, 50)}...${trimmedText.substring(trimmedText.length - 50)}'
+            : trimmedText;
+        logger.logInfo(
+          'Chunk ${i + 1} result (${trimmedText.length} chars): $preview',
+          context: 'chunk_result',
+        );
         
         if (!mounted) return;
       }
 
       final transcribedText = transcriptions.join(' ');
-      debugPrint('[RecitationMode] Combined transcription: ${transcribedText.length} chars');
+      logger.logInfo(
+        'Combined transcription: ${transcribedText.length} chars from $chunkCount chunks',
+        context: 'transcription_complete',
+      );
 
       if (!mounted) return;
       _transcriptionController.text = transcribedText;
