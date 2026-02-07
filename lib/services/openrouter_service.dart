@@ -13,7 +13,7 @@ class OpenRouterService {
   static const String _appTitle = 'Daily Manna';
   static const transcriptionModel = 'google/gemini-3-flash-preview';
   static const String _recognitionModel = 'openai/gpt-5-mini';
-  static const transcriptionTimeout = Duration(seconds: 60);
+  static const transcriptionTimeout = Duration(seconds: 120);
   static const recognitionTimeout = Duration(seconds: 30);
 
   OpenRouterService(this.settingsService);
@@ -61,7 +61,7 @@ class OpenRouterService {
       ],
     };
 
-    debugPrint('[OpenRouter Audio] Sending audio to chat API');
+    debugPrint('[OpenRouter Audio] Sending audio to chat API, format: $audioFormat');
     final response = await http
         .post(
           Uri.parse(_chatBaseUrl),
@@ -74,6 +74,7 @@ class OpenRouterService {
     debugPrint('[OpenRouter Audio] Response body: ${response.body}');
 
     if (response.statusCode != 200) {
+      debugPrint('[OpenRouter Audio] Error response body: ${response.body}');
       throw Exception(
         'Failed to transcribe audio: ${response.statusCode} - ${_parseErrorDetail(response)}',
       );
@@ -123,6 +124,10 @@ class OpenRouterService {
 
   String _getAudioFormat(String filename) {
     final ext = filename.split('.').last.toLowerCase();
+    // Map file extensions to API format names
+    if (ext == 'm4a') return 'aac';
+    if (ext == 'opus') return 'ogg'; // Opus codec in OGG container
+    
     const supportedFormats = [
       'wav',
       'mp3',
@@ -130,7 +135,6 @@ class OpenRouterService {
       'aac',
       'ogg',
       'flac',
-      'm4a',
       'pcm16',
       'pcm24',
     ];
@@ -142,8 +146,15 @@ class OpenRouterService {
       final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
       if (errorBody.containsKey('error')) {
         final error = errorBody['error'];
-        if (error is Map && error.containsKey('message')) {
-          return error['message'] as String;
+        if (error is Map) {
+          // Try to get detailed message, code, and metadata
+          final message = error['message'] as String? ?? '';
+          final code = error['code']?.toString() ?? '';
+          final metadata = error['metadata']?.toString() ?? '';
+          final parts = [message, if (code.isNotEmpty) 'code: $code', if (metadata.isNotEmpty) metadata]
+              .where((s) => s.isNotEmpty)
+              .join(', ');
+          if (parts.isNotEmpty) return parts;
         } else if (error is String) {
           return error;
         }
