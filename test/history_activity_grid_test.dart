@@ -42,6 +42,27 @@ void main() {
   });
 
   group('HistoryActivityGrid', () {
+    testWidgets('opens on the selected month instead of the newest month', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: HistoryActivityGrid(
+                activityDays: {DateTime(2024, 3, 9), DateTime(2024, 5, 10)},
+                selectedDate: DateTime(2024, 3, 9),
+                onDateSelected: (_) {},
+                referenceDate: DateTime(2024, 5, 15, 15),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('March 2024'), findsOneWidget);
+    });
+
     testWidgets('shows month navigation and checkmarks for the current month', (
       tester,
     ) async {

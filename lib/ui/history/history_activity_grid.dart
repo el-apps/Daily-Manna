@@ -52,6 +52,22 @@ class HistoryActivityGrid extends StatefulWidget {
 class _HistoryActivityGridState extends State<HistoryActivityGrid> {
   int _currentMonthIndex = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    _currentMonthIndex = _selectedMonthIndexForDate(widget.selectedDate);
+  }
+
+  @override
+  void didUpdateWidget(covariant HistoryActivityGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedDate != widget.selectedDate ||
+        oldWidget.activityDays != widget.activityDays ||
+        oldWidget.referenceDate != widget.referenceDate) {
+      _currentMonthIndex = _selectedMonthIndexForDate(widget.selectedDate);
+    }
+  }
+
   void _showOlderMonth(int monthCount) {
     if (_currentMonthIndex < monthCount - 1) {
       setState(() => _currentMonthIndex += 1);
@@ -62,6 +78,20 @@ class _HistoryActivityGridState extends State<HistoryActivityGrid> {
     if (_currentMonthIndex > 0) {
       setState(() => _currentMonthIndex -= 1);
     }
+  }
+
+  int _selectedMonthIndexForDate(DateTime selectedDate) {
+    final today = widget.referenceDate.dateOnly;
+    final firstActivityDay = widget.activityDays.isEmpty
+        ? today
+        : widget.activityDays.reduce((a, b) => a.isBefore(b) ? a : b);
+    final months = buildMonths(firstDate: firstActivityDay, lastDate: today);
+    final selectedMonth = DateTime(selectedDate.year, selectedDate.month);
+    final index = months.indexWhere(
+      (month) =>
+          month.year == selectedMonth.year && month.month == selectedMonth.month,
+    );
+    return index < 0 ? 0 : index;
   }
 
   @override
