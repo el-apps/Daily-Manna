@@ -192,6 +192,18 @@ void main() {
         expect(intervalDays, equals(1));
       }
     });
+
+    test('90% score advances interval from 1 day to 2 days', () async {
+      final intervalDays = await _getIntervalDaysForScores([0.90, 0.90]);
+
+      expect(intervalDays, equals(2));
+    });
+
+    test('scores above 90% advance interval', () async {
+      final intervalDays = await _getIntervalDaysForScores([0.91, 0.91]);
+
+      expect(intervalDays, equals(2));
+    });
   });
 
   group('recovery after failure', () {
