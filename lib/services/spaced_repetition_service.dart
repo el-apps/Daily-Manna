@@ -26,8 +26,9 @@ class VerseReviewState {
 /// Uses a simple doubling algorithm: 1, 2, 4, 8, 16, 32 days.
 /// Scores below 90% reset the interval back to 1 day.
 class SpacedRepetitionService {
-  static const _intervals = [1, 2, 4, 8, 16, 32];
   static const _passingScore = 0.90;
+  static const _initialIntervalDays = 1;
+  static const _maxIntervalDays = 32;
 
   final AppDatabase _db;
 
@@ -156,27 +157,30 @@ class SpacedRepetitionService {
         results.where((r) => r.type != ResultType.study).toList();
 
     int reps = 0;
+    var intervalDays = _initialIntervalDays;
 
     for (final result in practiceResults) {
       if (result.score >= _passingScore) {
-        // Passing score - advance reps (no cap during counting)
+        // Passing score - first success starts at 1 day, then doubles
         reps++;
+        if (reps == 1) {
+          intervalDays = _initialIntervalDays;
+        } else {
+          intervalDays = (intervalDays * 2)
+              .clamp(_initialIntervalDays, _maxIntervalDays)
+              .toInt();
+        }
       } else {
-        // Failing score - reset to beginning
+        // Failing score - reset to the beginning
         reps = 0;
+        intervalDays = _initialIntervalDays;
       }
     }
-
-    // Map reps to interval index (1-indexed reps to 0-indexed array)
-    // reps=1 -> index 0 -> interval 1
-    // reps=6 -> index 5 -> interval 32
-    // reps=10 -> index 5 (capped) -> interval 32
-    final intervalIndex = (reps - 1).clamp(0, _intervals.length - 1);
 
     return VerseReviewState(
       ref: ref,
       lastReview: practiceResults.last.timestamp,
-      intervalDays: reps == 0 ? _intervals[0] : _intervals[intervalIndex],
+      intervalDays: intervalDays,
       repetitions: reps,
     );
   }
