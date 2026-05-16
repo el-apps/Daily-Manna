@@ -16,9 +16,10 @@ void main() {
     });
 
     test('normalizeActivityDays uses local days for UTC timestamps', () {
-      final days = normalizeActivityDays([DateTime.utc(2024, 1, 16, 3)]);
+      final timestamp = DateTime.utc(2024, 1, 16, 3);
+      final days = normalizeActivityDays([timestamp]);
 
-      expect(days, {DateTime(2024, 1, 15)});
+      expect(days, {timestamp.toLocal().dateOnly});
     });
 
     test('buildMonths returns month starts from newest to oldest', () {

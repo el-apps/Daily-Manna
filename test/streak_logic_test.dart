@@ -11,10 +11,11 @@ void main() {
     });
 
     test('uses local calendar days for UTC timestamps', () {
+      final latest = DateTime.utc(2024, 1, 16, 3);
       final state = calculateStreakState([
-        DateTime.utc(2024, 1, 16, 3),
-        DateTime.utc(2024, 1, 15, 3),
-      ], now: DateTime(2024, 1, 15, 12));
+        latest,
+        latest.subtract(const Duration(days: 1)),
+      ], now: latest.toLocal());
 
       expect(state.streakDays, 2);
       expect(state.activityToday, true);
