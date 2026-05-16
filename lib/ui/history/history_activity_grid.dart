@@ -2,9 +2,6 @@ import 'package:daily_manna/utils/date_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-Set<DateTime> normalizeActivityDays(Iterable<DateTime> timestamps) =>
-    timestamps.map((timestamp) => timestamp.dateOnly).toSet();
-
 List<DateTime> buildMonths({
   required DateTime firstDate,
   required DateTime lastDate,
@@ -258,15 +255,14 @@ class _DayCell extends StatelessWidget {
                 color: textColor,
               ),
             ),
-            const SizedBox(height: 4),
             if (!isFuture)
               Icon(
                 hasActivity ? Icons.check_rounded : Icons.remove_rounded,
-                size: 18,
+                size: 16,
                 color: hasActivity ? colorScheme.primary : colorScheme.outline,
               )
             else
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
           ],
         ),
       ),

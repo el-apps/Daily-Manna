@@ -1,3 +1,4 @@
+import 'package:daily_manna/utils/date_utils.dart';
 import 'package:daily_manna/ui/history/history_activity_grid.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +13,12 @@ void main() {
       ]);
 
       expect(days, {DateTime(2024, 5, 10), DateTime(2024, 5, 9)});
+    });
+
+    test('normalizeActivityDays uses local days for UTC timestamps', () {
+      final days = normalizeActivityDays([DateTime.utc(2024, 1, 16, 3)]);
+
+      expect(days, {DateTime(2024, 1, 15)});
     });
 
     test('buildMonths returns month starts from newest to oldest', () {
