@@ -162,12 +162,12 @@ class SpacedRepetitionService {
         // Passing score - advance reps (no cap during counting)
         reps++;
       } else {
-        // Failing score - reset to beginning
+        // Failing score - reset to beginning with a 1 day interval
         reps = 0;
       }
     }
 
-    // Map reps to interval index (1-indexed reps to 0-indexed array)
+    // Map reps to interval index (1-indexed reps to 0-indexed array).
     // reps=1 -> index 0 -> interval 1
     // reps=6 -> index 5 -> interval 32
     // reps=10 -> index 5 (capped) -> interval 32

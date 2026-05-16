@@ -163,6 +163,8 @@ Call as `status.primaryColor` instead of `getPrimaryColor(status)`.
 
 Format and transform data in service classes, not widgets. Example: `ResultsService.getSections()` returns display-ready sections rather than raw data.
 
+For spaced repetition, keep the two thresholds separate: the memorization screen marks a submission correct at 60%, but `SpacedRepetitionService` only advances the review interval on scores at or above 90%; anything below 90% resets to 1 day.
+
 ### Widget Creation and Organization
 
 **Reuse existing widgets** before creating new ones. Check `lib/ui/` for shared components like `ThemeCard`, `VerseSelector`, `LoadingSection`.
@@ -313,5 +315,3 @@ When using subagents for parallel work:
 - Commit between batches as checkpoints
 
 **Subagents are workers, not planners.** Do planning yourself, give them precise tasks.
-
-

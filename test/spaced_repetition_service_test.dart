@@ -197,8 +197,17 @@ void main() {
     });
 
     test('90% score advances interval', () async {
-      await _addResult(resultsService, score: 0.90); // passes, reps = 1, interval = 1
-      await _addResult(resultsService, score: 0.90); // passes, reps = 2, interval = 2
+      await _addResult(resultsService, score: 0.90);
+      await _addResult(resultsService, score: 0.90);
+
+      final states = await srService.getVersesByReviewDate();
+      expect(states.first.intervalDays, equals(2));
+      expect(states.first.repetitions, equals(2));
+    });
+
+    test('score above 90% advances interval', () async {
+      await _addResult(resultsService, score: 0.91);
+      await _addResult(resultsService, score: 0.91);
 
       final states = await srService.getVersesByReviewDate();
       expect(states.first.intervalDays, equals(2));
