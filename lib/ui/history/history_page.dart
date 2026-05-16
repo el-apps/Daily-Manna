@@ -1,4 +1,5 @@
 import 'package:daily_manna/models/score_data.dart';
+import 'package:daily_manna/ui/history/history_activity_grid.dart';
 import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
 import 'package:daily_manna/utils/date_utils.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
@@ -58,18 +59,22 @@ class _HistoryPageState extends State<HistoryPage> {
                 }
 
                 final grouped = _groupByDate(filtered);
+                final activityDays = normalizeActivityDays(
+                  filtered.map((result) => result.timestamp),
+                );
 
-                return ListView.builder(
+                return ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: grouped.length,
-                  itemBuilder: (context, index) {
-                    final group = grouped[index];
-                    return _DateGroup(
-                      label: group.label,
-                      results: group.results,
-                      bibleService: bibleService,
-                    );
-                  },
+                  children: [
+                    HistoryActivityGrid(activityDays: activityDays),
+                    const SizedBox(height: 16),
+                    for (final group in grouped)
+                      _DateGroup(
+                        label: group.label,
+                        results: group.results,
+                        bibleService: bibleService,
+                      ),
+                  ],
                 );
               },
             ),
@@ -146,9 +151,8 @@ class _FilterChips extends StatelessWidget {
           FilterChip(
             label: Text(option.label),
             selected: selectedType == option.type,
-            onSelected: (_) => onSelected(
-              selectedType == option.type ? null : option.type,
-            ),
+            onSelected: (_) =>
+                onSelected(selectedType == option.type ? null : option.type),
           ),
       ],
     ),
@@ -179,28 +183,26 @@ class _DateGroup extends StatelessWidget {
           ),
         ),
       ),
-      ...results.map(
-        (result) {
-          final card = ResultCard(
-            result: result,
-            reference: _getReference(result),
-            score: ScoreData(value: result.score, attempts: result.attempts ?? 1),
-            onPractice: () => _showPracticeDialog(context, result),
-          );
-          
-          if (result.type == db.ResultType.study) {
-            return GestureDetector(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => StudyNotesDetailPage(result: result),
-                ),
+      ...results.map((result) {
+        final card = ResultCard(
+          result: result,
+          reference: _getReference(result),
+          score: ScoreData(value: result.score, attempts: result.attempts ?? 1),
+          onPractice: () => _showPracticeDialog(context, result),
+        );
+
+        if (result.type == db.ResultType.study) {
+          return GestureDetector(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => StudyNotesDetailPage(result: result),
               ),
-              child: card,
-            );
-          }
-          return card;
-        },
-      ),
+            ),
+            child: card,
+          );
+        }
+        return card;
+      }),
     ],
   );
 
@@ -229,4 +231,3 @@ class _DateGroup extends StatelessWidget {
     return '$bookTitle $start';
   }
 }
-
