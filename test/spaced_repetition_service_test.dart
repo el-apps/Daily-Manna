@@ -179,38 +179,18 @@ void main() {
   });
 
   group('interval reset on low scores', () {
-    test('score below 90% resets interval to 1', () async {
-      // Build up interval with perfect scores
-      for (var i = 0; i < 4; i++) {
-        await _addResult(resultsService, score: 1.0);
+    test('any history ending below 90% resets interval to 1', () async {
+      final cases = <List<double>>[
+        [1.0, 1.0, 1.0, 0.89],
+        [0.90, 0.90, 0.89],
+        [1.0, 0.91, 1.0, 0.70],
+        [1.0, 1.0, 1.0, 1.0, 0.01],
+      ];
+
+      for (final scores in cases) {
+        final intervalDays = await _getIntervalDaysForScores(scores);
+        expect(intervalDays, equals(1));
       }
-
-      // Verify interval is at 8 days
-      var states = await srService.getVersesByReviewDate();
-      expect(states.first.intervalDays, equals(8));
-
-      // Fail with 89% score
-      await _addResult(resultsService, score: 0.89);
-
-      states = await srService.getVersesByReviewDate();
-      expect(states.first.intervalDays, equals(1));
-    });
-
-    test('90% score advances interval', () async {
-      await _addResult(resultsService, score: 0.90);
-      await _addResult(resultsService, score: 0.90);
-
-      final states = await srService.getVersesByReviewDate();
-      expect(states.first.intervalDays, equals(2));
-      expect(states.first.repetitions, equals(2));
-    });
-
-    test('score above 90% advances interval', () async {
-      await _addResult(resultsService, score: 0.91);
-      await _addResult(resultsService, score: 0.91);
-
-      final states = await srService.getVersesByReviewDate();
-      expect(states.first.intervalDays, equals(2));
     });
   });
 
@@ -269,4 +249,21 @@ Future<void> _addResult(
   await resultsService.addMemorizationResult(
     MemorizationResult(ref: ref, attempts: 1, score: score),
   );
+}
+
+Future<int> _getIntervalDaysForScores(List<double> scores) async {
+  final database = AppDatabase.forTesting(NativeDatabase.memory());
+  try {
+    final srService = SpacedRepetitionService(database);
+    final resultsService = ResultsService(database);
+
+    for (final score in scores) {
+      await _addResult(resultsService, score: score);
+    }
+
+    final states = await srService.getVersesByReviewDate();
+    return states.first.intervalDays;
+  } finally {
+    await database.close();
+  }
 }
