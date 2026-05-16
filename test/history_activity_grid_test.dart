@@ -51,6 +51,8 @@ void main() {
             body: SingleChildScrollView(
               child: HistoryActivityGrid(
                 activityDays: {DateTime(2024, 5, 8), DateTime(2024, 6, 10)},
+                selectedDate: DateTime(2024, 6, 10),
+                onDateSelected: (_) {},
                 referenceDate: DateTime(2024, 6, 15, 15),
               ),
             ),
@@ -67,6 +69,30 @@ void main() {
 
       expect(find.text('May 2024'), findsOneWidget);
       expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+    });
+
+    testWidgets('tapping a day reports the selected date', (tester) async {
+      DateTime? selectedDate;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: HistoryActivityGrid(
+                activityDays: {DateTime(2024, 6, 14)},
+                selectedDate: DateTime(2024, 6, 15),
+                onDateSelected: (date) => selectedDate = date,
+                referenceDate: DateTime(2024, 6, 15, 15),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('14'));
+      await tester.pump();
+
+      expect(selectedDate, DateTime(2024, 6, 14));
     });
   });
 }

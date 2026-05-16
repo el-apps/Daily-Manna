@@ -34,10 +34,14 @@ List<DateTime?> buildMonthCells(DateTime monthStart) {
 class HistoryActivityGrid extends StatefulWidget {
   final Set<DateTime> activityDays;
   final DateTime referenceDate;
+  final DateTime selectedDate;
+  final ValueChanged<DateTime> onDateSelected;
 
   HistoryActivityGrid({
     super.key,
     required this.activityDays,
+    required this.selectedDate,
+    required this.onDateSelected,
     DateTime? referenceDate,
   }) : referenceDate = referenceDate ?? DateTime.now();
 
@@ -74,6 +78,7 @@ class _HistoryActivityGridState extends State<HistoryActivityGrid> {
         .toInt();
     final selectedMonth = months[selectedMonthIndex];
     final monthLabel = DateFormat.yMMMM().format(selectedMonth);
+    final selectedDate = widget.selectedDate.dateOnly;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,6 +112,8 @@ class _HistoryActivityGridState extends State<HistoryActivityGrid> {
             monthStart: selectedMonth,
             referenceDate: today,
             activityDays: widget.activityDays,
+            selectedDate: selectedDate,
+            onDateSelected: widget.onDateSelected,
           ),
         ),
       ],
@@ -118,12 +125,16 @@ class _MonthCard extends StatelessWidget {
   final DateTime monthStart;
   final DateTime referenceDate;
   final Set<DateTime> activityDays;
+  final DateTime selectedDate;
+  final ValueChanged<DateTime> onDateSelected;
 
   const _MonthCard({
     super.key,
     required this.monthStart,
     required this.referenceDate,
     required this.activityDays,
+    required this.selectedDate,
+    required this.onDateSelected,
   });
 
   @override
@@ -156,10 +167,13 @@ class _MonthCard extends StatelessWidget {
 
                 final hasActivity = activityDays.contains(day);
                 final isFuture = day.isAfter(referenceDate);
+                final isSelected = day == selectedDate;
                 return _DayCell(
                   day: day,
                   hasActivity: hasActivity,
                   isFuture: isFuture,
+                  isSelected: isSelected,
+                  onTap: isFuture ? null : () => onDateSelected(day),
                 );
               },
             ),
@@ -213,23 +227,31 @@ class _DayCell extends StatelessWidget {
   final DateTime day;
   final bool hasActivity;
   final bool isFuture;
+  final bool isSelected;
+  final VoidCallback? onTap;
 
   const _DayCell({
     required this.day,
     required this.hasActivity,
     required this.isFuture,
+    required this.isSelected,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final backgroundColor = hasActivity
+    final backgroundColor = isSelected
+        ? colorScheme.secondaryContainer
+        : hasActivity
         ? colorScheme.primaryContainer
         : isFuture
         ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.4)
         : colorScheme.surfaceContainerHighest;
-    final borderColor = hasActivity
+    final borderColor = isSelected
+        ? colorScheme.primary
+        : hasActivity
         ? colorScheme.primary.withValues(alpha: 0.5)
         : colorScheme.outlineVariant.withValues(alpha: isFuture ? 0.5 : 1);
     final textColor = isFuture
@@ -237,40 +259,54 @@ class _DayCell extends StatelessWidget {
         : theme.colorScheme.onSurface;
 
     return Semantics(
-      label: _semanticLabel(day, hasActivity, isFuture),
-      child: Container(
-        decoration: BoxDecoration(
-          color: backgroundColor,
+      label: _semanticLabel(day, hasActivity, isFuture, isSelected),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: borderColor),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              '${day.day}',
-              style: theme.textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: textColor,
-              ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: borderColor, width: isSelected ? 2 : 1),
             ),
-            if (!isFuture)
-              Icon(
-                hasActivity ? Icons.check_rounded : Icons.remove_rounded,
-                size: 16,
-                color: hasActivity ? colorScheme.primary : colorScheme.outline,
-              )
-            else
-              const SizedBox(height: 16),
-          ],
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '${day.day}',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+                if (!isFuture)
+                  Icon(
+                    hasActivity ? Icons.check_rounded : Icons.remove_rounded,
+                    size: 16,
+                    color: hasActivity
+                        ? colorScheme.primary
+                        : colorScheme.outline,
+                  )
+                else
+                  const SizedBox(height: 16),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  String _semanticLabel(DateTime day, bool hasActivity, bool isFuture) =>
-      '${day.year}-${day.month}-${day.day}, ${isFuture
+  String _semanticLabel(
+    DateTime day,
+    bool hasActivity,
+    bool isFuture,
+    bool isSelected,
+  ) =>
+      '${day.year}-${day.month}-${day.day}, ${isSelected ? 'selected, ' : ''}${isFuture
           ? 'future'
           : hasActivity
           ? 'practiced'

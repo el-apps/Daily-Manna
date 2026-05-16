@@ -1,7 +1,6 @@
 import 'package:daily_manna/models/score_data.dart';
 import 'package:daily_manna/ui/history/history_activity_grid.dart';
 import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
-import 'package:daily_manna/utils/date_utils.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
@@ -10,8 +9,20 @@ import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/history/result_card.dart';
 import 'package:daily_manna/ui/practice_mode_dialog.dart';
+import 'package:daily_manna/utils/date_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
+List<db.Result> filterResultsForDate(
+  List<db.Result> results,
+  DateTime selectedDate,
+) {
+  final selectedDay = selectedDate.dateOnly;
+  return results
+      .where((result) => result.timestamp.localDateOnly == selectedDay)
+      .toList();
+}
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -22,6 +33,7 @@ class HistoryPage extends StatefulWidget {
 
 class _HistoryPageState extends State<HistoryPage> {
   db.ResultType? _filterType;
+  DateTime _selectedDate = DateTime.now().dateOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -48,17 +60,19 @@ class _HistoryPageState extends State<HistoryPage> {
                 final filtered = _filterType == null
                     ? results
                     : results.where((r) => r.type == _filterType).toList();
+                final selectedResults = filterResultsForDate(
+                  filtered,
+                  _selectedDate,
+                );
 
-                if (filtered.isEmpty) {
+                if (results.isEmpty) {
                   return EmptyState(
                     icon: Icons.history,
-                    message: _filterType != null
-                        ? 'No results match the filter.'
-                        : 'No practice history yet.\nComplete a memorization or recitation to get started!',
+                    message:
+                        'No practice history yet.\nComplete a memorization or recitation to get started!',
                   );
                 }
 
-                final grouped = _groupByDate(filtered);
                 final activityDays = normalizeActivityDays(
                   filtered.map((result) => result.timestamp),
                 );
@@ -66,12 +80,24 @@ class _HistoryPageState extends State<HistoryPage> {
                 return ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   children: [
-                    HistoryActivityGrid(activityDays: activityDays),
+                    HistoryActivityGrid(
+                      activityDays: activityDays,
+                      selectedDate: _selectedDate,
+                      onDateSelected: (date) =>
+                          setState(() => _selectedDate = date.dateOnly),
+                    ),
                     const SizedBox(height: 16),
-                    for (final group in grouped)
+                    if (selectedResults.isEmpty)
+                      EmptyState(
+                        icon: Icons.history,
+                        message: _filterType != null
+                            ? 'No results on ${DateFormat.yMMMMd().format(_selectedDate)} match the filter.'
+                            : 'No results on ${DateFormat.yMMMMd().format(_selectedDate)}.',
+                      )
+                    else
                       _DateGroup(
-                        label: group.label,
-                        results: group.results,
+                        label: DateFormat.yMMMMd().format(_selectedDate),
+                        results: selectedResults,
                         bibleService: bibleService,
                       ),
                   ],
@@ -83,46 +109,6 @@ class _HistoryPageState extends State<HistoryPage> {
       ),
     );
   }
-
-  List<_ResultGroup> _groupByDate(List<db.Result> results) {
-    final now = DateTime.now();
-    final today = now.dateOnly;
-    final yesterday = today.subtract(const Duration(days: 1));
-    final weekAgo = today.subtract(const Duration(days: 7));
-
-    final groups = <String, List<db.Result>>{
-      'Today': [],
-      'Yesterday': [],
-      'This Week': [],
-      'Earlier': [],
-    };
-
-    for (final result in results) {
-      final date = result.timestamp.dateOnly;
-
-      if (date == today) {
-        groups['Today']!.add(result);
-      } else if (date == yesterday) {
-        groups['Yesterday']!.add(result);
-      } else if (date.isAfter(weekAgo)) {
-        groups['This Week']!.add(result);
-      } else {
-        groups['Earlier']!.add(result);
-      }
-    }
-
-    return groups.entries
-        .where((e) => e.value.isNotEmpty)
-        .map((e) => _ResultGroup(label: e.key, results: e.value))
-        .toList();
-  }
-}
-
-class _ResultGroup {
-  final String label;
-  final List<db.Result> results;
-
-  _ResultGroup({required this.label, required this.results});
 }
 
 class _FilterChips extends StatelessWidget {
