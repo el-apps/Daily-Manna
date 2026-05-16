@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:daily_manna/services/error_logger_service.dart';
+import 'package:daily_manna/services/database/database.dart';
+import 'package:daily_manna/services/database_export.dart';
 import 'package:flutter/gestures.dart';
 import 'package:daily_manna/services/settings_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
@@ -8,6 +10,7 @@ import 'package:daily_manna/ui/theme_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'ui/settings/notification_card.dart';
@@ -34,6 +37,8 @@ class _SettingsPageState extends State<SettingsPage> {
           children: [
             const NotificationCard(),
             const SizedBox(height: 16),
+            const _DatabaseExportSection(),
+            const SizedBox(height: 16),
             _ApiKeySection(),
             const SizedBox(height: 16),
             ListenableBuilder(
@@ -47,6 +52,80 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
+}
+
+class _DatabaseExportSection extends StatefulWidget {
+  const _DatabaseExportSection();
+
+  @override
+  State<_DatabaseExportSection> createState() => _DatabaseExportSectionState();
+}
+
+class _DatabaseExportSectionState extends State<_DatabaseExportSection> {
+  bool _isExporting = false;
+
+  Future<void> _exportDatabase() async {
+    setState(() {
+      _isExporting = true;
+    });
+
+    try {
+      final exportService = DatabaseExportService(context.read<AppDatabase>());
+      final exportFile = await exportService.exportDatabase();
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [exportFile.file],
+          fileNameOverrides: [exportFile.fileName],
+          subject: 'Daily Manna database export',
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not export the database right now.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isExporting = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ThemeCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 12,
+      children: [
+        Text(
+          'Export Database',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        Text(
+          'Create a copy of the local database for backup or analysis.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.icon(
+            onPressed: _isExporting ? null : _exportDatabase,
+            icon: _isExporting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download),
+            label: Text(_isExporting ? 'Exporting...' : 'Export DB'),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _ErrorLogsSection extends StatelessWidget {

@@ -3,6 +3,8 @@ import 'package:drift_flutter/drift_flutter.dart';
 
 part 'database.g.dart';
 
+const databaseName = 'daily_manna';
+
 enum ResultType { memorization, recitation, study }
 
 class Results extends Table {
@@ -40,7 +42,7 @@ class AppDatabase extends _$AppDatabase {
   );
 
   static QueryExecutor _openConnection() => driftDatabase(
-    name: 'daily_manna',
+    name: databaseName,
     web: DriftWebOptions(
       sqlite3Wasm: Uri.parse('sqlite3.wasm'),
       driftWorker: Uri.parse('drift_worker.js'),

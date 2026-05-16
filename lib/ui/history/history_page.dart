@@ -34,6 +34,13 @@ class HistoryPage extends StatefulWidget {
 class _HistoryPageState extends State<HistoryPage> {
   db.ResultType? _filterType;
   DateTime _selectedDate = DateTime.now().dateOnly;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,6 +85,8 @@ class _HistoryPageState extends State<HistoryPage> {
                 );
 
                 return ListView(
+                  key: const PageStorageKey('history-results-list'),
+                  controller: _scrollController,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   children: [
                     HistoryActivityGrid(
