@@ -34,7 +34,7 @@ List<DateTime?> buildMonthCells(DateTime monthStart) {
   ];
 }
 
-class HistoryActivityGrid extends StatelessWidget {
+class HistoryActivityGrid extends StatefulWidget {
   final Set<DateTime> activityDays;
   final DateTime referenceDate;
 
@@ -45,13 +45,38 @@ class HistoryActivityGrid extends StatelessWidget {
   }) : referenceDate = referenceDate ?? DateTime.now();
 
   @override
+  State<HistoryActivityGrid> createState() => _HistoryActivityGridState();
+}
+
+class _HistoryActivityGridState extends State<HistoryActivityGrid> {
+  int _currentMonthIndex = 0;
+
+  void _showOlderMonth(int monthCount) {
+    if (_currentMonthIndex < monthCount - 1) {
+      setState(() => _currentMonthIndex += 1);
+    }
+  }
+
+  void _showNewerMonth() {
+    if (_currentMonthIndex > 0) {
+      setState(() => _currentMonthIndex -= 1);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final today = referenceDate.dateOnly;
-    final firstActivityDay = activityDays.isEmpty
+    final today = widget.referenceDate.dateOnly;
+    final firstActivityDay = widget.activityDays.isEmpty
         ? today
-        : activityDays.reduce((a, b) => a.isBefore(b) ? a : b);
+        : widget.activityDays.reduce((a, b) => a.isBefore(b) ? a : b);
     final months = buildMonths(firstDate: firstActivityDay, lastDate: today);
+    final monthCount = months.length;
+    final selectedMonthIndex = _currentMonthIndex
+        .clamp(0, monthCount - 1)
+        .toInt();
+    final selectedMonth = months[selectedMonthIndex];
+    final monthLabel = DateFormat.yMMMM().format(selectedMonth);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,14 +88,37 @@ class HistoryActivityGrid extends StatelessWidget {
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: 16),
-        for (final monthStart in months) ...[
-          _MonthCard(
-            monthStart: monthStart,
+        Row(
+          children: [
+            IconButton(
+              onPressed: selectedMonthIndex < monthCount - 1
+                  ? () => _showOlderMonth(monthCount)
+                  : null,
+              icon: const Icon(Icons.chevron_left),
+              tooltip: 'Older month',
+            ),
+            Expanded(
+              child: Center(
+                child: Text(monthLabel, style: theme.textTheme.titleSmall),
+              ),
+            ),
+            IconButton(
+              onPressed: selectedMonthIndex > 0 ? _showNewerMonth : null,
+              icon: const Icon(Icons.chevron_right),
+              tooltip: 'Newer month',
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: _MonthCard(
+            key: ValueKey(selectedMonth),
+            monthStart: selectedMonth,
             referenceDate: today,
-            activityDays: activityDays,
+            activityDays: widget.activityDays,
           ),
-          const SizedBox(height: 12),
-        ],
+        ),
       ],
     );
   }
@@ -82,6 +130,7 @@ class _MonthCard extends StatelessWidget {
   final Set<DateTime> activityDays;
 
   const _MonthCard({
+    super.key,
     required this.monthStart,
     required this.referenceDate,
     required this.activityDays,
@@ -89,8 +138,6 @@ class _MonthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final monthLabel = DateFormat.yMMMM().format(monthStart);
     final monthCells = buildMonthCells(monthStart);
 
     return Card.filled(
@@ -99,8 +146,6 @@ class _MonthCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(monthLabel, style: theme.textTheme.titleSmall),
-            const SizedBox(height: 12),
             const _WeekdayHeaderRow(),
             const SizedBox(height: 8),
             GridView.builder(

@@ -34,7 +34,7 @@ void main() {
   });
 
   group('HistoryActivityGrid', () {
-    testWidgets('shows month sections and checkmarks for active days', (
+    testWidgets('shows month navigation and checkmarks for the current month', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -51,8 +51,14 @@ void main() {
       );
 
       expect(find.text('June 2024'), findsOneWidget);
+
+      expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.chevron_left));
+      await tester.pumpAndSettle();
+
       expect(find.text('May 2024'), findsOneWidget);
-      expect(find.byIcon(Icons.check_rounded), findsNWidgets(2));
+      expect(find.byIcon(Icons.check_rounded), findsOneWidget);
     });
   });
 }
