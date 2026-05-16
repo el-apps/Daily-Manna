@@ -81,13 +81,6 @@ class _HistoryActivityGridState extends State<HistoryActivityGrid> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Activity calendar', style: theme.textTheme.titleMedium),
-        const SizedBox(height: 4),
-        Text(
-          'Checkmarks show days with saved practice.',
-          style: theme.textTheme.bodySmall,
-        ),
-        const SizedBox(height: 16),
         Row(
           children: [
             IconButton(
