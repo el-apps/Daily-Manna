@@ -30,5 +30,16 @@ void main() {
       expect(state.streakDays, 1);
       expect(state.activityToday, true);
     });
+
+    test('crosses the DST boundary using calendar days', () {
+      final state = calculateStreakState([
+        DateTime(2026, 3, 9, 9),
+        DateTime(2026, 3, 8, 9),
+        DateTime(2026, 3, 7, 9),
+      ], now: DateTime(2026, 3, 9, 12));
+
+      expect(state.streakDays, 3);
+      expect(state.activityToday, true);
+    });
   });
 }

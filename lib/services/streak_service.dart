@@ -26,11 +26,15 @@ StreakState calculateStreakState(
   int streak = 0;
   DateTime checkDate = activityToday
       ? todayDate
-      : todayDate.subtract(const Duration(days: 1));
+      : DateTime(todayDate.year, todayDate.month, todayDate.day - 1);
 
   while (daysWithActivity.contains(checkDate)) {
     streak++;
-    checkDate = checkDate.subtract(const Duration(days: 1));
+    checkDate = DateTime(
+      checkDate.year,
+      checkDate.month,
+      checkDate.day - 1,
+    );
   }
 
   return StreakState(streakDays: streak, activityToday: activityToday);
