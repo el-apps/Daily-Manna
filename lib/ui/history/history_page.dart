@@ -1,6 +1,6 @@
 import 'package:daily_manna/models/score_data.dart';
+import 'package:daily_manna/ui/history/history_activity_grid.dart';
 import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
-import 'package:daily_manna/utils/date_utils.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
@@ -9,8 +9,20 @@ import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/history/result_card.dart';
 import 'package:daily_manna/ui/practice_mode_dialog.dart';
+import 'package:daily_manna/utils/date_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
+List<db.Result> filterResultsForDate(
+  List<db.Result> results,
+  DateTime selectedDate,
+) {
+  final selectedDay = selectedDate.dateOnly;
+  return results
+      .where((result) => result.timestamp.localDateOnly == selectedDay)
+      .toList();
+}
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -21,6 +33,14 @@ class HistoryPage extends StatefulWidget {
 
 class _HistoryPageState extends State<HistoryPage> {
   db.ResultType? _filterType;
+  DateTime _selectedDate = DateTime.now().dateOnly;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,29 +67,49 @@ class _HistoryPageState extends State<HistoryPage> {
                 final filtered = _filterType == null
                     ? results
                     : results.where((r) => r.type == _filterType).toList();
+                final selectedResults = filterResultsForDate(
+                  filtered,
+                  _selectedDate,
+                );
 
-                if (filtered.isEmpty) {
+                if (results.isEmpty) {
                   return EmptyState(
                     icon: Icons.history,
-                    message: _filterType != null
-                        ? 'No results match the filter.'
-                        : 'No practice history yet.\nComplete a memorization or recitation to get started!',
+                    message:
+                        'No practice history yet.\nComplete a memorization or recitation to get started!',
                   );
                 }
 
-                final grouped = _groupByDate(filtered);
+                final activityDays = normalizeActivityDays(
+                  filtered.map((result) => result.timestamp),
+                );
 
-                return ListView.builder(
+                return ListView(
+                  key: const PageStorageKey('history-results-list'),
+                  controller: _scrollController,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: grouped.length,
-                  itemBuilder: (context, index) {
-                    final group = grouped[index];
-                    return _DateGroup(
-                      label: group.label,
-                      results: group.results,
-                      bibleService: bibleService,
-                    );
-                  },
+                  children: [
+                    HistoryActivityGrid(
+                      activityDays: activityDays,
+                      selectedDate: _selectedDate,
+                      onDateSelected: (date) =>
+                          setState(() => _selectedDate = date.dateOnly),
+                    ),
+                    const SizedBox(height: 16),
+                    if (selectedResults.isEmpty)
+                      EmptyState(
+                        icon: Icons.history,
+                        message: _filterType != null
+                            ? 'No results on ${DateFormat.yMMMMd().format(_selectedDate)} match the filter.'
+                            : 'No results on ${DateFormat.yMMMMd().format(_selectedDate)}.',
+                      )
+                    else
+                      _DateGroup(
+                        label: DateFormat.yMMMMd().format(_selectedDate),
+                        results: selectedResults,
+                        bibleService: bibleService,
+                      ),
+                  ],
                 );
               },
             ),
@@ -78,46 +118,6 @@ class _HistoryPageState extends State<HistoryPage> {
       ),
     );
   }
-
-  List<_ResultGroup> _groupByDate(List<db.Result> results) {
-    final now = DateTime.now();
-    final today = now.dateOnly;
-    final yesterday = today.subtract(const Duration(days: 1));
-    final weekAgo = today.subtract(const Duration(days: 7));
-
-    final groups = <String, List<db.Result>>{
-      'Today': [],
-      'Yesterday': [],
-      'This Week': [],
-      'Earlier': [],
-    };
-
-    for (final result in results) {
-      final date = result.timestamp.dateOnly;
-
-      if (date == today) {
-        groups['Today']!.add(result);
-      } else if (date == yesterday) {
-        groups['Yesterday']!.add(result);
-      } else if (date.isAfter(weekAgo)) {
-        groups['This Week']!.add(result);
-      } else {
-        groups['Earlier']!.add(result);
-      }
-    }
-
-    return groups.entries
-        .where((e) => e.value.isNotEmpty)
-        .map((e) => _ResultGroup(label: e.key, results: e.value))
-        .toList();
-  }
-}
-
-class _ResultGroup {
-  final String label;
-  final List<db.Result> results;
-
-  _ResultGroup({required this.label, required this.results});
 }
 
 class _FilterChips extends StatelessWidget {
@@ -146,9 +146,8 @@ class _FilterChips extends StatelessWidget {
           FilterChip(
             label: Text(option.label),
             selected: selectedType == option.type,
-            onSelected: (_) => onSelected(
-              selectedType == option.type ? null : option.type,
-            ),
+            onSelected: (_) =>
+                onSelected(selectedType == option.type ? null : option.type),
           ),
       ],
     ),
@@ -179,28 +178,26 @@ class _DateGroup extends StatelessWidget {
           ),
         ),
       ),
-      ...results.map(
-        (result) {
-          final card = ResultCard(
-            result: result,
-            reference: _getReference(result),
-            score: ScoreData(value: result.score, attempts: result.attempts ?? 1),
-            onPractice: () => _showPracticeDialog(context, result),
-          );
-          
-          if (result.type == db.ResultType.study) {
-            return GestureDetector(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => StudyNotesDetailPage(result: result),
-                ),
+      ...results.map((result) {
+        final card = ResultCard(
+          result: result,
+          reference: _getReference(result),
+          score: ScoreData(value: result.score, attempts: result.attempts ?? 1),
+          onPractice: () => _showPracticeDialog(context, result),
+        );
+
+        if (result.type == db.ResultType.study) {
+          return GestureDetector(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => StudyNotesDetailPage(result: result),
               ),
-              child: card,
-            );
-          }
-          return card;
-        },
-      ),
+            ),
+            child: card,
+          );
+        }
+        return card;
+      }),
     ],
   );
 
@@ -229,4 +226,3 @@ class _DateGroup extends StatelessWidget {
     return '$bookTitle $start';
   }
 }
-
