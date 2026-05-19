@@ -26,10 +26,14 @@ StreakState calculateStreakState(
   int streak = 0;
   DateTime checkDate = activityToday
       ? todayDate
+      // Use the previous local calendar day, not a 24-hour Duration, because
+      // DST transitions can make "now minus 24 hours" land on the wrong date.
       : DateTime(todayDate.year, todayDate.month, todayDate.day - 1);
 
   while (daysWithActivity.contains(checkDate)) {
     streak++;
+    // Step back one local calendar day each time so DST changes do not shift
+    // the streak check onto the wrong local date.
     checkDate = DateTime(
       checkDate.year,
       checkDate.month,
