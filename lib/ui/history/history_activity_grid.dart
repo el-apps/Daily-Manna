@@ -58,28 +58,6 @@ class _HistoryActivityGridState extends State<HistoryActivityGrid> {
     _currentMonthIndex = _selectedMonthIndexForDate(widget.selectedDate);
   }
 
-  @override
-  void didUpdateWidget(covariant HistoryActivityGrid oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedDate != widget.selectedDate ||
-        oldWidget.activityDays != widget.activityDays ||
-        oldWidget.referenceDate != widget.referenceDate) {
-      _currentMonthIndex = _selectedMonthIndexForDate(widget.selectedDate);
-    }
-  }
-
-  void _showOlderMonth(int monthCount) {
-    if (_currentMonthIndex < monthCount - 1) {
-      setState(() => _currentMonthIndex += 1);
-    }
-  }
-
-  void _showNewerMonth() {
-    if (_currentMonthIndex > 0) {
-      setState(() => _currentMonthIndex -= 1);
-    }
-  }
-
   int _selectedMonthIndexForDate(DateTime selectedDate) {
     final today = widget.referenceDate.dateOnly;
     final firstActivityDay = widget.activityDays.isEmpty
@@ -117,7 +95,7 @@ class _HistoryActivityGridState extends State<HistoryActivityGrid> {
           children: [
             IconButton(
               onPressed: selectedMonthIndex < monthCount - 1
-                  ? () => _showOlderMonth(monthCount)
+                  ? () => _showOlderMonth(months)
                   : null,
               icon: const Icon(Icons.chevron_left),
               tooltip: 'Older month',
@@ -128,7 +106,9 @@ class _HistoryActivityGridState extends State<HistoryActivityGrid> {
               ),
             ),
             IconButton(
-              onPressed: selectedMonthIndex > 0 ? _showNewerMonth : null,
+              onPressed: selectedMonthIndex > 0
+                  ? () => _showNewerMonth(months)
+                  : null,
               icon: const Icon(Icons.chevron_right),
               tooltip: 'Newer month',
             ),
@@ -148,6 +128,26 @@ class _HistoryActivityGridState extends State<HistoryActivityGrid> {
         ),
       ],
     );
+  }
+
+  void _showOlderMonth(List<DateTime> months) {
+    if (_currentMonthIndex >= months.length - 1) {
+      return;
+    }
+
+    final nextIndex = _currentMonthIndex + 1;
+    setState(() => _currentMonthIndex = nextIndex);
+    widget.onDateSelected(months[nextIndex].dateOnly);
+  }
+
+  void _showNewerMonth(List<DateTime> months) {
+    if (_currentMonthIndex <= 0) {
+      return;
+    }
+
+    final nextIndex = _currentMonthIndex - 1;
+    setState(() => _currentMonthIndex = nextIndex);
+    widget.onDateSelected(months[nextIndex].dateOnly);
   }
 }
 

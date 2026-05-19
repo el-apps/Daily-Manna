@@ -63,6 +63,36 @@ void main() {
       expect(find.text('March 2024'), findsOneWidget);
     });
 
+    testWidgets('month navigation updates the selected date to that month', (
+      tester,
+    ) async {
+      DateTime selectedDate = DateTime(2024, 6, 10);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: StatefulBuilder(
+            builder: (context, setState) => Scaffold(
+              body: SingleChildScrollView(
+                child: HistoryActivityGrid(
+                  activityDays: {DateTime(2024, 5, 8), DateTime(2024, 6, 10)},
+                  selectedDate: selectedDate,
+                  onDateSelected: (date) =>
+                      setState(() => selectedDate = date.dateOnly),
+                  referenceDate: DateTime(2024, 6, 15, 15),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byIcon(Icons.chevron_left));
+      await tester.pumpAndSettle();
+
+      expect(find.text('May 2024'), findsOneWidget);
+      expect(selectedDate, DateTime(2024, 5, 1));
+    });
+
     testWidgets('shows month navigation and checkmarks for the current month', (
       tester,
     ) async {
