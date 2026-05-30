@@ -6,11 +6,7 @@ import 'package:daily_manna/services/results_service.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const _testRef = ScriptureRef(
-  bookId: 'Gen',
-  chapterNumber: 1,
-  verseNumber: 1,
-);
+const _testRef = ScriptureRef(bookId: 'Gen', chapterNumber: 1, verseNumber: 1);
 
 void main() {
   late AppDatabase database;
@@ -57,47 +53,54 @@ void main() {
       expect(counts.length, greaterThan(1));
       // The verse is due tomorrow (interval = 1 day for first correct response)
       // so it won't be in "due today" count, but let's verify the stream emits
-      
+
       await subscription.cancel();
     });
 
-    test('watchVersesByReviewDate emits updated list when result is added', () async {
-      final emissions = <List<VerseReviewState>>[];
-      final subscription = srService.watchVersesByReviewDate().listen(emissions.add);
+    test(
+      'watchVersesByReviewDate emits updated list when result is added',
+      () async {
+        final emissions = <List<VerseReviewState>>[];
+        final subscription = srService.watchVersesByReviewDate().listen(
+          emissions.add,
+        );
 
-      // Wait for initial emission
-      await Future.delayed(const Duration(milliseconds: 100));
-      expect(emissions.last, isEmpty); // Should start empty
+        // Wait for initial emission
+        await Future.delayed(const Duration(milliseconds: 100));
+        expect(emissions.last, isEmpty); // Should start empty
 
-      // Add a memorization result
-      await resultsService.addMemorizationResult(
-        MemorizationResult(
-          ref: const ScriptureRef(
-            bookId: 'Gen',
-            chapterNumber: 1,
-            verseNumber: 1,
+        // Add a memorization result
+        await resultsService.addMemorizationResult(
+          MemorizationResult(
+            ref: const ScriptureRef(
+              bookId: 'Gen',
+              chapterNumber: 1,
+              verseNumber: 1,
+            ),
+            attempts: 1,
+            score: 0.95,
           ),
-          attempts: 1,
-          score: 0.95,
-        ),
-      );
+        );
 
-      // Wait for stream to emit
-      await Future.delayed(const Duration(milliseconds: 100));
+        // Wait for stream to emit
+        await Future.delayed(const Duration(milliseconds: 100));
 
-      // Should have emitted a new list with 1 verse
-      expect(emissions.length, greaterThan(1));
-      expect(emissions.last.length, equals(1));
-      expect(emissions.last.first.ref.bookId, equals('Gen'));
-      expect(emissions.last.first.ref.chapterNumber, equals(1));
-      expect(emissions.last.first.ref.verseNumber, equals(1));
+        // Should have emitted a new list with 1 verse
+        expect(emissions.length, greaterThan(1));
+        expect(emissions.last.length, equals(1));
+        expect(emissions.last.first.ref.bookId, equals('Gen'));
+        expect(emissions.last.first.ref.chapterNumber, equals(1));
+        expect(emissions.last.first.ref.verseNumber, equals(1));
 
-      await subscription.cancel();
-    });
+        await subscription.cancel();
+      },
+    );
 
     test('watchVersesByReviewDate emits on each new result', () async {
       final emissions = <List<VerseReviewState>>[];
-      final subscription = srService.watchVersesByReviewDate().listen(emissions.add);
+      final subscription = srService.watchVersesByReviewDate().listen(
+        emissions.add,
+      );
 
       // Wait for initial emission
       await Future.delayed(const Duration(milliseconds: 100));
@@ -206,6 +209,25 @@ void main() {
     });
   });
 
+  group('interval reset on multiple tries', () {
+    test(
+      'passing result with multiple attempts resets interval to 1',
+      () async {
+        for (var i = 0; i < 3; i++) {
+          await _addResult(resultsService, score: 1.0);
+        }
+
+        var states = await srService.getVersesByReviewDate();
+        expect(states.first.intervalDays, equals(4));
+
+        await _addResult(resultsService, score: 1.0, attempts: 2);
+
+        states = await srService.getVersesByReviewDate();
+        expect(states.first.intervalDays, equals(1));
+      },
+    );
+  });
+
   group('recovery after failure', () {
     test('rebuilds interval from 1 after reset', () async {
       // Build up to 8 days (4 passes)
@@ -256,10 +278,11 @@ void main() {
 Future<void> _addResult(
   ResultsService resultsService, {
   required double score,
+  int attempts = 1,
   ScriptureRef ref = _testRef,
 }) async {
   await resultsService.addMemorizationResult(
-    MemorizationResult(ref: ref, attempts: 1, score: score),
+    MemorizationResult(ref: ref, attempts: attempts, score: score),
   );
 }
 

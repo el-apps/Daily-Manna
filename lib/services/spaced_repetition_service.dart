@@ -49,13 +49,10 @@ class SpacedRepetitionService {
 
   /// Watch count of verses due for review (reactive stream).
   Stream<int> watchDueCount() => watchVersesByReviewDate().map((states) {
-        final today = DateTime.now();
-        final endOfToday =
-            DateTime(today.year, today.month, today.day, 23, 59, 59);
-        return states
-            .where((s) => !s.nextReviewDate.isAfter(endOfToday))
-            .length;
-      });
+    final today = DateTime.now();
+    final endOfToday = DateTime(today.year, today.month, today.day, 23, 59, 59);
+    return states.where((s) => !s.nextReviewDate.isAfter(endOfToday)).length;
+  });
 
   List<VerseReviewState> _sortByReviewDate(List<VerseReviewState> states) {
     states.sort((a, b) {
@@ -153,17 +150,20 @@ class SpacedRepetitionService {
   /// Assumes at least one practice result exists (study-only filtered upstream).
   VerseReviewState _calculateState(ScriptureRef ref, List<Result> results) {
     // Filter out study entries - they don't affect SR intervals
-    final practiceResults =
-        results.where((r) => r.type != ResultType.study).toList();
+    final practiceResults = results
+        .where((r) => r.type != ResultType.study)
+        .toList();
 
     int reps = 0;
     var intervalDays = _initialIntervalDays;
 
     for (final result in practiceResults) {
+      final multipleTries = (result.attempts ?? 1) > 1;
+
       if (result.score >= _passingScore) {
         // Passing score - first success starts at 1 day, then doubles
         reps++;
-        if (reps == 1) {
+        if (reps == 1 || multipleTries) {
           intervalDays = _initialIntervalDays;
         } else {
           intervalDays = (intervalDays * 2)
