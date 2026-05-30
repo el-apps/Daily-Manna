@@ -29,12 +29,17 @@ devshell.mkShell {
       name = "GRADLE_OPTS";
       value = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${android-sdk}/share/android-sdk/build-tools/34.0.0/aapt2";
     }
+    {
+      name = "LD_LIBRARY_PATH";
+      value = "${sqlite.out}/lib";
+    }
   ];
   packages = [
     flutter
     android-sdk
     gradle
     jdk
+    sqlite
     git
     just
   ] ++ conditionalPackages;
