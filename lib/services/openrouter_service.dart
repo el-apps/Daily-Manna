@@ -9,9 +9,11 @@ class OpenRouterService {
   final SettingsService settingsService;
   static const String _chatBaseUrl =
       'https://openrouter.ai/api/v1/chat/completions';
+  static const String _transcriptionBaseUrl =
+      'https://openrouter.ai/api/v1/audio/transcriptions';
   static const String _appUrl = 'https://github.com/el-apps/Daily-Manna';
   static const String _appTitle = 'Daily Manna';
-  static const transcriptionModel = 'google/gemini-3-flash-preview';
+  static const transcriptionModel = 'nvidia/parakeet-tdt-0.6b-v3';
   static const String _recognitionModel = 'openai/gpt-5-mini';
   static const transcriptionTimeout = Duration(seconds: 120);
   static const recognitionTimeout = Duration(seconds: 30);
@@ -47,24 +49,13 @@ class OpenRouterService {
 
     final requestBody = {
       'model': transcriptionModel,
-      'messages': [
-        {'role': 'system', 'content': Prompts.bibleAudioTranscriptionSystem},
-        {
-          'role': 'user',
-          'content': [
-            {
-              'type': 'input_audio',
-              'input_audio': {'data': base64Audio, 'format': audioFormat},
-            },
-          ],
-        },
-      ],
+      'input_audio': {'data': base64Audio, 'format': audioFormat},
     };
 
-    debugPrint('[OpenRouter Audio] Sending audio to chat API, format: $audioFormat');
+    debugPrint('[OpenRouter Audio] Sending audio to STT API, format: $audioFormat');
     final response = await http
         .post(
-          Uri.parse(_chatBaseUrl),
+          Uri.parse(_transcriptionBaseUrl),
           headers: _getHeaders(apiKey),
           body: jsonEncode(requestBody),
         )
@@ -88,34 +79,9 @@ class OpenRouterService {
       throw Exception('OpenRouter audio error: $errorMsg');
     }
 
-    if (!responseBody.containsKey('choices') ||
-        (responseBody['choices'] as List).isEmpty) {
-      throw Exception('No response from OpenRouter');
-    }
-
-    final choice = (responseBody['choices'] as List).first;
-    final messageContent = choice['message']['content'];
-
-    String transcript;
-    if (messageContent is String) {
-      // Text-only models or simple string response
-      transcript = messageContent;
-    } else if (messageContent is List) {
-      // Multimodal response: find the text block
-      final textBlock = messageContent.cast<Map<String, dynamic>>().firstWhere(
-        (block) => block['type'] == 'output_text' || block['type'] == 'text',
-        orElse: () => <String, dynamic>{},
-      );
-
-      if (textBlock.isEmpty) {
-        throw Exception('No text content found in OpenRouter audio response');
-      }
-
-      transcript = textBlock['text'] as String;
-    } else {
-      throw Exception(
-        'Unexpected content format in OpenRouter audio response: ${messageContent.runtimeType}',
-      );
+    final transcript = responseBody['text'];
+    if (transcript is! String) {
+      throw Exception('No transcription text found in OpenRouter response');
     }
 
     debugPrint('[OpenRouter Audio] Transcribed text: "$transcript"');
