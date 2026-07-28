@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+nix_profile="$HOME/.nix-profile"
+
+echo "Installing Nix when needed..."
+if [[ ! -x "$nix_profile/bin/nix" ]]; then
+  curl --fail --location --show-error --silent \
+    https://nixos.org/nix/install | sh -s -- --no-daemon --yes
+fi
+
+# The installer cannot update this running script's environment.
+# shellcheck disable=SC1091
+source "$nix_profile/etc/profile.d/nix.sh"
+
+mkdir -p "$HOME/.config/nix"
+if ! grep -Eq '^[[:space:]]*experimental-features[[:space:]]*=.*\bflakes\b' \
+  "$HOME/.config/nix/nix.conf" 2>/dev/null; then
+  printf '%s\n' 'experimental-features = nix-command flakes' \
+    >> "$HOME/.config/nix/nix.conf"
+fi
+
+profile_marker="# daily-manna Nix development shell"
+touch "$HOME/.bash_profile"
+if ! grep -Fqx "$profile_marker" "$HOME/.bash_profile"; then
+  cat >> "$HOME/.bash_profile" <<EOF
+
+$profile_marker
+if [[ -z "\${IN_NIX_SHELL:-}" && "\${PWD}" == "$repo_root" ]]; then
+  eval "\$("$nix_profile/bin/nix" print-dev-env "$repo_root")"
+fi
+EOF
+fi
+
+echo "Realizing the locked development environment and fetching dependencies..."
+"$nix_profile/bin/nix" develop "$repo_root" --command flutter pub get
+
+echo "Orb setup complete."
