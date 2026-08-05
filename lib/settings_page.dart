@@ -248,6 +248,7 @@ class _ApiKeySection extends StatefulWidget {
 class _ApiKeySectionState extends State<_ApiKeySection> {
   late SettingsService _settingsService;
   bool _hasApiKey = false;
+  bool _hasApiKeyOverride = false;
 
   @override
   void initState() {
@@ -260,7 +261,24 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
     setState(() {
       final key = _settingsService.getOpenRouterApiKey();
       _hasApiKey = key != null && key.isNotEmpty;
+      _hasApiKeyOverride = _settingsService.hasOpenRouterApiKeyOverride();
     });
+  }
+
+  Future<void> _clearApiKeyOverride() async {
+    try {
+      await _settingsService.clearOpenRouterApiKey();
+      if (!mounted) return;
+      _checkApiKeyStatus();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('API key override cleared')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not clear the API key override')),
+      );
+    }
   }
 
   void _showApiKeyDialog() {
@@ -317,7 +335,11 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _hasApiKey ? '✓ Configured' : '✗ Not configured',
+                    _hasApiKeyOverride
+                        ? '✓ Using custom key'
+                        : _hasApiKey
+                        ? '✓ Using built-in key'
+                        : '✗ Not configured',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: _hasApiKey ? Colors.green : Colors.red,
                     ),
@@ -331,6 +353,17 @@ class _ApiKeySectionState extends State<_ApiKeySection> {
             ),
           ],
         ),
+        if (_hasApiKeyOverride) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: _clearApiKeyOverride,
+              icon: const Icon(Icons.restore),
+              label: const Text('Use Built-in Key'),
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         RichText(
           text: TextSpan(

@@ -30,6 +30,11 @@ class SettingsService {
     await _prefs.setString(_openRouterKeyKey, key);
   }
 
+  bool hasOpenRouterApiKeyOverride() {
+    final stored = _prefs.getString(_openRouterKeyKey);
+    return stored != null && stored.isNotEmpty;
+  }
+
   Future<void> clearOpenRouterApiKey() async {
     await _prefs.remove(_openRouterKeyKey);
   }
