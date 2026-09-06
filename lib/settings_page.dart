@@ -146,15 +146,12 @@ class _AccountSyncSectionState extends State<_AccountSyncSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Account & Sync',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('Account', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           Text(
             auth.isSignedIn
-                ? 'Signed in as ${auth.email ?? 'your account'}. Changes sync across your devices.'
-                : 'Local-only. Sign in optionally to sync across devices.',
+                ? 'Signed in as ${auth.email ?? 'your account'}.'
+                : 'Sign in to sync across devices.',
           ),
           const SizedBox(height: 12),
           Wrap(
