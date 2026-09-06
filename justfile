@@ -47,19 +47,6 @@ production: build-web build-backend
     sudo systemctl reload caddy
     @echo "Production web and API are available through Caddy on port 8000"
 
-# Build web production release and start server on 0.0.0.0:8000
-start-web-prod: build-web
-    cp web/server.py build/web/server.py
-    python3 web/server.py 8000
-
-# Stop the production web server running on port 8000
-stop-web-prod:
-    lsof -ti:8000 | xargs kill -9 2>/dev/null || echo "No server running on port 8000"
-
-# Check production web server logs
-logs-web-prod:
-    tail -f build/web/server.log
-
 # Run the app on Android (first device)
 run-android:
     #!/usr/bin/env bash
