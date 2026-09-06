@@ -1,4 +1,5 @@
 import 'package:daily_manna/home_page.dart';
+import 'package:daily_manna/services/auth_service.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/error_logger_service.dart';
@@ -32,6 +33,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
   late StreakService _streakService;
   late NotificationService _notificationService;
   late SyncService _syncService;
+  late AuthService _authService;
   late Future _initFuture;
 
   @override
@@ -48,8 +50,21 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
       settingsService: _settingsService,
       errorLogger: _errorLoggerService,
     );
-    _syncService = SyncService(_database);
+    _authService = AuthService();
+    _syncService = SyncService(
+      _database,
+      authTokenProvider: _authService.tokenProvider,
+    );
     _initFuture = Future.wait([
+      _authService.init().then((_) async {
+        if (_authService.isSignedIn) {
+          try {
+            await _syncService.sync();
+          } catch (_) {
+            // Startup remains usable offline; Settings offers a manual retry.
+          }
+        }
+      }),
       _settingsService.init().then((_) async {
         await _notificationService.initialize();
         await _notificationService.scheduleDailyNotification();
@@ -73,6 +88,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
               Provider.value(value: _streakService),
               Provider.value(value: _notificationService),
               Provider.value(value: _syncService),
+              ChangeNotifierProvider.value(value: _authService),
               ChangeNotifierProvider.value(value: _errorLoggerService),
             ],
             child: MaterialApp(

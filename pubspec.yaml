@@ -20,6 +20,7 @@ dependencies:
   flutter_launcher_icons: ^0.14.4
   share_plus: ^11.1.0
   shared_preferences: ^2.3.3
+  flutter_secure_storage: ^9.2.4
   record: ^6.1.2
   just_audio: ^0.9.40
   path_provider: ^2.1.4

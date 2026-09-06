@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class FakeSyncTransport implements SyncTransport {
   final calls = <List<Map<String, dynamic>>>[];
+  final tokens = <String?>[];
   final responses = <SyncResponse>[];
 
   @override
@@ -17,6 +18,7 @@ class FakeSyncTransport implements SyncTransport {
     String? authToken,
   }) async {
     calls.add(changes);
+    tokens.add(authToken);
     return responses.removeAt(0);
   }
 }
@@ -80,6 +82,23 @@ void main() {
     expect(await database.pendingChanges(), isEmpty);
     expect(await database.resultByClientId('remote-result'), isNotNull);
     expect(await database.getSyncCursor(), '3');
+  });
+
+  test('sync supplies the current authentication token', () async {
+    final transport = FakeSyncTransport()
+      ..responses.addAll(const [
+        SyncResponse(cursor: 0, changes: []),
+        SyncResponse(cursor: 0, changes: []),
+      ]);
+    final service = SyncService(
+      database,
+      transport: transport,
+      authTokenProvider: () async => 'saved-token',
+    );
+
+    await service.sync();
+
+    expect(transport.tokens, everyElement('saved-token'));
   });
 }
 

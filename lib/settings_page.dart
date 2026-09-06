@@ -1,4 +1,6 @@
 import 'package:daily_manna/services/error_logger_service.dart';
+import 'package:daily_manna/services/auth_service.dart';
+import 'package:daily_manna/services/sync_service.dart';
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/database_export.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
@@ -30,21 +32,157 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const _AccountSyncSection(),
+            const SizedBox(height: 16),
             const NotificationCard(),
             const SizedBox(height: 16),
             const _DatabaseExportSection(),
             const SizedBox(height: 16),
             ListenableBuilder(
               listenable: errorLoggerService,
-              builder: (context, _) => _ErrorLogsSection(
-                errorLoggerService: errorLoggerService,
-              ),
+              builder: (context, _) =>
+                  _ErrorLogsSection(errorLoggerService: errorLoggerService),
             ),
           ],
         ),
       ),
     );
   }
+}
+
+class _AccountSyncSection extends StatefulWidget {
+  const _AccountSyncSection();
+  @override
+  State<_AccountSyncSection> createState() => _AccountSyncSectionState();
+}
+
+class _AccountSyncSectionState extends State<_AccountSyncSection> {
+  bool _busy = false;
+
+  Future<void> _sync() async {
+    setState(() => _busy = true);
+    try {
+      await context.read<SyncService>().sync();
+      if (mounted) {
+        _message('Sync complete.');
+      }
+    } catch (_) {
+      if (mounted) {
+        _message('Could not sync. Check your connection and account.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _signIn() async {
+    final email = TextEditingController();
+    final password = TextEditingController();
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sign in for sync'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: email,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              decoration: const InputDecoration(labelText: 'Email'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: password,
+              obscureText: true,
+              autofillHints: const [AutofillHints.password],
+              decoration: const InputDecoration(labelText: 'Password'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sign in'),
+          ),
+        ],
+      ),
+    );
+    if (submitted != true || !mounted) return;
+    final authService = context.read<AuthService>();
+    final syncService = context.read<SyncService>();
+    setState(() => _busy = true);
+    try {
+      await authService.signIn(email.text, password.text);
+      await syncService.sync();
+      if (mounted) {
+        _message('Signed in and synced.');
+      }
+    } catch (error) {
+      if (mounted) {
+        _message(
+          error is AuthException
+              ? error.message
+              : 'Signed in, but sync could not complete.',
+        );
+      }
+    } finally {
+      email.dispose();
+      password.dispose();
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _message(String text) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+
+  @override
+  Widget build(BuildContext context) => Consumer<AuthService>(
+    builder: (context, auth, _) => ThemeCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Account & Sync',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            auth.isSignedIn
+                ? 'Signed in as ${auth.email ?? 'your account'}. Changes sync across your devices.'
+                : 'Local-only. Sign in optionally to sync across devices.',
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            children: [
+              if (!auth.isSignedIn)
+                FilledButton.icon(
+                  onPressed: _busy ? null : _signIn,
+                  icon: const Icon(Icons.login),
+                  label: const Text('Sign in'),
+                ),
+              if (auth.isSignedIn) ...[
+                FilledButton.icon(
+                  onPressed: _busy ? null : _sync,
+                  icon: const Icon(Icons.sync),
+                  label: Text(_busy ? 'Syncing...' : 'Sync now'),
+                ),
+                TextButton(
+                  onPressed: _busy ? null : auth.signOut,
+                  child: const Text('Sign out'),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _DatabaseExportSection extends StatefulWidget {
@@ -94,10 +232,7 @@ class _DatabaseExportSectionState extends State<_DatabaseExportSection> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 12,
       children: [
-        Text(
-          'Export Database',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text('Export Database', style: Theme.of(context).textTheme.titleMedium),
         Text(
           'Create a copy of the local database for backup or analysis.',
           style: Theme.of(context).textTheme.bodyMedium,
@@ -137,10 +272,9 @@ class _ErrorLogsSection extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Text(
               'No errors logged',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: Colors.grey),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
             ),
           ),
         ),
@@ -165,9 +299,7 @@ class _ErrorLogsSection extends StatelessWidget {
                     tooltip: 'Copy logs',
                     onPressed: () {
                       Clipboard.setData(
-                        ClipboardData(
-                          text: errorLoggerService.getLogsAsText(),
-                        ),
+                        ClipboardData(text: errorLoggerService.getLogsAsText()),
                       );
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -218,10 +350,7 @@ class _ErrorLogsSection extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               child: Text(
                 logs.join('\n'),
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 11,
-                ),
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
               ),
             ),
           ),
