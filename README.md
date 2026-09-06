@@ -41,3 +41,11 @@ Install Flutter and Android SDK manually following the [official Flutter documen
 ## Sources
 
 KJV Bible in OSIS format is from [here](https://github.com/gratis-bible/bible/blob/master/en/kjv.xml).
+
+## Backend
+
+Recitation mode uses the Go service in [`backend/`](backend/) at
+`https://dailymanna.kwila.cloud/api`. The service owns the OpenRouter API
+credential and proxies transcription and passage-recognition requests; the
+Flutter app does not contain an OpenRouter key. See
+[`backend/README.md`](backend/README.md) for local setup.
