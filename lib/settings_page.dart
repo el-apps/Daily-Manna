@@ -82,23 +82,30 @@ class _AccountSyncSectionState extends State<_AccountSyncSection> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Sign in'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: email,
-              keyboardType: TextInputType.emailAddress,
-              autofillHints: const [AutofillHints.email],
-              decoration: const InputDecoration(labelText: 'Email'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: password,
-              obscureText: true,
-              autofillHints: const [AutofillHints.password],
-              decoration: const InputDecoration(labelText: 'Password'),
-            ),
-          ],
+        content: AutofillGroup(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: email,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [
+                  AutofillHints.username,
+                  AutofillHints.email,
+                ],
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: password,
+                obscureText: true,
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.password],
+                decoration: const InputDecoration(labelText: 'Password'),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
