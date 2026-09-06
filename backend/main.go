@@ -22,7 +22,8 @@ const (
 )
 
 type server struct {
-	client *http.Client
+	client    *http.Client
+	syncStore syncStore
 }
 
 type transcribeRequest struct {
@@ -36,11 +37,16 @@ type recognizeRequest struct {
 }
 
 func main() {
-	s := &server{client: &http.Client{Timeout: 2 * time.Minute}}
+	client := &http.Client{Timeout: 2 * time.Minute}
+	s := &server{client: client}
+	if url := strings.TrimRight(os.Getenv("POCKETBASE_URL"), "/"); url != "" {
+		s.syncStore = newPocketBaseStore(url, os.Getenv("POCKETBASE_SYNC_COLLECTION"), client)
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", s.health)
 	mux.HandleFunc("/api/transcribe", s.transcribe)
 	mux.HandleFunc("/api/recognize-passage", s.recognizePassage)
+	mux.HandleFunc("/api/sync", s.sync)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -53,7 +59,7 @@ func main() {
 func withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
