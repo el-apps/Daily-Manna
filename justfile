@@ -39,6 +39,10 @@ build-backend:
     mkdir -p build
     cd backend && go build -o ../build/daily-manna-api .
 
+# Create the PocketBase superuser used to manage the embedded database.
+create-superuser:
+    build/daily-manna-api superuser create addison@kwila.dev
+
 # Build production assets, install/restart the systemd backend. Caddy owns port
 # 8000, serves build/web, and reverse-proxies /api to the backend on 8080.
 production: build-web build-backend
