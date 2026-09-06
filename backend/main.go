@@ -17,7 +17,7 @@ import (
 const (
 	openRouterURL      = "https://openrouter.ai/api/v1"
 	transcriptionModel = "nvidia/parakeet-tdt-0.6b-v3"
-	recognitionModel   = "openai/gpt-5-mini"
+	recognitionModel   = "openai/gpt-5.6-luna"
 	maxRequestBytes    = 8 << 20
 )
 
