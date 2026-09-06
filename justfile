@@ -37,7 +37,7 @@ build-web:
 # Build backend binary
 build-backend:
     mkdir -p build
-    go build -o build/daily-manna-api ./backend
+    cd backend && go build -o ../build/daily-manna-api .
 
 # Build production assets and restart the systemd backend. Caddy owns port
 # 8000, serves build/web, and reverse-proxies /api to the backend on 8080.
