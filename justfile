@@ -34,11 +34,23 @@ web:
 build-web:
     flutter build web --release
 
-# Build web production release and start server on 0.0.0.0:8000 (background)
+# Build backend binary
+build-backend:
+    mkdir -p build
+    go build -o build/daily-manna-api ./backend
+
+# Build and run the production web app (port 8000) with the API (port 8080).
+# OPENROUTER_API_KEY must be present in the environment for the API service.
+production: build-web build-backend
+    cp web/server.py build/web/server.py
+    amp orb service start daily-manna-backend --command 'PORT=8080 ./build/daily-manna-api' --portal
+    amp orb service start daily-manna-web --command 'cd build/web && python3 server.py 8000' --portal
+    @echo "Production web: port 8000; API: port 8080"
+
+# Build web production release and start server on 0.0.0.0:8000
 start-web-prod: build-web
     cp web/server.py build/web/server.py
-    cd build/web && nohup python3 server.py 8000 > server.log 2>&1 &
-    @echo "Web server started on 0.0.0.0:8000"
+    amp orb service start daily-manna-web --command 'cd build/web && python3 server.py 8000' --portal
 
 # Stop the production web server running on port 8000
 stop-web-prod:
