@@ -4,8 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/daily-manna
-ExecStart=/opt/daily-manna/build/daily-manna-api
+WorkingDirectory=__APP_DIR__
+ExecStart=__APP_DIR__/build/daily-manna-api
 Environment=PORT=8080
 EnvironmentFile=/etc/daily-manna/api.env
 Restart=on-failure
