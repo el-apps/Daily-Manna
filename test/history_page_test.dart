@@ -18,6 +18,8 @@ void main() {
           startChapter: 1,
           startVerse: 1,
           score: 0.95,
+          clientId: 'result-1',
+          updatedAt: latest,
         ),
         db.Result(
           id: 2,
@@ -27,6 +29,8 @@ void main() {
           startChapter: 23,
           startVerse: 1,
           score: 0.90,
+          clientId: 'result-2',
+          updatedAt: latest.subtract(const Duration(days: 1)),
         ),
       ];
 

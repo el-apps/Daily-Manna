@@ -2,12 +2,12 @@ import 'package:daily_manna/models/score_data.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart';
+import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/history/result_card.dart';
 import 'package:daily_manna/ui/memorization/verse_selector.dart';
 import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
-import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -74,9 +74,7 @@ class _StudyLogPageState extends State<StudyLogPage> {
             ),
           ),
           // History list (scrollable, takes remaining space)
-          Expanded(
-            child: _StudyHistoryList(db: db),
-          ),
+          Expanded(child: _StudyHistoryList(db: db)),
         ],
       ),
     );
@@ -86,20 +84,10 @@ class _StudyLogPageState extends State<StudyLogPage> {
     final passage = _selectedPassage!;
     final notes = _notesController.text;
 
-    final result = ResultsCompanion.insert(
-      type: ResultType.study,
-      bookId: passage.bookId,
-      startChapter: passage.chapter,
-      startVerse: passage.startVerse,
-      endVerse: Value(passage.endVerse),
-      score: 1.0,
-      timestamp: DateTime.now(),
-      notes: notes.isNotEmpty ? Value(notes) : const Value.absent(),
-      attempts: const Value.absent(),
-      endChapter: const Value.absent(),
+    await context.read<ResultsService>().addStudyResult(
+      passage,
+      notes: notes.isEmpty ? null : notes,
     );
-
-    await context.read<AppDatabase>().insertResult(result);
     if (mounted) Navigator.pop(context);
   }
 }
@@ -117,7 +105,8 @@ class _PassageSelector extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
     height: 56,
     child: VerseSelector.range(
-      rangeRef: selectedPassage ??
+      rangeRef:
+          selectedPassage ??
           const ScriptureRangeRef(bookId: '', chapter: 0, startVerse: 0),
       onRangeSelected: onSelected,
     ),
@@ -154,7 +143,6 @@ class _SaveButton extends StatelessWidget {
   );
 }
 
-
 class _StudyHistoryList extends StatelessWidget {
   const _StudyHistoryList({required this.db});
 
@@ -184,12 +172,14 @@ class _StudyHistoryList extends StatelessWidget {
           itemCount: results.length,
           itemBuilder: (context, index) {
             final result = results[index];
-            final refName = bibleService.getRangeRefName(ScriptureRangeRef(
-              bookId: result.bookId,
-              chapter: result.startChapter,
-              startVerse: result.startVerse,
-              endVerse: result.endVerse,
-            ));
+            final refName = bibleService.getRangeRefName(
+              ScriptureRangeRef(
+                bookId: result.bookId,
+                chapter: result.startChapter,
+                startVerse: result.startVerse,
+                endVerse: result.endVerse,
+              ),
+            );
 
             return GestureDetector(
               onTap: () => Navigator.of(context).push(
@@ -200,7 +190,10 @@ class _StudyHistoryList extends StatelessWidget {
               child: ResultCard(
                 result: result,
                 reference: refName,
-                score: ScoreData(value: result.score, attempts: result.attempts ?? 1),
+                score: ScoreData(
+                  value: result.score,
+                  attempts: result.attempts ?? 1,
+                ),
               ),
             );
           },
