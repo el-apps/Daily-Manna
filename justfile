@@ -42,7 +42,7 @@ build-backend:
 # Build production assets, install/restart the systemd backend. Caddy owns port
 # 8000, serves build/web, and reverse-proxies /api to the backend on 8080.
 production: build-web build-backend
-    repo_dir=$$(pwd); sed "s|__APP_DIR__|$$repo_dir|g" backend/daily-manna-api.service | sudo tee /etc/systemd/system/daily-manna-api.service >/dev/null
+    sed "s|__APP_DIR__|{{justfile_directory()}}|g" backend/daily-manna-api.service | sudo tee /etc/systemd/system/daily-manna-api.service >/dev/null
     sudo systemctl daemon-reload
     sudo systemctl enable daily-manna-api
     sudo systemctl restart daily-manna-api
