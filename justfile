@@ -41,13 +41,8 @@ build-backend:
 
 # Build production assets, install/restart the systemd backend. Caddy owns port
 # 8000, serves build/web, and reverse-proxies /api to the backend on 8080.
-# OPENROUTER_API_KEY is read by the systemd backend service.
 production: build-web build-backend
-    test -n "$${OPENROUTER_API_KEY:-}" || (echo "OPENROUTER_API_KEY must be set" >&2; exit 1)
     repo_dir=$$(pwd); sed "s|__APP_DIR__|$$repo_dir|g" backend/daily-manna-api.service | sudo tee /etc/systemd/system/daily-manna-api.service >/dev/null
-    sudo install -d -m 0750 /etc/daily-manna
-    printf 'OPENROUTER_API_KEY=%s\n' "$${OPENROUTER_API_KEY}" | sudo tee /etc/daily-manna/api.env >/dev/null
-    sudo chmod 0600 /etc/daily-manna/api.env
     sudo systemctl daemon-reload
     sudo systemctl enable daily-manna-api
     sudo systemctl restart daily-manna-api

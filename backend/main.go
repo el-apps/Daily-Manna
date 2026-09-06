@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	openRouterURL      = "https://openrouter.ai/api/v1"
+	openRouterURL      = "https://openrouter.int.exe.xyz/api/v1"
 	transcriptionModel = "nvidia/parakeet-tdt-0.6b-v3"
 	recognitionModel   = "openai/gpt-5.6-luna"
 	maxRequestBytes    = 8 << 20
@@ -23,7 +23,6 @@ const (
 
 type server struct {
 	client *http.Client
-	apiKey string
 }
 
 type transcribeRequest struct {
@@ -37,12 +36,7 @@ type recognizeRequest struct {
 }
 
 func main() {
-	apiKey := os.Getenv("OPENROUTER_API_KEY")
-	if apiKey == "" {
-		log.Fatal("OPENROUTER_API_KEY is required")
-	}
-
-	s := &server{client: &http.Client{Timeout: 2 * time.Minute}, apiKey: apiKey}
+	s := &server{client: &http.Client{Timeout: 2 * time.Minute}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", s.health)
 	mux.HandleFunc("/api/transcribe", s.transcribe)
@@ -166,7 +160,6 @@ func (s *server) openRouter(ctx context.Context, path string, body []byte, resul
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("HTTP-Referer", "https://dailymanna.kwila.cloud")
 	req.Header.Set("X-Title", "Daily Manna")

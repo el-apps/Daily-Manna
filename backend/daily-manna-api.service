@@ -7,7 +7,6 @@ Type=simple
 WorkingDirectory=__APP_DIR__
 ExecStart=__APP_DIR__/build/daily-manna-api
 Environment=PORT=8080
-EnvironmentFile=/etc/daily-manna/api.env
 Restart=on-failure
 RestartSec=5
 
