@@ -15,6 +15,7 @@ import 'package:daily_manna/ui/recitation/recitation_playback_section.dart';
 import 'package:daily_manna/ui/recitation/recitation_results.dart';
 import 'package:daily_manna/ui/recitation/recording_card.dart';
 import 'package:daily_manna/ui/recitation/transcription_review_section.dart';
+import 'package:daily_manna/recording_platform.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -147,11 +148,14 @@ class _RecitationModeState extends State<RecitationMode> {
           numChannels: 1,
         );
 
-        final tempDir = await getTemporaryDirectory();
-        _audioFilePath = '${tempDir.path}/recitation_${DateTime.now().millisecondsSinceEpoch}.wav';
-
-        debugPrint('[RecitationMode] Starting recording at $_audioFilePath');
-        await _recorder.start(config, path: _audioFilePath!);
+        if (kIsWeb) {
+          // The web implementation returns a browser blob URL from stop().
+          await _recorder.start(config, path: '');
+        } else {
+          final path = await recordingPath();
+          debugPrint('[RecitationMode] Starting recording at $path');
+          await _recorder.start(config, path: path);
+        }
 
         setState(() => _step = RecitationStep.recording);
       } else {
@@ -172,13 +176,14 @@ class _RecitationModeState extends State<RecitationMode> {
       }
 
       _audioFilePath = path;
-      final file = File(_audioFilePath!);
-      _audioData = await file.readAsBytes();
+      _audioData = await readRecordingBytes(path);
 
       debugPrint('[RecitationMode] AAC file size: ${_audioData!.length} bytes');
 
       // Set up audio player with the recorded file
-      await _audioPlayer.setFilePath(_audioFilePath!);
+      await _audioPlayer.setAudioSource(
+        await createRecordingAudioSource(_audioFilePath!),
+      );
       _audioDuration = _audioPlayer.duration;
       debugPrint('[RecitationMode] Duration: ${_audioDuration?.inSeconds}s');
 
@@ -538,7 +543,7 @@ class _RecitationModeState extends State<RecitationMode> {
   void _clearAudio() {
     // Clean up temp file
     if (_audioFilePath != null) {
-      File(_audioFilePath!).delete().ignore();
+      deleteRecording(_audioFilePath!).ignore();
     }
     _audioFilePath = null;
     _audioData = null;
