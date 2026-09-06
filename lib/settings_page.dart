@@ -81,7 +81,7 @@ class _AccountSyncSectionState extends State<_AccountSyncSection> {
     final submitted = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Sign in for sync'),
+        title: const Text('Sign in'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
