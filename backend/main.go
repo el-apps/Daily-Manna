@@ -10,8 +10,16 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/labstack/echo/v5"
+	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/plugins/migratecmd"
+
+	_ "github.com/el-apps/Daily-Manna/backend/migrations"
 )
 
 const (
@@ -38,22 +46,36 @@ type recognizeRequest struct {
 
 func main() {
 	client := &http.Client{Timeout: 2 * time.Minute}
-	s := &server{client: client}
-	if url := strings.TrimRight(os.Getenv("POCKETBASE_URL"), "/"); url != "" {
-		s.syncStore = newPocketBaseStore(url, os.Getenv("POCKETBASE_SYNC_COLLECTION"), client)
-	}
-	mux := http.NewServeMux()
-	mux.HandleFunc("/api/health", s.health)
-	mux.HandleFunc("/api/transcribe", s.transcribe)
-	mux.HandleFunc("/api/recognize-passage", s.recognizePassage)
-	mux.HandleFunc("/api/sync", s.sync)
+	app := pocketbase.New()
+	s := &server{client: client, syncStore: newPocketBaseStore(app)}
+	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{})
+
+	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+		e.Router.GET("/api/health", echo.WrapHandler(http.HandlerFunc(s.health)))
+		e.Router.POST("/api/transcribe", echo.WrapHandler(http.HandlerFunc(s.transcribe)))
+		e.Router.POST("/api/recognize-passage", echo.WrapHandler(http.HandlerFunc(s.recognizePassage)))
+		e.Router.POST("/api/sync", echo.WrapHandler(http.HandlerFunc(s.sync)))
+		return nil
+	})
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	log.Printf("Daily Manna API listening on :%s", port)
-	log.Fatal(http.ListenAndServe(":"+port, withCORS(mux)))
+	if len(os.Args) == 1 {
+		os.Args = append(os.Args, "serve", "--http=0.0.0.0:"+strconv.Itoa(mustPort(port)))
+	}
+	if err := app.Start(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func mustPort(value string) int {
+	port, err := strconv.Atoi(value)
+	if err != nil || port < 1 || port > 65535 {
+		log.Fatalf("invalid PORT %q", value)
+	}
+	return port
 }
 
 func withCORS(next http.Handler) http.Handler {

@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=__APP_DIR__
-ExecStart=__APP_DIR__/build/daily-manna-api
+ExecStart=__APP_DIR__/build/daily-manna-api serve --http=0.0.0.0:8080 --dir=__APP_DIR__/pb_data
 Environment=PORT=8080
 Restart=on-failure
 RestartSec=5
