@@ -48,4 +48,6 @@ app.*.map.json
 .aider*
 
 upload-keystore.jks
-android/key.properties
+
+# PocketBase runtime data
+/pb_data/
