@@ -6,10 +6,8 @@ import 'package:daily_manna/models/recitation_result.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/error_logger_service.dart';
-import 'package:daily_manna/services/openrouter_service.dart';
+import 'package:daily_manna/services/backend_service.dart';
 import 'package:daily_manna/services/results_service.dart';
-import 'package:daily_manna/services/settings_service.dart';
-import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/loading_section.dart';
 import 'package:daily_manna/ui/recitation/recitation_confirmation_section.dart';
@@ -46,8 +44,7 @@ class RecitationMode extends StatefulWidget {
 class _RecitationModeState extends State<RecitationMode> {
   late AudioRecorder _recorder;
   late AudioPlayer _audioPlayer;
-  late SettingsService _settingsService;
-  late OpenRouterService _openRouterService;
+  late BackendService _backendService;
 
   RecitationStep _step = RecitationStep.idle;
   String? _audioFilePath;
@@ -66,8 +63,7 @@ class _RecitationModeState extends State<RecitationMode> {
     super.initState();
     _recorder = AudioRecorder();
     _audioPlayer = AudioPlayer();
-    _settingsService = context.read<SettingsService>();
-    _openRouterService = OpenRouterService(_settingsService);
+    _backendService = BackendService();
     _transcriptionController = TextEditingController();
     _selectedPassageRef = ScriptureRangeRef(
       bookId: '',
@@ -78,9 +74,6 @@ class _RecitationModeState extends State<RecitationMode> {
     // Keep screen on during recitation flow
     WakelockPlus.enable();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkApiKeys();
-    });
   }
 
   @override
@@ -290,7 +283,7 @@ class _RecitationModeState extends State<RecitationMode> {
       'WAV: ${(totalSize / 1024).toStringAsFixed(1)} KB, '
       'chunks: $chunkCount, '
       'duration: ${audioDuration.toStringAsFixed(1)}s, '
-      'model: ${OpenRouterService.transcriptionModel}',
+      'backend transcription model: ${BackendService.transcriptionModel}',
       context: 'transcription_start',
     );
 
@@ -308,7 +301,7 @@ class _RecitationModeState extends State<RecitationMode> {
           context: 'chunk_start',
         );
         
-        final chunkText = await _openRouterService
+        final chunkText = await _backendService
             .transcribeAudio(chunks[i], 'audio.wav');
         final trimmedText = chunkText.trim();
         transcriptions.add(trimmedText);
@@ -342,7 +335,7 @@ class _RecitationModeState extends State<RecitationMode> {
         'Please try again with a stronger internet connection.',
         context: 'transcription_timeout',
         errorDetails:
-            'TimeoutException after ${OpenRouterService.transcriptionTimeout.inSeconds}s\n'
+            'TimeoutException after ${BackendService.transcriptionTimeout.inSeconds}s\n'
             'Audio size: $totalSize bytes (WAV), '
             'Duration: ${audioDuration.toStringAsFixed(1)}s\n'
             '$e\n$st',
@@ -351,13 +344,8 @@ class _RecitationModeState extends State<RecitationMode> {
       if (!mounted) return;
       setState(() => _step = RecitationStep.playback);
 
-      final errorStr = e.toString();
-      String msg;
-      if (errorStr.contains('OpenRouter API key not configured')) {
-        msg = 'OpenRouter API key is not configured. Please update it in Settings, then try again.';
-      } else {
-        msg = 'Something went wrong transcribing your recitation. Check Settings > Logs for details.';
-      }
+      const msg =
+          'Something went wrong transcribing your recitation. Check Settings > Logs for details.';
 
       _handleError(
         msg,
@@ -390,7 +378,7 @@ class _RecitationModeState extends State<RecitationMode> {
     final transcribedText = _transcriptionController.text;
 
     try {
-      final recognizedRef = await _openRouterService
+      final recognizedRef = await _backendService
           .recognizePassage(
             transcribedText,
             availableBookIds: bibleService.books.map((b) => b.id).toList(),
@@ -418,7 +406,7 @@ class _RecitationModeState extends State<RecitationMode> {
         'Your connection is too slow. Please try again with a stronger internet connection.',
         context: 'recognition_timeout',
         errorDetails:
-            'TimeoutException after ${OpenRouterService.recognitionTimeout.inSeconds}s\n'
+            'TimeoutException after ${BackendService.recognitionTimeout.inSeconds}s\n'
             'Transcription length: ${transcribedText.length} chars\n'
             '$e\n$st',
       );
@@ -583,37 +571,4 @@ class _RecitationModeState extends State<RecitationMode> {
     _showError(message);
   }
 
-  void _checkApiKeys() {
-    if (!_settingsService.hasRequiredKeys()) {
-      _showMissingKeysError();
-    }
-  }
-
-  void _showMissingKeysError() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('API Keys Required'),
-        content: const Text(
-          'Please configure your OpenRouter API key in Settings before using Recitation Mode.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // Close dialog
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const SettingsPage()));
-            },
-            child: const Text('Go to Settings'),
-          ),
-        ],
-      ),
-    );
-  }
 }

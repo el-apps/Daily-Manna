@@ -1,0 +1,14 @@
+[Unit]
+Description=Daily Manna API
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=__APP_DIR__
+ExecStart=__APP_DIR__/build/daily-manna-api
+Environment=PORT=8080
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
