@@ -42,12 +42,25 @@ build-backend:
 # Build production assets, install/restart the systemd backend. Caddy owns port
 # 8000, serves build/web, and reverse-proxies /api to the backend on 8080.
 production: build-web build-backend
-    sed "s|__APP_DIR__|{{justfile_directory()}}|g" backend/daily-manna-api.service | sudo tee /etc/systemd/system/daily-manna-api.service >/dev/null
+    #!/usr/bin/env bash
+    set -e
+    app_dir="{{justfile_directory()}}"
+
+    # Install service unit, pointing at this checkout
+    sed "s|__APP_DIR__|$app_dir|g" backend/daily-manna-api.service | sudo tee /etc/systemd/system/daily-manna-api.service >/dev/null
     sudo systemctl daemon-reload
     sudo systemctl enable daily-manna-api
     sudo systemctl restart daily-manna-api
-    sudo systemctl reload caddy
-    @echo "Production web and API are available through Caddy on port 8000"
+
+    # Caddy serves build/web and reverse-proxies /api to the backend on 8080.
+    # Allow the caddy user to traverse to the web build (execute-only, no listing).
+    chmod o+x "$HOME" "$app_dir" "$app_dir/build"
+    sudo install -d -m 0755 /opt/daily-manna/build
+    sudo ln -sfn "$app_dir/build/web" /opt/daily-manna/build/web
+    sudo install -m 0644 backend/Caddyfile /etc/caddy/Caddyfile
+    sudo systemctl reload caddy || sudo systemctl restart caddy
+
+    echo "Production web and API are available through Caddy on port 8000"
 
 # Run the app on Android (first device)
 run-android:
