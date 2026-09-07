@@ -26,10 +26,9 @@ class _EngagePageState extends State<EngagePage> {
     title: 'Engage',
     showShareButton: false,
     body: const Column(children: [Expanded(child: ReviewContent())]),
-    floatingActionButton: FloatingActionButton.extended(
+    floatingActionButton: FloatingActionButton(
       onPressed: () => _findVerse(context),
-      icon: const Icon(Icons.search),
-      label: const Text('Find'),
+      child: const Icon(Icons.search),
     ),
   );
 

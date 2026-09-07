@@ -14,25 +14,29 @@ class VerseSelectionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
-    length: rangeMode ? 1 : 3,
+    length: 3,
     child: AppScaffold(
-      title: 'Select Verse',
+      title: rangeMode ? 'Select Passage' : 'Select Verse',
       showShareButton: false,
-      bottom: rangeMode
-          ? null
-          : const TabBar(
-              tabs: [
-                Tab(text: 'Books'),
-                Tab(text: 'Review'),
-                Tab(text: 'Recents'),
-              ],
-            ),
-      body: rangeMode ? _buildRangeModeBody(context) : _buildNormalBody(context),
+      bottom: const TabBar(
+        tabs: [
+          Tab(text: 'Books'),
+          Tab(text: 'Review'),
+          Tab(text: 'Recents'),
+        ],
+      ),
+      body: rangeMode
+          ? _buildRangeModeBody(context)
+          : _buildNormalBody(context),
     ),
   );
 
-  Widget _buildRangeModeBody(BuildContext context) => BooksTab.range(
-    onRangeSelected: (ScriptureRangeRef ref) => Navigator.of(context).pop(ref),
+  Widget _buildRangeModeBody(BuildContext context) => TabBarView(
+    children: [
+      BooksTab.range(onRangeSelected: (ref) => Navigator.of(context).pop(ref)),
+      ReviewTab(onVerseSelected: (ref) => _selectSingleVerse(context, ref)),
+      RecentsTab(onVerseSelected: (ref) => _selectSingleVerse(context, ref)),
+    ],
   );
 
   Widget _buildNormalBody(BuildContext context) => TabBarView(
@@ -45,5 +49,15 @@ class VerseSelectionPage extends StatelessWidget {
 
   void _selectVerse(BuildContext context, ScriptureRef ref) {
     Navigator.of(context).pop(ref);
+  }
+
+  void _selectSingleVerse(BuildContext context, ScriptureRef ref) {
+    Navigator.of(context).pop(
+      ScriptureRangeRef(
+        bookId: ref.bookId!,
+        chapter: ref.chapterNumber!,
+        startVerse: ref.verseNumber!,
+      ),
+    );
   }
 }
