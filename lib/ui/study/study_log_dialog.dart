@@ -1,53 +1,13 @@
-import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/ui/memorization/verse_selector.dart';
-import 'package:daily_manna/ui/practice_mode_dialog.dart';
-import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-class EngageActions extends StatelessWidget {
-  const EngageActions({super.key});
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(16),
-    child: Row(
-      children: [
-        Expanded(
-          child: FilledButton.icon(
-            onPressed: () => _practiceAnyVerse(context),
-            icon: const Icon(Icons.search),
-            label: const Text('Find'),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => _showStudyDialog(context),
-            icon: const Icon(Icons.menu_book),
-            label: const Text('Log study'),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Future<void> _practiceAnyVerse(BuildContext context) async {
-    final ref = await Navigator.of(context).push<ScriptureRef>(
-      MaterialPageRoute(builder: (_) => const VerseSelectionPage()),
-    );
-    if (context.mounted && ref != null) showPracticeModeDialog(context, ref);
-  }
-
-  void _showStudyDialog(BuildContext context) {
-    showDialog<void>(context: context, builder: (_) => const StudyLogDialog());
-  }
-}
-
 class StudyLogDialog extends StatefulWidget {
-  const StudyLogDialog({super.key});
+  const StudyLogDialog({super.key, this.initialPassage});
+
+  final ScriptureRangeRef? initialPassage;
 
   @override
   State<StudyLogDialog> createState() => _StudyLogDialogState();
@@ -56,6 +16,12 @@ class StudyLogDialog extends StatefulWidget {
 class _StudyLogDialogState extends State<StudyLogDialog> {
   ScriptureRangeRef? _passage;
   final _notes = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _passage = widget.initialPassage;
+  }
 
   @override
   void dispose() {

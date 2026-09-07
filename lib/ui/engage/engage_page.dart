@@ -1,13 +1,14 @@
+import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/utils/date_utils.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
-import 'package:daily_manna/ui/engage_actions.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/count_badge.dart';
 import 'package:daily_manna/ui/practice_mode_dialog.dart';
 import 'package:daily_manna/ui/theme_card.dart';
+import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -24,14 +25,24 @@ class _EngagePageState extends State<EngagePage> {
   Widget build(BuildContext context) => AppScaffold(
     title: 'Engage',
     showShareButton: false,
-    body: const Column(
-      children: [
-        EngageActions(),
-        Divider(height: 1),
-        Expanded(child: ReviewContent()),
-      ],
+    body: const Column(children: [Expanded(child: ReviewContent())]),
+    floatingActionButton: FloatingActionButton.extended(
+      onPressed: () => _findVerse(context),
+      icon: const Icon(Icons.search),
+      label: const Text('Find'),
     ),
   );
+
+  Future<void> _findVerse(BuildContext context) async {
+    final passage = await Navigator.of(context).push<ScriptureRangeRef>(
+      MaterialPageRoute(
+        builder: (_) => const VerseSelectionPage(rangeMode: true),
+      ),
+    );
+    if (context.mounted && passage != null) {
+      showPassageEngagementDialog(context, passage);
+    }
+  }
 }
 
 /// Review queue content that can be embedded in the Engage page.
