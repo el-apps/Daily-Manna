@@ -2,6 +2,7 @@ import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/ui/empty_state.dart';
+import 'package:daily_manna/utils/scripture_range_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -92,7 +93,13 @@ class SuggestionsTab extends StatelessWidget {
       }
     }
 
-    return [...nextChapterSuggestions, ...suggestions];
+    final mergedRecent = mergeAdjoiningRanges(
+      suggestions.map((suggestion) => suggestion.ref).toList(),
+    );
+    return [
+      ...nextChapterSuggestions,
+      ...mergedRecent.map((ref) => _Suggestion(ref, 'Recently interacted')),
+    ];
   }
 
   String _key(ScriptureRangeRef ref) =>
