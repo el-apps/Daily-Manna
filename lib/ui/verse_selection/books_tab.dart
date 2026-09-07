@@ -62,15 +62,9 @@ class _BooksTabState extends State<BooksTab> {
 
     return Column(
       children: [
-        _Breadcrumbs(
-          bookTitle: _selectedBookTitle ?? selectedBook!.title,
-          chapter: _selectedChapter,
-          onHomeTap: _goToBooks,
-          onBookTap: _goToChapters,
-        ),
         if (_startVerse != null)
           _RangeHeader(
-            bookTitle: _selectedBookTitle!,
+            bookTitle: _selectedBookTitle ?? selectedBook!.title,
             chapter: _selectedChapter!,
             startVerse: _startVerse!,
             onJustThisVerse: _selectSingleVerseAsRange,
@@ -86,7 +80,7 @@ class _BooksTabState extends State<BooksTab> {
       return _BooksList(
         books: bibleService.books,
         onBookSelected: (book) {
-          context.go('/select/books/${book.id}$modeQuery');
+          context.push('/select/books/${book.id}$modeQuery');
         },
       );
     }
@@ -95,7 +89,7 @@ class _BooksTabState extends State<BooksTab> {
       return _ChaptersList(
         chapters: bibleService.getChapters(_selectedBookId!),
         onChapterSelected: (chapter) {
-          context.go('/select/books/$_selectedBookId/$chapter$modeQuery');
+          context.push('/select/books/$_selectedBookId/$chapter$modeQuery');
         },
       );
     }
@@ -173,13 +167,6 @@ class _BooksTabState extends State<BooksTab> {
       ),
     );
   }
-
-  void _goToBooks() =>
-      context.go('/select/books${widget.rangeMode ? '?mode=range' : ''}');
-
-  void _goToChapters() => context.go(
-    '/select/books/$_selectedBookId${widget.rangeMode ? '?mode=range' : ''}',
-  );
 }
 
 class _RangeHeader extends StatelessWidget {
@@ -238,69 +225,6 @@ class _ChapterAction extends StatelessWidget {
         label: const Text('Select entire chapter'),
       ),
     ),
-  );
-}
-
-class _Breadcrumbs extends StatelessWidget {
-  final String bookTitle;
-  final int? chapter;
-  final VoidCallback onHomeTap;
-  final VoidCallback onBookTap;
-
-  const _Breadcrumbs({
-    required this.bookTitle,
-    required this.chapter,
-    required this.onHomeTap,
-    required this.onBookTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final linkStyle = TextStyle(color: theme.colorScheme.primary);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      width: double.infinity,
-      color: theme.colorScheme.surface,
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: onHomeTap,
-            child: Icon(
-              Icons.arrow_back,
-              size: 20,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-          const SizedBox(width: 12),
-          if (chapter == null)
-            Text(bookTitle, style: theme.textTheme.titleMedium)
-          else
-            ..._buildChapterBreadcrumb(linkStyle, theme),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _buildChapterBreadcrumb(TextStyle linkStyle, ThemeData theme) =>
-      [
-        GestureDetector(
-          onTap: onBookTap,
-          child: Text(bookTitle, style: linkStyle),
-        ),
-        const _BreadcrumbSeparator(),
-        Text('Chapter $chapter', style: theme.textTheme.titleMedium),
-      ];
-}
-
-class _BreadcrumbSeparator extends StatelessWidget {
-  const _BreadcrumbSeparator();
-
-  @override
-  Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.symmetric(horizontal: 8),
-    child: Icon(Icons.chevron_right, size: 16),
   );
 }
 
