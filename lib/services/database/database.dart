@@ -177,7 +177,17 @@ class AppDatabase extends _$AppDatabase {
         !remote.updatedAt.value.isAfter(existing.updatedAt)) {
       return;
     }
-    await into(results).insertOnConflictUpdate(remote);
+    if (existing != null) {
+      // client_id is the sync identity, while id is only the local row key.
+      // An insertOnConflictUpdate cannot resolve a client_id collision when
+      // the incoming companion does not contain the local auto-increment id.
+      // Update the row we found by client_id instead.
+      await (update(results)..where((row) => row.id.equals(existing.id))).write(
+        remote,
+      );
+      return;
+    }
+    await into(results).insert(remote);
   }
 
   Future<void> deleteRemoteResult(String clientId) =>

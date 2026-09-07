@@ -1,5 +1,6 @@
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/sync_service.dart';
+import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -100,23 +101,89 @@ void main() {
 
     expect(transport.tokens, everyElement('saved-token'));
   });
+
+  test('sync can merge the server echo of a pushed local result', () async {
+    await database.insertResult(
+      ResultsCompanion.insert(
+        timestamp: DateTime.utc(2026),
+        type: ResultType.study,
+        bookId: 'Jas',
+        startChapter: 1,
+        startVerse: 9,
+        score: 1,
+        notes: const Value('copy to outline'),
+        clientId: const Value('legacy-1087'),
+        updatedAt: Value(DateTime.utc(2026, 9, 7, 7, 28)),
+      ),
+    );
+    final transport = FakeSyncTransport()
+      ..responses.addAll([
+        const SyncResponse(cursor: 0, changes: []),
+        SyncResponse(
+          cursor: 1,
+          changes: [
+            _remoteChange(
+              'legacy-1087',
+              updatedAt: '2026-09-07T07:30:00Z',
+              resultType: 'study',
+              bookId: 'Jas',
+              startChapter: 1,
+              startVerse: 9,
+              score: 1,
+              notes: 'copy to outline',
+            ),
+          ],
+        ),
+        SyncResponse(
+          cursor: 1,
+          changes: [
+            _remoteChange(
+              'legacy-1087',
+              updatedAt: '2026-09-07T07:30:00Z',
+              resultType: 'study',
+              bookId: 'Jas',
+              startChapter: 1,
+              startVerse: 9,
+              score: 1,
+              notes: 'copy to outline',
+            ),
+          ],
+        ),
+      ]);
+
+    await SyncService(database, transport: transport).sync();
+
+    final result = (await database.getAllResults()).single;
+    expect(result.clientId, 'legacy-1087');
+    expect(result.notes, 'copy to outline');
+    expect(result.updatedAt, DateTime.utc(2026, 9, 7, 7, 30));
+  });
 }
 
-Map<String, dynamic> _remoteChange(String id) => {
+Map<String, dynamic> _remoteChange(
+  String id, {
+  String? updatedAt,
+  String resultType = 'recitation',
+  String bookId = 'Psa',
+  int startChapter = 23,
+  int startVerse = 1,
+  double score = .9,
+  String? notes,
+}) => {
   'type': 'result',
   'id': id,
   'version': 2,
   'data': {
     'timestamp': DateTime.utc(2025).toIso8601String(),
-    'resultType': 'recitation',
-    'bookId': 'Psa',
-    'startChapter': 23,
-    'startVerse': 1,
+    'resultType': resultType,
+    'bookId': bookId,
+    'startChapter': startChapter,
+    'startVerse': startVerse,
     'endChapter': null,
     'endVerse': 6,
-    'score': .9,
+    'score': score,
     'attempts': null,
-    'notes': null,
-    'updatedAt': DateTime.utc(2025).toIso8601String(),
+    'notes': notes,
+    'updatedAt': updatedAt ?? DateTime.utc(2025).toIso8601String(),
   },
 };
