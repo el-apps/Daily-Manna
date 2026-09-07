@@ -45,46 +45,87 @@ void _showEngagementDialog(
   required ScriptureRef memorizeRef,
   required ScriptureRangeRef initialPassage,
 }) {
-  showDialog(
+  showModalBottomSheet<void>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text(title),
-      content: const Text('How would you like to engage?'),
-      actions: [
-        FilledButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => VerseMemorization(initialRef: memorizeRef),
-              ),
-            );
-          },
-          child: const Text('Memorize'),
+    builder: (sheetContext) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 24,
+          children: [
+            Text(title, style: Theme.of(sheetContext).textTheme.titleLarge),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _EngagementButton(
+                  icon: Icons.psychology,
+                  label: 'Memorize',
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            VerseMemorization(initialRef: memorizeRef),
+                      ),
+                    );
+                  },
+                ),
+                _EngagementButton(
+                  icon: Icons.mic,
+                  label: 'Recite',
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const RecitationMode()),
+                    );
+                  },
+                ),
+                _EngagementButton(
+                  icon: Icons.menu_book,
+                  label: 'Study',
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) =>
+                          StudyLogDialog(initialPassage: initialPassage),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
         ),
-        FilledButton.tonal(
-          onPressed: () {
-            Navigator.of(context).pop();
-            Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const RecitationMode()));
-          },
-          child: const Text('Recite'),
-        ),
-        OutlinedButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-            showDialog<void>(
-              context: context,
-              builder: (_) => StudyLogDialog(initialPassage: initialPassage),
-            );
-          },
-          child: const Text('Study'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
+      ),
+    ),
+  );
+}
+
+class _EngagementButton extends StatelessWidget {
+  const _EngagementButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => FilledButton(
+    onPressed: onPressed,
+    style: FilledButton.styleFrom(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 4,
+      children: [
+        Icon(icon),
+        Text(label, style: Theme.of(context).textTheme.labelSmall),
       ],
     ),
   );
