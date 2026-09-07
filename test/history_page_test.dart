@@ -77,7 +77,7 @@ void main() {
       expect(filtered.map((result) => result.id), [1]);
     });
 
-    test('returns only practice results for a practice filter', () {
+    test('returns only interaction results for an interaction filter', () {
       final filtered = filterResultsByType(results, db.ResultType.memorization);
       expect(filtered.map((result) => result.id), [2]);
     });

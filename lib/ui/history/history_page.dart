@@ -8,7 +8,7 @@ import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/history/result_card.dart';
-import 'package:daily_manna/ui/engagement_sheet.dart';
+import 'package:daily_manna/ui/interaction_sheet.dart';
 import 'package:daily_manna/utils/date_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -82,7 +82,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   return EmptyState(
                     icon: Icons.history,
                     message:
-                        'No practice history yet.\nComplete a memorization or recitation to get started!',
+                        'No interaction history yet.\nComplete a memorization or recitation to get started!',
                   );
                 }
 
@@ -190,7 +190,7 @@ class _DateGroup extends StatelessWidget {
           result: result,
           reference: _getReference(result),
           score: ScoreData(value: result.score, attempts: result.attempts ?? 1),
-          onPractice: () => _showPracticeDialog(context, result),
+          onInteract: () => _showInteractionDialog(context, result),
         );
 
         if (result.type == db.ResultType.study) {
@@ -208,8 +208,8 @@ class _DateGroup extends StatelessWidget {
     ],
   );
 
-  void _showPracticeDialog(BuildContext context, db.Result result) {
-    showEngagementSheet(
+  void _showInteractionDialog(BuildContext context, db.Result result) {
+    showInteractionSheet(
       context,
       ScriptureRef(
         bookId: result.bookId,

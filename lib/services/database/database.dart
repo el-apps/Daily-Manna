@@ -222,9 +222,9 @@ class AppDatabase extends _$AppDatabase {
           ))
           .get();
 
-  // Get unique verses that have been practiced
+  // Get unique verses that have been interacted with
   Future<List<({String bookId, int chapter, int verse})>>
-  getUniqueVersesPracticed() async {
+  getUniqueVersesInteracted() async {
     final query = selectOnly(results, distinct: true)
       ..addColumns([results.bookId, results.startChapter, results.startVerse]);
     final rows = await query.get();

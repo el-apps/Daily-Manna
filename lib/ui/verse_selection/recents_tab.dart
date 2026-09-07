@@ -9,7 +9,7 @@ import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// Tab showing recently practiced verses.
+/// Tab showing recently interacted verses.
 class RecentsTab extends StatelessWidget {
   static final _dateFormat = DateFormat.yMMMd();
   final void Function(ScriptureRef) onVerseSelected;
@@ -34,7 +34,7 @@ class RecentsTab extends StatelessWidget {
           return const EmptyState(
             icon: Icons.history,
             message:
-                'No practice history yet.\nComplete a memorization to get started!',
+                'No interaction history yet.\nComplete a memorization to get started!',
           );
         }
 
@@ -44,7 +44,7 @@ class RecentsTab extends StatelessWidget {
             final state = recentVerses[index];
             return ListTile(
               title: Text(bibleService.getRefName(state.ref)),
-              subtitle: Text(_formatLastPracticed(state.lastReview)),
+              subtitle: Text(_formatLastInteracted(state.lastReview)),
               onTap: () => onVerseSelected(state.ref),
             );
           },
@@ -54,15 +54,14 @@ class RecentsTab extends StatelessWidget {
   }
 }
 
-String _formatLastPracticed(DateTime date) {
+String _formatLastInteracted(DateTime date) {
   final now = DateTime.now();
   final today = now.dateOnly;
-  final practiceDay = date.dateOnly;
-  final difference = today.difference(practiceDay).inDays;
+  final interactionDay = date.dateOnly;
+  final difference = today.difference(interactionDay).inDays;
 
-  if (difference == 0) return 'Practiced today';
-  if (difference == 1) return 'Practiced yesterday';
-  if (difference < 7) return 'Practiced $difference days ago';
-  return 'Practiced ${RecentsTab._dateFormat.format(date)}';
+  if (difference == 0) return 'Interacted today';
+  if (difference == 1) return 'Interacted yesterday';
+  if (difference < 7) return 'Interacted $difference days ago';
+  return 'Interacted ${RecentsTab._dateFormat.format(date)}';
 }
-

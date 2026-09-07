@@ -7,10 +7,10 @@ import 'package:daily_manna/ui/study/record_study_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// Shows a bottom sheet for choosing how to engage with a selected passage.
-void showEngagementSheet(BuildContext context, ScriptureRef ref) {
+/// Shows a bottom sheet for choosing how to interact with a selected passage.
+void showInteractionSheet(BuildContext context, ScriptureRef ref) {
   final bibleService = context.read<BibleService>();
-  _showEngagementSheet(
+  _showInteractionSheet(
     context,
     title: bibleService.getRefName(ref),
     memorizeRef: ref,
@@ -22,12 +22,12 @@ void showEngagementSheet(BuildContext context, ScriptureRef ref) {
   );
 }
 
-void showPassageEngagementSheet(
+void showPassageInteractionSheet(
   BuildContext context,
   ScriptureRangeRef passage,
 ) {
   final bibleService = context.read<BibleService>();
-  _showEngagementSheet(
+  _showInteractionSheet(
     context,
     title: bibleService.getRangeRefName(passage),
     memorizeRef: ScriptureRef(
@@ -39,7 +39,7 @@ void showPassageEngagementSheet(
   );
 }
 
-void _showEngagementSheet(
+void _showInteractionSheet(
   BuildContext context, {
   required String title,
   required ScriptureRef memorizeRef,
@@ -58,7 +58,7 @@ void _showEngagementSheet(
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _EngagementButton(
+                _InteractionButton(
                   icon: Icons.psychology,
                   label: 'Memorize',
                   onPressed: () {
@@ -71,7 +71,7 @@ void _showEngagementSheet(
                     );
                   },
                 ),
-                _EngagementButton(
+                _InteractionButton(
                   icon: Icons.mic,
                   label: 'Recite',
                   onPressed: () {
@@ -81,7 +81,7 @@ void _showEngagementSheet(
                     );
                   },
                 ),
-                _EngagementButton(
+                _InteractionButton(
                   icon: Icons.menu_book,
                   label: 'Study',
                   onPressed: () {
@@ -103,8 +103,8 @@ void _showEngagementSheet(
   );
 }
 
-class _EngagementButton extends StatelessWidget {
-  const _EngagementButton({
+class _InteractionButton extends StatelessWidget {
+  const _InteractionButton({
     required this.icon,
     required this.label,
     required this.onPressed,

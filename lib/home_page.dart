@@ -3,7 +3,7 @@ import 'package:daily_manna/mode_card.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/history/history_page.dart';
-import 'package:daily_manna/ui/engage/engage_page.dart';
+import 'package:daily_manna/ui/interact/interact_page.dart';
 import 'package:daily_manna/ui/streak/streak_card.dart';
 import 'package:flutter/material.dart';
 
@@ -30,9 +30,9 @@ class HomePage extends StatelessWidget {
         ),
         const StreakCard(),
         ModeCard(
-          title: 'Engage',
+          title: 'Interact',
           icon: Icons.play_arrow,
-          onTap: () => _navigateTo(context, const EngagePage()),
+          onTap: () => _navigateTo(context, const InteractPage()),
         ),
         ModeCard(
           title: 'History',
