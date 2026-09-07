@@ -1,4 +1,3 @@
-import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/verse_selection/books_tab.dart';
@@ -76,7 +75,7 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
         onSelectionChanged: _updateTitle,
         onRangeSelected: (ref) => context.pop(ref),
       ),
-      ReviewTab(onVerseSelected: (ref) => _selectSingleVerse(context, ref)),
+      ReviewTab(onPassageSelected: (ref) => context.pop(ref)),
       SuggestionsTab(onPassageSelected: (ref) => context.pop(ref)),
     ],
   );
@@ -89,7 +88,16 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
         onSelectionChanged: _updateTitle,
         onVerseSelected: (ref) => _selectVerse(context, ref),
       ),
-      ReviewTab(onVerseSelected: (ref) => _selectVerse(context, ref)),
+      ReviewTab(
+        onPassageSelected: (ref) => _selectVerse(
+          context,
+          ScriptureRef(
+            bookId: ref.bookId,
+            chapterNumber: ref.chapter,
+            verseNumber: ref.startVerse,
+          ),
+        ),
+      ),
       SuggestionsTab(
         onPassageSelected: (ref) => _selectVerse(
           context,
@@ -114,15 +122,5 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
         _hasSelectedBook = true;
       });
     }
-  }
-
-  void _selectSingleVerse(BuildContext context, ScriptureRef ref) {
-    context.pop(
-      ScriptureRangeRef(
-        bookId: ref.bookId!,
-        chapter: ref.chapterNumber!,
-        startVerse: ref.verseNumber!,
-      ),
-    );
   }
 }

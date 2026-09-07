@@ -66,7 +66,7 @@ class SuggestionsTab extends StatelessWidget {
       );
       final key = _key(ref);
       if (seen.add(key)) {
-        suggestions.add(_Suggestion(ref, 'Recently interacted'));
+        suggestions.add(_Suggestion(ref, 'Recent'));
         if (result.type == ResultType.study) {
           studyPassages.add(ref);
         }
@@ -98,7 +98,7 @@ class SuggestionsTab extends StatelessWidget {
     );
     return [
       ...nextChapterSuggestions,
-      ...mergedRecent.map((ref) => _Suggestion(ref, 'Recently interacted')),
+      ...mergedRecent.map((ref) => _Suggestion(ref, 'Recent')),
     ];
   }
 
