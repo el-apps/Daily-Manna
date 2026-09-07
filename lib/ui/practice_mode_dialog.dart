@@ -118,13 +118,15 @@ class _EngagementButton extends StatelessWidget {
   Widget build(BuildContext context) => FilledButton(
     onPressed: onPressed,
     style: FilledButton.styleFrom(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      minimumSize: const Size(96, 96),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       spacing: 4,
       children: [
-        Icon(icon),
+        Icon(icon, size: 30),
         Text(label, style: Theme.of(context).textTheme.labelSmall),
       ],
     ),
