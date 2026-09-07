@@ -35,43 +35,61 @@ final appRouter = GoRouter(
     GoRoute(path: '/interact', builder: (_, __) => const InteractPage()),
     GoRoute(
       path: '/select',
-      builder: (_, state) => VerseSelectionPage(
-        rangeMode: state.uri.queryParameters['mode'] == 'range',
+      pageBuilder: (_, state) => NoTransitionPage(
+        key: state.pageKey,
+        child: VerseSelectionPage(
+          rangeMode: state.uri.queryParameters['mode'] == 'range',
+        ),
       ),
     ),
     GoRoute(
       path: '/select/books',
-      builder: (_, state) => VerseSelectionPage(
-        rangeMode: state.uri.queryParameters['mode'] == 'range',
+      pageBuilder: (_, state) => NoTransitionPage(
+        key: state.pageKey,
+        child: VerseSelectionPage(
+          rangeMode: state.uri.queryParameters['mode'] == 'range',
+        ),
       ),
     ),
     GoRoute(
       path: '/select/books/:bookId',
-      builder: (_, state) => VerseSelectionPage(
-        rangeMode: state.uri.queryParameters['mode'] == 'range',
-        initialBookId: state.pathParameters['bookId'],
+      pageBuilder: (_, state) => NoTransitionPage(
+        key: state.pageKey,
+        child: VerseSelectionPage(
+          rangeMode: state.uri.queryParameters['mode'] == 'range',
+          initialBookId: state.pathParameters['bookId'],
+        ),
       ),
     ),
     GoRoute(
       path: '/select/books/:bookId/:chapter',
-      builder: (_, state) => VerseSelectionPage(
-        rangeMode: state.uri.queryParameters['mode'] == 'range',
-        initialBookId: state.pathParameters['bookId'],
-        initialChapter: int.tryParse(state.pathParameters['chapter']!),
+      pageBuilder: (_, state) => NoTransitionPage(
+        key: state.pageKey,
+        child: VerseSelectionPage(
+          rangeMode: state.uri.queryParameters['mode'] == 'range',
+          initialBookId: state.pathParameters['bookId'],
+          initialChapter: int.tryParse(state.pathParameters['chapter']!),
+        ),
       ),
     ),
     GoRoute(
       path: '/select/review',
-      builder: (_, state) => VerseSelectionPage(
-        rangeMode: state.uri.queryParameters['mode'] == 'range',
-        initialTabIndex: 1,
+      pageBuilder: (_, state) => NoTransitionPage(
+        key: state.pageKey,
+        child: VerseSelectionPage(
+          rangeMode: state.uri.queryParameters['mode'] == 'range',
+          initialTabIndex: 1,
+        ),
       ),
     ),
     GoRoute(
       path: '/select/recents',
-      builder: (_, state) => VerseSelectionPage(
-        rangeMode: state.uri.queryParameters['mode'] == 'range',
-        initialTabIndex: 2,
+      pageBuilder: (_, state) => NoTransitionPage(
+        key: state.pageKey,
+        child: VerseSelectionPage(
+          rangeMode: state.uri.queryParameters['mode'] == 'range',
+          initialTabIndex: 2,
+        ),
       ),
     ),
     GoRoute(path: '/history', builder: (_, __) => const HistoryPage()),
@@ -91,7 +109,9 @@ final appRouter = GoRouter(
       builder: (_, state) => VerseMemorization(
         initialRef: ScriptureRef(
           bookId: state.uri.queryParameters['book'],
-          chapterNumber: int.tryParse(state.uri.queryParameters['chapter'] ?? ''),
+          chapterNumber: int.tryParse(
+            state.uri.queryParameters['chapter'] ?? '',
+          ),
           verseNumber: int.tryParse(
             state.uri.queryParameters['startVerse'] ?? '',
           ),
@@ -126,7 +146,6 @@ class _RouteUnavailablePage extends StatelessWidget {
   final String message;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: Center(child: Text(message)),
-  );
+  Widget build(BuildContext context) =>
+      Scaffold(body: Center(child: Text(message)));
 }

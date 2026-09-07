@@ -174,9 +174,8 @@ class _BooksTabState extends State<BooksTab> {
     );
   }
 
-  void _goToBooks() => context.go(
-    '/select/books${widget.rangeMode ? '?mode=range' : ''}',
-  );
+  void _goToBooks() =>
+      context.go('/select/books${widget.rangeMode ? '?mode=range' : ''}');
 
   void _goToChapters() => context.go(
     '/select/books/$_selectedBookId${widget.rangeMode ? '?mode=range' : ''}',
@@ -305,102 +304,6 @@ class _BreadcrumbSeparator extends StatelessWidget {
   );
 }
 
-/// Book categories for organized display.
-enum _BookCategory {
-  law('Law'),
-  history('History'),
-  poetry('Poetry'),
-  majorProphets('Major Prophets'),
-  minorProphets('Minor Prophets'),
-  gospels('Gospels'),
-  acts('History'),
-  paulineEpistles('Pauline Epistles'),
-  generalEpistles('General Epistles'),
-  prophecy('Prophecy');
-
-  final String label;
-  const _BookCategory(this.label);
-}
-
-const _bookCategories = <String, _BookCategory>{
-  // Law
-  'gen': _BookCategory.law,
-  'exod': _BookCategory.law,
-  'lev': _BookCategory.law,
-  'num': _BookCategory.law,
-  'deut': _BookCategory.law,
-  // History (OT)
-  'josh': _BookCategory.history,
-  'judg': _BookCategory.history,
-  'ruth': _BookCategory.history,
-  '1sam': _BookCategory.history,
-  '2sam': _BookCategory.history,
-  '1kgs': _BookCategory.history,
-  '2kgs': _BookCategory.history,
-  '1chr': _BookCategory.history,
-  '2chr': _BookCategory.history,
-  'ezra': _BookCategory.history,
-  'neh': _BookCategory.history,
-  'esth': _BookCategory.history,
-  // Poetry
-  'job': _BookCategory.poetry,
-  'ps': _BookCategory.poetry,
-  'prov': _BookCategory.poetry,
-  'eccl': _BookCategory.poetry,
-  'song': _BookCategory.poetry,
-  // Major Prophets
-  'isa': _BookCategory.majorProphets,
-  'jer': _BookCategory.majorProphets,
-  'lam': _BookCategory.majorProphets,
-  'ezek': _BookCategory.majorProphets,
-  'dan': _BookCategory.majorProphets,
-  // Minor Prophets
-  'hos': _BookCategory.minorProphets,
-  'joel': _BookCategory.minorProphets,
-  'amos': _BookCategory.minorProphets,
-  'obad': _BookCategory.minorProphets,
-  'jonah': _BookCategory.minorProphets,
-  'mic': _BookCategory.minorProphets,
-  'nah': _BookCategory.minorProphets,
-  'hab': _BookCategory.minorProphets,
-  'zeph': _BookCategory.minorProphets,
-  'hag': _BookCategory.minorProphets,
-  'zech': _BookCategory.minorProphets,
-  'mal': _BookCategory.minorProphets,
-  // Gospels
-  'matt': _BookCategory.gospels,
-  'mark': _BookCategory.gospels,
-  'luke': _BookCategory.gospels,
-  'john': _BookCategory.gospels,
-  // Acts
-  'acts': _BookCategory.acts,
-  // Pauline Epistles
-  'rom': _BookCategory.paulineEpistles,
-  '1cor': _BookCategory.paulineEpistles,
-  '2cor': _BookCategory.paulineEpistles,
-  'gal': _BookCategory.paulineEpistles,
-  'eph': _BookCategory.paulineEpistles,
-  'phil': _BookCategory.paulineEpistles,
-  'col': _BookCategory.paulineEpistles,
-  '1thess': _BookCategory.paulineEpistles,
-  '2thess': _BookCategory.paulineEpistles,
-  '1tim': _BookCategory.paulineEpistles,
-  '2tim': _BookCategory.paulineEpistles,
-  'titus': _BookCategory.paulineEpistles,
-  'phlm': _BookCategory.paulineEpistles,
-  // General Epistles
-  'heb': _BookCategory.generalEpistles,
-  'jas': _BookCategory.generalEpistles,
-  '1pet': _BookCategory.generalEpistles,
-  '2pet': _BookCategory.generalEpistles,
-  '1john': _BookCategory.generalEpistles,
-  '2john': _BookCategory.generalEpistles,
-  '3john': _BookCategory.generalEpistles,
-  'jude': _BookCategory.generalEpistles,
-  // Prophecy
-  'rev': _BookCategory.prophecy,
-};
-
 class _BooksList extends StatefulWidget {
   final List<Book> books;
   final void Function(Book) onBookSelected;
@@ -412,53 +315,58 @@ class _BooksList extends StatefulWidget {
 }
 
 class _BooksListState extends State<_BooksList> {
-  final Set<_BookCategory> _expandedCategories = {};
-
   @override
   Widget build(BuildContext context) {
-    // Group books by category
-    final grouped = <_BookCategory, List<Book>>{};
-    for (final book in widget.books) {
-      final category = _bookCategories[book.id];
-      if (category != null) {
-        grouped.putIfAbsent(category, () => []).add(book);
-      }
-    }
+    final splitIndex = widget.books.indexWhere((book) => book.id == 'matt');
+    final oldTestament = widget.books.sublist(
+      0,
+      splitIndex == -1 ? widget.books.length : splitIndex,
+    );
+    final newTestament = splitIndex == -1
+        ? <Book>[]
+        : widget.books.sublist(splitIndex);
 
     return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
-        for (final category in _BookCategory.values)
-          if (grouped.containsKey(category))
-            _CategorySection(
-              category: category,
-              books: grouped[category]!,
-              isExpanded: _expandedCategories.contains(category),
-              onToggle: () => setState(() {
-                if (_expandedCategories.contains(category)) {
-                  _expandedCategories.remove(category);
-                } else {
-                  _expandedCategories.add(category);
-                }
-              }),
-              onBookSelected: widget.onBookSelected,
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 12,
+              children: [
+                Expanded(
+                  child: _TestamentColumn(
+                    title: 'Old Testament',
+                    books: oldTestament,
+                    onBookSelected: widget.onBookSelected,
+                  ),
+                ),
+                Expanded(
+                  child: _TestamentColumn(
+                    title: 'New Testament',
+                    books: newTestament,
+                    onBookSelected: widget.onBookSelected,
+                  ),
+                ),
+              ],
             ),
+          ),
+        ),
       ],
     );
   }
 }
 
-class _CategorySection extends StatelessWidget {
-  final _BookCategory category;
+class _TestamentColumn extends StatelessWidget {
+  final String title;
   final List<Book> books;
-  final bool isExpanded;
-  final VoidCallback onToggle;
   final void Function(Book) onBookSelected;
 
-  const _CategorySection({
-    required this.category,
+  const _TestamentColumn({
+    required this.title,
     required this.books,
-    required this.isExpanded,
-    required this.onToggle,
     required this.onBookSelected,
   });
 
@@ -466,25 +374,38 @@ class _CategorySection extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      ListTile(
-        title: Text(
-          category.label,
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Text(
+          title,
+          textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
             color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        trailing: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
-        onTap: onToggle,
       ),
-      if (isExpanded)
-        ...books.map(
-          (book) => ListTile(
-            title: Text(book.title),
-            trailing: const Icon(Icons.chevron_right),
-            contentPadding: const EdgeInsets.only(left: 32, right: 16),
-            onTap: () => onBookSelected(book),
+      ...books.map(
+        (book) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: OutlinedButton(
+            onPressed: () => onBookSelected(book),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(40),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              book.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
+      ),
     ],
   );
 }
