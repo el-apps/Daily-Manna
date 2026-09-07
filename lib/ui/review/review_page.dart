@@ -3,6 +3,7 @@ import 'package:daily_manna/utils/date_utils.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
+import 'package:daily_manna/ui/engage_actions.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/count_badge.dart';
 import 'package:daily_manna/ui/practice_mode_dialog.dart';
@@ -10,20 +11,26 @@ import 'package:daily_manna/ui/theme_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// Page showing verses due for review, grouped by urgency.
-class ReviewPage extends StatefulWidget {
-  const ReviewPage({super.key});
+/// Engage hub showing actions and verses due for review.
+class EngagePage extends StatefulWidget {
+  const EngagePage({super.key});
 
   @override
-  State<ReviewPage> createState() => _ReviewPageState();
+  State<EngagePage> createState() => _EngagePageState();
 }
 
-class _ReviewPageState extends State<ReviewPage> {
+class _EngagePageState extends State<EngagePage> {
   @override
   Widget build(BuildContext context) => AppScaffold(
-    title: 'Review',
+    title: 'Engage',
     showShareButton: false,
-    body: const ReviewContent(),
+    body: const Column(
+      children: [
+        EngageActions(),
+        Divider(height: 1),
+        Expanded(child: ReviewContent()),
+      ],
+    ),
   );
 }
 

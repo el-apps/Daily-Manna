@@ -1,39 +1,14 @@
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/results_service.dart';
-import 'package:daily_manna/ui/app_scaffold.dart';
-import 'package:daily_manna/ui/review/review_page.dart';
 import 'package:daily_manna/ui/memorization/verse_selector.dart';
 import 'package:daily_manna/ui/practice_mode_dialog.dart';
 import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// Hub for starting Scripture activities and reviewing due verses.
-class PracticePage extends StatefulWidget {
-  const PracticePage({super.key});
-
-  @override
-  State<PracticePage> createState() => _PracticePageState();
-}
-
-class _PracticePageState extends State<PracticePage> {
-  @override
-  Widget build(BuildContext context) => AppScaffold(
-    title: 'Engage',
-    showShareButton: false,
-    body: Column(
-      children: [
-        const _EngageActions(),
-        const Divider(height: 1),
-        const Expanded(child: ReviewContent()),
-      ],
-    ),
-  );
-}
-
-class _EngageActions extends StatelessWidget {
-  const _EngageActions();
+class EngageActions extends StatelessWidget {
+  const EngageActions({super.key});
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -63,24 +38,22 @@ class _EngageActions extends StatelessWidget {
     final ref = await Navigator.of(context).push<ScriptureRef>(
       MaterialPageRoute(builder: (_) => const VerseSelectionPage()),
     );
-    if (context.mounted && ref != null) {
-      showPracticeModeDialog(context, ref);
-    }
+    if (context.mounted && ref != null) showPracticeModeDialog(context, ref);
   }
 
   void _showStudyDialog(BuildContext context) {
-    showDialog<void>(context: context, builder: (_) => const _StudyLogDialog());
+    showDialog<void>(context: context, builder: (_) => const StudyLogDialog());
   }
 }
 
-class _StudyLogDialog extends StatefulWidget {
-  const _StudyLogDialog();
+class StudyLogDialog extends StatefulWidget {
+  const StudyLogDialog({super.key});
 
   @override
-  State<_StudyLogDialog> createState() => _StudyLogDialogState();
+  State<StudyLogDialog> createState() => _StudyLogDialogState();
 }
 
-class _StudyLogDialogState extends State<_StudyLogDialog> {
+class _StudyLogDialogState extends State<StudyLogDialog> {
   ScriptureRangeRef? _passage;
   final _notes = TextEditingController();
 
