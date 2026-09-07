@@ -10,6 +10,7 @@ import 'package:drift/drift.dart';
 
 class ResultsService {
   final AppDatabase _db;
+  Future<void> Function()? onLocalChange;
 
   ResultsService(this._db);
 
@@ -26,6 +27,7 @@ class ResultsService {
         attempts: Value(result.attempts),
       ),
     );
+    await onLocalChange?.call();
   }
 
   /// Add a recitation result to persistent storage.
@@ -41,6 +43,29 @@ class ResultsService {
         score: result.score,
       ),
     );
+    await onLocalChange?.call();
+  }
+
+  /// Add a study result through the same tracked local-write path.
+  Future<void> addStudyResult(ScriptureRangeRef ref, {String? notes}) async {
+    await _db.insertResult(
+      ResultsCompanion.insert(
+        timestamp: DateTime.now(),
+        type: ResultType.study,
+        bookId: ref.bookId,
+        startChapter: ref.chapter,
+        startVerse: ref.startVerse,
+        endVerse: Value(ref.endVerse),
+        score: 1,
+        notes: Value(notes),
+      ),
+    );
+    await onLocalChange?.call();
+  }
+
+  Future<void> updateNotes(int id, String? notes) async {
+    await _db.updateResultNotes(id, notes);
+    await onLocalChange?.call();
   }
 
   /// Get sections for the share dialog (today's results only).
@@ -65,7 +90,10 @@ class ResultsService {
         // Save previous section if it has items
         if (currentItems.isNotEmpty) {
           sections.add(
-            ResultSection(title: _typeToTitle(currentType!), items: currentItems),
+            ResultSection(
+              title: _typeToTitle(currentType!),
+              items: currentItems,
+            ),
           );
         }
         // Start new section

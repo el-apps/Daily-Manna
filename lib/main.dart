@@ -1,4 +1,5 @@
 import 'package:daily_manna/home_page.dart';
+import 'package:daily_manna/services/auth_service.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/error_logger_service.dart';
@@ -6,6 +7,7 @@ import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/settings_service.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/services/streak_service.dart';
+import 'package:daily_manna/services/sync_service.dart';
 import 'package:daily_manna/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -30,6 +32,8 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
   late SpacedRepetitionService _spacedRepetitionService;
   late StreakService _streakService;
   late NotificationService _notificationService;
+  late SyncService _syncService;
+  late AuthService _authService;
   late Future _initFuture;
 
   @override
@@ -46,14 +50,31 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
       settingsService: _settingsService,
       errorLogger: _errorLoggerService,
     );
-    _initFuture = Future.wait([
-      _settingsService.init().then((_) async {
-        await _notificationService.initialize();
-        await _notificationService.scheduleDailyNotification();
-      }),
-      _errorLoggerService.init(),
-      _bibleService.load(context),
-    ]);
+    _authService = AuthService();
+    _syncService = SyncService(
+      _database,
+      authTokenProvider: _authService.tokenProvider,
+      errorLogger: _errorLoggerService,
+    );
+    _resultsService.onLocalChange = _syncService.requestSync;
+    _initFuture =
+        Future.wait([
+          _authService.init(),
+          _settingsService.init().then((_) async {
+            await _notificationService.initialize();
+            await _notificationService.scheduleDailyNotification();
+          }),
+          _errorLoggerService.init(),
+          _bibleService.load(context),
+        ]).then((_) async {
+          if (_authService.isSignedIn) {
+            try {
+              await _syncService.sync();
+            } catch (_) {
+              // Startup remains usable offline; Settings offers a manual retry.
+            }
+          }
+        });
   }
 
   @override
@@ -69,6 +90,8 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
               Provider.value(value: _spacedRepetitionService),
               Provider.value(value: _streakService),
               Provider.value(value: _notificationService),
+              Provider.value(value: _syncService),
+              ChangeNotifierProvider.value(value: _authService),
               ChangeNotifierProvider.value(value: _errorLoggerService),
             ],
             child: MaterialApp(
