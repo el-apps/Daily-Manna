@@ -5,7 +5,6 @@ import 'package:daily_manna/ui/verse_selection/suggestions_tab.dart';
 import 'package:daily_manna/ui/verse_selection/review_tab.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 /// Full-screen verse selection page with tabs for Books, Needs Review, and Recents.
@@ -73,10 +72,12 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
         initialBookId: widget.initialBookId,
         initialChapter: widget.initialChapter,
         onSelectionChanged: _updateTitle,
-        onRangeSelected: (ref) => context.pop(ref),
+        onRangeSelected: (ref) => Navigator.of(context).pop(ref),
       ),
-      ReviewTab(onPassageSelected: (ref) => context.pop(ref)),
-      SuggestionsTab(onPassageSelected: (ref) => context.pop(ref)),
+      ReviewTab(onPassageSelected: (ref) => Navigator.of(context).pop(ref)),
+      SuggestionsTab(
+        onPassageSelected: (ref) => Navigator.of(context).pop(ref),
+      ),
     ],
   );
 
@@ -112,7 +113,7 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
   );
 
   void _selectVerse(BuildContext context, ScriptureRef ref) {
-    context.pop(ref);
+    Navigator.of(context).pop(ref);
   }
 
   void _updateTitle(String title) {
