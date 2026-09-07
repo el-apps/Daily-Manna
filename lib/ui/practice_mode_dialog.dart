@@ -115,20 +115,30 @@ class _EngagementButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) => FilledButton(
-    onPressed: onPressed,
-    style: FilledButton.styleFrom(
-      minimumSize: const Size(96, 96),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    ),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      spacing: 4,
-      children: [
-        Icon(icon, size: 30),
-        Text(label, style: Theme.of(context).textTheme.labelSmall),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) {
+    final foregroundColor = Theme.of(context).colorScheme.onPrimary;
+
+    return FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        foregroundColor: foregroundColor,
+        minimumSize: const Size(96, 96),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 4,
+        children: [
+          Icon(icon, size: 30),
+          Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: foregroundColor),
+          ),
+        ],
+      ),
+    );
+  }
 }
