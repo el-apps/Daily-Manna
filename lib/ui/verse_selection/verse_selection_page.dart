@@ -30,6 +30,7 @@ class VerseSelectionPage extends StatefulWidget {
 
 class _VerseSelectionPageState extends State<VerseSelectionPage> {
   late String _title = widget.rangeMode ? 'Select Passage' : 'Select Verse';
+  bool _hasSelectedBook = false;
 
   @override
   void didChangeDependencies() {
@@ -52,13 +53,15 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
     child: AppScaffold(
       title: _title,
       showShareButton: false,
-      bottom: const TabBar(
-        tabs: [
-          Tab(text: 'Books'),
-          Tab(text: 'Review'),
-          Tab(text: 'Recents'),
-        ],
-      ),
+      bottom: (_hasSelectedBook || widget.initialBookId != null)
+          ? null
+          : const TabBar(
+              tabs: [
+                Tab(text: 'Books'),
+                Tab(text: 'Review'),
+                Tab(text: 'Recents'),
+              ],
+            ),
       body: widget.rangeMode
           ? _buildRangeModeBody(context)
           : _buildNormalBody(context),
@@ -96,7 +99,12 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
   }
 
   void _updateTitle(String title) {
-    if (mounted) setState(() => _title = title);
+    if (mounted) {
+      setState(() {
+        _title = title;
+        _hasSelectedBook = true;
+      });
+    }
   }
 
   void _selectSingleVerse(BuildContext context, ScriptureRef ref) {
