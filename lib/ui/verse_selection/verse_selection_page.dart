@@ -4,11 +4,13 @@ import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/verse_selection/books_tab.dart';
 import 'package:daily_manna/ui/verse_selection/recents_tab.dart';
 import 'package:daily_manna/ui/verse_selection/review_tab.dart';
+import 'package:daily_manna/services/bible_service.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 /// Full-screen verse selection page with tabs for Books, Needs Review, and Recents.
-class VerseSelectionPage extends StatelessWidget {
+class VerseSelectionPage extends StatefulWidget {
   const VerseSelectionPage({
     super.key,
     this.rangeMode = false,
@@ -23,11 +25,32 @@ class VerseSelectionPage extends StatelessWidget {
   final int initialTabIndex;
 
   @override
+  State<VerseSelectionPage> createState() => _VerseSelectionPageState();
+}
+
+class _VerseSelectionPageState extends State<VerseSelectionPage> {
+  late String _title = widget.rangeMode ? 'Select Passage' : 'Select Verse';
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.initialBookId != null) {
+      final book = context.read<BibleService>().books.firstWhere(
+        (book) => book.id == widget.initialBookId,
+      );
+      _title = book.title;
+      if (widget.initialChapter != null) {
+        _title = '${book.title} ${widget.initialChapter}';
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) => DefaultTabController(
-    initialIndex: initialTabIndex,
+    initialIndex: widget.initialTabIndex,
     length: 3,
     child: AppScaffold(
-      title: rangeMode ? 'Select Passage' : 'Select Verse',
+      title: _title,
       showShareButton: false,
       bottom: const TabBar(
         tabs: [
@@ -36,7 +59,7 @@ class VerseSelectionPage extends StatelessWidget {
           Tab(text: 'Recents'),
         ],
       ),
-      body: rangeMode
+      body: widget.rangeMode
           ? _buildRangeModeBody(context)
           : _buildNormalBody(context),
     ),
@@ -45,8 +68,9 @@ class VerseSelectionPage extends StatelessWidget {
   Widget _buildRangeModeBody(BuildContext context) => TabBarView(
     children: [
       BooksTab.range(
-        initialBookId: initialBookId,
-        initialChapter: initialChapter,
+        initialBookId: widget.initialBookId,
+        initialChapter: widget.initialChapter,
+        onSelectionChanged: _updateTitle,
         onRangeSelected: (ref) => context.pop(ref),
       ),
       ReviewTab(onVerseSelected: (ref) => _selectSingleVerse(context, ref)),
@@ -57,8 +81,9 @@ class VerseSelectionPage extends StatelessWidget {
   Widget _buildNormalBody(BuildContext context) => TabBarView(
     children: [
       BooksTab(
-        initialBookId: initialBookId,
-        initialChapter: initialChapter,
+        initialBookId: widget.initialBookId,
+        initialChapter: widget.initialChapter,
+        onSelectionChanged: _updateTitle,
         onVerseSelected: (ref) => _selectVerse(context, ref),
       ),
       ReviewTab(onVerseSelected: (ref) => _selectVerse(context, ref)),
@@ -68,6 +93,10 @@ class VerseSelectionPage extends StatelessWidget {
 
   void _selectVerse(BuildContext context, ScriptureRef ref) {
     context.pop(ref);
+  }
+
+  void _updateTitle(String title) {
+    if (mounted) setState(() => _title = title);
   }
 
   void _selectSingleVerse(BuildContext context, ScriptureRef ref) {
