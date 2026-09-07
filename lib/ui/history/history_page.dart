@@ -1,6 +1,5 @@
 import 'package:daily_manna/models/score_data.dart';
 import 'package:daily_manna/ui/history/history_activity_grid.dart';
-import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
@@ -11,6 +10,7 @@ import 'package:daily_manna/ui/history/result_card.dart';
 import 'package:daily_manna/ui/interaction_sheet.dart';
 import 'package:daily_manna/utils/date_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -195,10 +195,9 @@ class _DateGroup extends StatelessWidget {
 
         if (result.type == db.ResultType.study) {
           return GestureDetector(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => StudyNotesDetailPage(result: result),
-              ),
+            onTap: () => context.push(
+              '/history/study/${result.id}',
+              extra: result,
             ),
             child: card,
           );

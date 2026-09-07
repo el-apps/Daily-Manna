@@ -1,4 +1,4 @@
-import 'package:daily_manna/home_page.dart';
+import 'package:daily_manna/app_router.dart';
 import 'package:daily_manna/services/auth_service.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart';
@@ -10,9 +10,11 @@ import 'package:daily_manna/services/streak_service.dart';
 import 'package:daily_manna/services/sync_service.dart';
 import 'package:daily_manna/services/notification_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:provider/provider.dart';
 
 void main() {
+  usePathUrlStrategy();
   runApp(const DailyMannaApp());
 }
 
@@ -94,7 +96,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
               ChangeNotifierProvider.value(value: _authService),
               ChangeNotifierProvider.value(value: _errorLoggerService),
             ],
-            child: MaterialApp(
+            child: MaterialApp.router(
               title: 'Daily Manna',
               theme: ThemeData(
                 colorScheme: ColorScheme.fromSeed(
@@ -108,7 +110,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
                   ),
                 ),
               ),
-              home: HomePage(),
+              routerConfig: appRouter,
             ),
           )
         : Center(child: CircularProgressIndicator()),

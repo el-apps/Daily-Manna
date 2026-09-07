@@ -5,15 +5,26 @@ import 'package:daily_manna/ui/verse_selection/books_tab.dart';
 import 'package:daily_manna/ui/verse_selection/recents_tab.dart';
 import 'package:daily_manna/ui/verse_selection/review_tab.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 /// Full-screen verse selection page with tabs for Books, Needs Review, and Recents.
 class VerseSelectionPage extends StatelessWidget {
-  const VerseSelectionPage({super.key, this.rangeMode = false});
+  const VerseSelectionPage({
+    super.key,
+    this.rangeMode = false,
+    this.initialBookId,
+    this.initialChapter,
+    this.initialTabIndex = 0,
+  });
 
   final bool rangeMode;
+  final String? initialBookId;
+  final int? initialChapter;
+  final int initialTabIndex;
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
+    initialIndex: initialTabIndex,
     length: 3,
     child: AppScaffold(
       title: rangeMode ? 'Select Passage' : 'Select Verse',
@@ -33,7 +44,11 @@ class VerseSelectionPage extends StatelessWidget {
 
   Widget _buildRangeModeBody(BuildContext context) => TabBarView(
     children: [
-      BooksTab.range(onRangeSelected: (ref) => Navigator.of(context).pop(ref)),
+      BooksTab.range(
+        initialBookId: initialBookId,
+        initialChapter: initialChapter,
+        onRangeSelected: (ref) => context.pop(ref),
+      ),
       ReviewTab(onVerseSelected: (ref) => _selectSingleVerse(context, ref)),
       RecentsTab(onVerseSelected: (ref) => _selectSingleVerse(context, ref)),
     ],
@@ -41,18 +56,22 @@ class VerseSelectionPage extends StatelessWidget {
 
   Widget _buildNormalBody(BuildContext context) => TabBarView(
     children: [
-      BooksTab(onVerseSelected: (ref) => _selectVerse(context, ref)),
+      BooksTab(
+        initialBookId: initialBookId,
+        initialChapter: initialChapter,
+        onVerseSelected: (ref) => _selectVerse(context, ref),
+      ),
       ReviewTab(onVerseSelected: (ref) => _selectVerse(context, ref)),
       RecentsTab(onVerseSelected: (ref) => _selectVerse(context, ref)),
     ],
   );
 
   void _selectVerse(BuildContext context, ScriptureRef ref) {
-    Navigator.of(context).pop(ref);
+    context.pop(ref);
   }
 
   void _selectSingleVerse(BuildContext context, ScriptureRef ref) {
-    Navigator.of(context).pop(
+    context.pop(
       ScriptureRangeRef(
         bookId: ref.bookId!,
         chapter: ref.chapterNumber!,

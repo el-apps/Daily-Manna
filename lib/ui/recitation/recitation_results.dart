@@ -12,14 +12,12 @@ class RecitationResults extends StatefulWidget {
   final ScriptureRangeRef ref;
   final String transcribedText;
   final double score;
-  final VoidCallback onReciteAgain;
 
   const RecitationResults({
     super.key,
     required this.ref,
     required this.transcribedText,
     required this.score,
-    required this.onReciteAgain,
   });
 
   @override
@@ -44,25 +42,19 @@ class _RecitationResultsState extends State<RecitationResults> {
   }
 
   @override
-  Widget build(BuildContext context) => _DiffViewWrapper(
-    ref: widget.ref,
-    diff: _diff,
-    score: widget.score,
-    onReciteAgain: widget.onReciteAgain,
-  );
+  Widget build(BuildContext context) =>
+      _DiffViewWrapper(ref: widget.ref, diff: _diff, score: widget.score);
 }
 
 class _DiffViewWrapper extends StatefulWidget {
   final ScriptureRangeRef ref;
   final List<DiffWord> diff;
   final double score;
-  final VoidCallback onReciteAgain;
 
   const _DiffViewWrapper({
     required this.ref,
     required this.diff,
     required this.score,
-    required this.onReciteAgain,
   });
 
   @override
@@ -114,17 +106,6 @@ class _DiffViewWrapperState extends State<_DiffViewWrapper> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _DiffPassageSection(diff: filteredDiff),
-            ),
-          ),
-          // Fixed footer with button
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: FilledButton(
-                onPressed: widget.onReciteAgain,
-                child: const Text('Continue'),
-              ),
             ),
           ),
         ],

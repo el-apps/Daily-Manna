@@ -1,7 +1,4 @@
 import 'dart:async';
-import 'dart:io';
-
-import 'package:path_provider/path_provider.dart';
 import 'package:daily_manna/models/recitation_result.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
@@ -53,6 +50,7 @@ class _RecitationModeState extends State<RecitationMode> {
   Duration? _audioDuration;
   late TextEditingController _transcriptionController;
   late ScriptureRangeRef _selectedPassageRef;
+  _RecitationResultData? _result;
 
   // Max chunk size for API limits
   // WAV at 16kHz mono 16-bit = 32KB/s, so ~2 min per chunk = 3.8MB
@@ -74,7 +72,6 @@ class _RecitationModeState extends State<RecitationMode> {
 
     // Keep screen on during recitation flow
     WakelockPlus.enable();
-
   }
 
   @override
@@ -88,53 +85,64 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   @override
-  Widget build(BuildContext context) => AppScaffold(
-    title: 'Recite',
-    body: SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          switch (_step) {
-            RecitationStep.transcribing => LoadingSection(
-              message: 'Transcribing audio...',
-            ),
-            RecitationStep.transcriptionReview => TranscriptionReviewSection(
-              controller: _transcriptionController,
-              onSubmit: _submitTranscription,
-              onCancel: _cancelTranscriptionReview,
-            ),
-            RecitationStep.recognizing => LoadingSection(
-              message: 'Recognizing passage...',
-            ),
-            RecitationStep.referenceReview => RecitationConfirmationSection(
-              passageRef: _selectedPassageRef,
-              onPassageSelected: (ref) {
-                setState(() => _selectedPassageRef = ref);
-              },
-              onConfirm: _confirmPassage,
-              onCancel: _cancelReferenceReview,
-            ),
-            RecitationStep.playback => RecitationPlaybackSection(
-              audioPlayer: _audioPlayer,
-              onTogglePlayback: _togglePlayback,
-              onStopPlayback: _stopPlayback,
-              onDiscard: _discardRecording,
-              onSubmit: _sendForTranscription,
-            ),
-            RecitationStep.idle || RecitationStep.recording => RecordingCard(
-              state: _step == RecitationStep.recording
-                  ? RecordingState.recording
-                  : RecordingState.idle,
-              onToggle: _step == RecitationStep.recording
-                  ? _stopRecording
-                  : _startRecording,
-            ),
-          },
-        ],
+  Widget build(BuildContext context) {
+    final result = _result;
+    if (result != null) {
+      return RecitationResults(
+        ref: result.ref,
+        transcribedText: result.transcribedText,
+        score: result.score,
+      );
+    }
+
+    return AppScaffold(
+      title: 'Recite',
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            switch (_step) {
+              RecitationStep.transcribing => LoadingSection(
+                message: 'Transcribing audio...',
+              ),
+              RecitationStep.transcriptionReview => TranscriptionReviewSection(
+                controller: _transcriptionController,
+                onSubmit: _submitTranscription,
+                onCancel: _cancelTranscriptionReview,
+              ),
+              RecitationStep.recognizing => LoadingSection(
+                message: 'Recognizing passage...',
+              ),
+              RecitationStep.referenceReview => RecitationConfirmationSection(
+                passageRef: _selectedPassageRef,
+                onPassageSelected: (ref) {
+                  setState(() => _selectedPassageRef = ref);
+                },
+                onConfirm: _confirmPassage,
+                onCancel: _cancelReferenceReview,
+              ),
+              RecitationStep.playback => RecitationPlaybackSection(
+                audioPlayer: _audioPlayer,
+                onTogglePlayback: _togglePlayback,
+                onStopPlayback: _stopPlayback,
+                onDiscard: _discardRecording,
+                onSubmit: _sendForTranscription,
+              ),
+              RecitationStep.idle || RecitationStep.recording => RecordingCard(
+                state: _step == RecitationStep.recording
+                    ? RecordingState.recording
+                    : RecordingState.idle,
+                onToggle: _step == RecitationStep.recording
+                    ? _stopRecording
+                    : _startRecording,
+              ),
+            },
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   Future<void> _startRecording() async {
     try {
@@ -199,7 +207,7 @@ class _RecitationModeState extends State<RecitationMode> {
   List<Uint8List> _chunkWavData(Uint8List wavData, ErrorLoggerService logger) {
     // WAV header is 44 bytes for standard PCM
     const wavHeaderSize = 44;
-    
+
     if (wavData.length <= _maxChunkBytes) {
       logger.logInfo(
         'Single chunk: ${wavData.length} bytes, no splitting needed',
@@ -212,61 +220,69 @@ class _RecitationModeState extends State<RecitationMode> {
     final originalHeader = wavData.sublist(0, wavHeaderSize);
     final audioDataStart = wavHeaderSize;
     final audioDataLength = wavData.length - wavHeaderSize;
-    
+
     // Calculate chunk size for audio data (excluding header)
     final maxAudioPerChunk = _maxChunkBytes - wavHeaderSize;
-    
+
     final chunks = <Uint8List>[];
     var offset = 0;
-    
+
     while (offset < audioDataLength) {
-      final chunkAudioLength = (audioDataLength - offset).clamp(0, maxAudioPerChunk);
+      final chunkAudioLength = (audioDataLength - offset).clamp(
+        0,
+        maxAudioPerChunk,
+      );
       final chunkAudioEnd = offset + chunkAudioLength;
-      
+
       // Create new WAV with updated header for this chunk's size
       final chunkData = _createWavChunk(
         originalHeader,
-        wavData.sublist(audioDataStart + offset, audioDataStart + chunkAudioEnd),
+        wavData.sublist(
+          audioDataStart + offset,
+          audioDataStart + chunkAudioEnd,
+        ),
       );
-      
+
       chunks.add(chunkData);
       offset = chunkAudioEnd;
     }
-    
+
     // Log detailed chunk info
-    final chunkSizes = chunks.map((c) => '${(c.length / 1024).toStringAsFixed(1)}KB').join(', ');
+    final chunkSizes = chunks
+        .map((c) => '${(c.length / 1024).toStringAsFixed(1)}KB')
+        .join(', ');
     logger.logInfo(
       'Split ${wavData.length} bytes into ${chunks.length} chunks: [$chunkSizes]',
       context: 'chunking',
     );
-    
+
     return chunks;
   }
-  
+
   /// Create a valid WAV chunk with proper header for the given audio data
   Uint8List _createWavChunk(Uint8List originalHeader, Uint8List audioData) {
     // Copy header and update size fields
     final header = Uint8List.fromList(originalHeader);
     final fileSize = audioData.length + 36; // 44 - 8 for RIFF header
     final dataSize = audioData.length;
-    
+
     // Update file size at offset 4 (little-endian)
     header[4] = fileSize & 0xFF;
     header[5] = (fileSize >> 8) & 0xFF;
     header[6] = (fileSize >> 16) & 0xFF;
     header[7] = (fileSize >> 24) & 0xFF;
-    
+
     // Update data chunk size at offset 40 (little-endian)
     header[40] = dataSize & 0xFF;
     header[41] = (dataSize >> 8) & 0xFF;
     header[42] = (dataSize >> 16) & 0xFF;
     header[43] = (dataSize >> 24) & 0xFF;
-    
+
     // Combine header and audio data
     final result = Uint8List(header.length + audioData.length);
     result.setRange(0, header.length, header);
     result.setRange(header.length, result.length, audioData);
-    
+
     return result;
   }
 
@@ -279,7 +295,7 @@ class _RecitationModeState extends State<RecitationMode> {
     final audioData = _audioData!;
     final totalSize = audioData.length;
     final audioDuration = _audioDuration?.inSeconds.toDouble() ?? 0;
-    
+
     // Split into chunks if needed for API limits (with proper WAV headers)
     final chunks = _chunkWavData(audioData, logger);
     final chunkCount = chunks.length;
@@ -295,31 +311,34 @@ class _RecitationModeState extends State<RecitationMode> {
     try {
       // Transcribe each chunk and concatenate results
       final transcriptions = <String>[];
-      
+
       for (var i = 0; i < chunks.length; i++) {
         final chunkSize = chunks[i].length;
-        final chunkDurationEst = (chunkSize - 44) / (16000 * 2); // 16kHz, 16-bit mono
-        
+        final chunkDurationEst =
+            (chunkSize - 44) / (16000 * 2); // 16kHz, 16-bit mono
+
         logger.logInfo(
           'Chunk ${i + 1}/$chunkCount: ${(chunkSize / 1024).toStringAsFixed(1)} KB, '
           '~${chunkDurationEst.toStringAsFixed(1)}s',
           context: 'chunk_start',
         );
-        
-        final chunkText = await _backendService
-            .transcribeAudio(chunks[i], 'audio.wav');
+
+        final chunkText = await _backendService.transcribeAudio(
+          chunks[i],
+          'audio.wav',
+        );
         final trimmedText = chunkText.trim();
         transcriptions.add(trimmedText);
-        
+
         // Log first/last 100 chars of each chunk's transcription
-        final preview = trimmedText.length > 100 
+        final preview = trimmedText.length > 100
             ? '${trimmedText.substring(0, 50)}...${trimmedText.substring(trimmedText.length - 50)}'
             : trimmedText;
         logger.logInfo(
           'Chunk ${i + 1} result (${trimmedText.length} chars): $preview',
           context: 'chunk_result',
         );
-        
+
         if (!mounted) return;
       }
 
@@ -383,11 +402,10 @@ class _RecitationModeState extends State<RecitationMode> {
     final transcribedText = _transcriptionController.text;
 
     try {
-      final recognizedRef = await _backendService
-          .recognizePassage(
-            transcribedText,
-            availableBookIds: bibleService.books.map((b) => b.id).toList(),
-          );
+      final recognizedRef = await _backendService.recognizePassage(
+        transcribedText,
+        availableBookIds: bibleService.books.map((b) => b.id).toList(),
+      );
 
       if (!mounted) return;
 
@@ -517,24 +535,13 @@ class _RecitationModeState extends State<RecitationMode> {
         RecitationResult(ref: passageRef, score: score),
       );
 
-      // Navigate to results page
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => RecitationResults(
-            ref: passageRef,
-            transcribedText: transcribedText,
-            score: score,
-            onReciteAgain: () {
-              Navigator.of(context).pop(); // Pop results page
-              setState(() {
-                _step = RecitationStep.idle;
-                _clearAudio();
-                _transcriptionController.clear();
-              });
-            },
-          ),
-        ),
-      );
+      setState(() {
+        _result = _RecitationResultData(
+          ref: passageRef,
+          transcribedText: transcribedText,
+          score: score,
+        );
+      });
     } catch (e) {
       _showError('Error grading recitation: $e');
     }
@@ -575,5 +582,16 @@ class _RecitationModeState extends State<RecitationMode> {
     }
     _showError(message);
   }
+}
 
+class _RecitationResultData {
+  const _RecitationResultData({
+    required this.ref,
+    required this.transcribedText,
+    required this.score,
+  });
+
+  final ScriptureRangeRef ref;
+  final String transcribedText;
+  final double score;
 }

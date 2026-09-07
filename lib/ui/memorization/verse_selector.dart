@@ -1,8 +1,8 @@
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
-import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 class VerseSelector extends StatelessWidget {
@@ -55,18 +55,14 @@ class VerseSelector extends StatelessWidget {
 
   void _openSelectionPage(BuildContext context) async {
     if (_rangeMode) {
-      final selectedRef = await Navigator.of(context).push<ScriptureRangeRef>(
-        MaterialPageRoute(
-          builder: (_) => const VerseSelectionPage(rangeMode: true),
-        ),
+      final selectedRef = await context.push<ScriptureRangeRef>(
+        '/select?mode=range',
       );
       if (selectedRef != null) {
         _onRangeSelected!(selectedRef);
       }
     } else {
-      final selectedRef = await Navigator.of(context).push<ScriptureRef>(
-        MaterialPageRoute(builder: (_) => const VerseSelectionPage()),
-      );
+      final selectedRef = await context.push<ScriptureRef>('/select');
       if (selectedRef != null) {
         _onSelected!(selectedRef);
       }

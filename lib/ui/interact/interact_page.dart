@@ -8,8 +8,8 @@ import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/count_badge.dart';
 import 'package:daily_manna/ui/interaction_sheet.dart';
 import 'package:daily_manna/ui/theme_card.dart';
-import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 /// Interact hub showing actions and verses due for review.
@@ -32,11 +32,7 @@ class _InteractPageState extends State<InteractPage> {
   );
 
   Future<void> _findVerse(BuildContext context) async {
-    final passage = await Navigator.of(context).push<ScriptureRangeRef>(
-      MaterialPageRoute(
-        builder: (_) => const VerseSelectionPage(rangeMode: true),
-      ),
-    );
+    final passage = await context.push<ScriptureRangeRef>('/select?mode=range');
     if (context.mounted && passage != null) {
       showPassageInteractionSheet(context, passage);
     }
