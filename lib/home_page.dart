@@ -1,8 +1,8 @@
 import 'package:daily_manna/mode_card.dart';
-import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/interaction_sheet.dart';
 import 'package:daily_manna/ui/streak/streak_card.dart';
+import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -53,7 +53,7 @@ class HomePage extends StatelessWidget {
   );
 
   Future<void> _startInteraction(BuildContext context) async {
-    final passage = await context.push<ScriptureRangeRef>('/select?mode=range');
+    final passage = await showPassageSelector(context);
     if (context.mounted && passage != null) {
       showPassageInteractionSheet(context, passage);
     }

@@ -1,3 +1,4 @@
+import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/verse_selection/books_tab.dart';
@@ -6,6 +7,14 @@ import 'package:daily_manna/ui/verse_selection/review_tab.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+Future<ScriptureRangeRef?> showPassageSelector(BuildContext context) =>
+    showModalBottomSheet<ScriptureRangeRef>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => const VerseSelectionPage(rangeMode: true),
+    );
 
 /// Full-screen verse selection page with tabs for Books, Needs Review, and Recents.
 class VerseSelectionPage extends StatefulWidget {
