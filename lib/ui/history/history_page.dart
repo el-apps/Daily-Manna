@@ -8,7 +8,7 @@ import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/history/result_card.dart';
-import 'package:daily_manna/ui/practice_mode_dialog.dart';
+import 'package:daily_manna/ui/engagement_sheet.dart';
 import 'package:daily_manna/utils/date_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -22,6 +22,14 @@ List<db.Result> filterResultsForDate(
   return results
       .where((result) => result.timestamp.localDateOnly == selectedDay)
       .toList();
+}
+
+List<db.Result> filterResultsByType(
+  List<db.Result> results,
+  db.ResultType? type,
+) {
+  if (type == null) return results;
+  return results.where((result) => result.type == type).toList();
 }
 
 class HistoryPage extends StatefulWidget {
@@ -64,9 +72,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 }
 
                 final results = snapshot.data ?? [];
-                final filtered = _filterType == null
-                    ? results
-                    : results.where((r) => r.type == _filterType).toList();
+                final filtered = filterResultsByType(results, _filterType);
                 final selectedResults = filterResultsForDate(
                   filtered,
                   _selectedDate,
@@ -122,6 +128,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
 class _FilterChips extends StatelessWidget {
   static const _filterOptions = [
+    (label: 'Study', type: db.ResultType.study),
     (label: 'Recitation', type: db.ResultType.recitation),
     (label: 'Memorization', type: db.ResultType.memorization),
   ];
@@ -202,7 +209,7 @@ class _DateGroup extends StatelessWidget {
   );
 
   void _showPracticeDialog(BuildContext context, db.Result result) {
-    showPracticeModeDialog(
+    showEngagementSheet(
       context,
       ScriptureRef(
         bookId: result.bookId,

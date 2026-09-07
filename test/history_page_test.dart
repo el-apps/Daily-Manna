@@ -41,4 +41,45 @@ void main() {
       expect(filtered.single.timestamp.localDateOnly, selectedDay);
     });
   });
+
+  group('filterResultsByType', () {
+    final results = [
+      db.Result(
+        id: 1,
+        timestamp: DateTime(2024, 1, 1),
+        type: db.ResultType.study,
+        bookId: 'Gen',
+        startChapter: 1,
+        startVerse: 1,
+        score: 1,
+        clientId: 'study',
+        updatedAt: DateTime(2024, 1, 1),
+      ),
+      db.Result(
+        id: 2,
+        timestamp: DateTime(2024, 1, 2),
+        type: db.ResultType.memorization,
+        bookId: 'Gen',
+        startChapter: 1,
+        startVerse: 2,
+        score: 1,
+        clientId: 'memorization',
+        updatedAt: DateTime(2024, 1, 2),
+      ),
+    ];
+
+    test('returns all results for the All filter', () {
+      expect(filterResultsByType(results, null), same(results));
+    });
+
+    test('returns only study sessions for the Study filter', () {
+      final filtered = filterResultsByType(results, db.ResultType.study);
+      expect(filtered.map((result) => result.id), [1]);
+    });
+
+    test('returns only practice results for a practice filter', () {
+      final filtered = filterResultsByType(results, db.ResultType.memorization);
+      expect(filtered.map((result) => result.id), [2]);
+    });
+  });
 }

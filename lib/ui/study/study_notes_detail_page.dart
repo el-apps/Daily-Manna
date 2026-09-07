@@ -5,7 +5,7 @@ import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
-import 'package:daily_manna/ui/practice_mode_dialog.dart';
+import 'package:daily_manna/ui/engagement_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -129,7 +129,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage> {
   }
 
   void _showPracticeDialog() {
-    showPracticeModeDialog(
+    showEngagementSheet(
       context,
       ScriptureRef(
         bookId: widget.result.bookId,
