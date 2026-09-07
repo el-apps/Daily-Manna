@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:daily_manna/services/database/database.dart';
@@ -103,6 +104,42 @@ class SyncService {
   final AuthTokenProvider? _authTokenProvider;
   final Future<SharedPreferences> Function() _preferencesProvider;
   static const _clientIdKey = 'sync_client_id';
+  StreamSubscription<List<SyncOutboxData>>? _outboxSubscription;
+  bool _syncing = false;
+  bool _syncAgain = false;
+
+  /// Starts syncing newly queued local changes for authenticated users.
+  void startAutoSync() {
+    _outboxSubscription ??= _db.watchPendingChanges().listen((pending) {
+      if (pending.isNotEmpty) _requestSync();
+    });
+  }
+
+  Future<void> dispose() async {
+    await _outboxSubscription?.cancel();
+    _outboxSubscription = null;
+  }
+
+  Future<void> _requestSync() async {
+    if (_syncing) {
+      _syncAgain = true;
+      return;
+    }
+    _syncing = true;
+    try {
+      do {
+        _syncAgain = false;
+        try {
+          if (await _authTokenProvider?.call() != null) await sync();
+        } catch (_) {
+          // Keep the local outbox intact; a later write or manual retry can
+          // attempt synchronization again.
+        }
+      } while (_syncAgain);
+    } finally {
+      _syncing = false;
+    }
+  }
 
   Future<String> getClientId() async {
     final preferences = await _preferencesProvider();

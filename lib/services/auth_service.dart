@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 abstract class AuthTokenStore {
   Future<String?> read(String key);
@@ -25,10 +26,33 @@ class SecureAuthTokenStore implements AuthTokenStore {
   Future<void> delete(String key) => _storage.delete(key: key);
 }
 
+/// Browser storage is used on web because the secure-storage web plugin's
+/// WebCrypto key can become unavailable after a browser profile or origin
+/// migration. The token is still scoped to this origin and is not used on
+/// Android, where the platform secure store remains available.
+class WebAuthTokenStore implements AuthTokenStore {
+  Future<SharedPreferences> get _preferences => SharedPreferences.getInstance();
+
+  @override
+  Future<String?> read(String key) async => (await _preferences).getString(key);
+
+  @override
+  Future<void> write(String key, String value) async {
+    await (await _preferences).setString(key, value);
+  }
+
+  @override
+  Future<void> delete(String key) async {
+    await (await _preferences).remove(key);
+  }
+}
+
 class AuthService extends ChangeNotifier {
   AuthService({http.Client? client, AuthTokenStore? store, Uri? baseUrl})
     : _client = client ?? http.Client(),
-      _store = store ?? const SecureAuthTokenStore(),
+      _store =
+          store ??
+          (kIsWeb ? WebAuthTokenStore() : const SecureAuthTokenStore()),
       baseUrl = baseUrl ?? _defaultBaseUrl;
 
   static const _tokenKey = 'auth_token';

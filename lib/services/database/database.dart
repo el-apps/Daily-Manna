@@ -151,6 +151,9 @@ class AppDatabase extends _$AppDatabase {
 
   Future<List<SyncOutboxData>> pendingChanges() => select(syncOutbox).get();
 
+  Stream<List<SyncOutboxData>> watchPendingChanges() =>
+      select(syncOutbox).watch();
+
   Future<void> acknowledgeChanges(Iterable<int> ids) async {
     if (ids.isEmpty) return;
     await (delete(syncOutbox)..where((row) => row.id.isIn(ids))).go();

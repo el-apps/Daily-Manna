@@ -57,6 +57,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
     );
     _initFuture = Future.wait([
       _authService.init().then((_) async {
+        _syncService.startAutoSync();
         if (_authService.isSignedIn) {
           try {
             await _syncService.sync();
