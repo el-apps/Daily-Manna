@@ -94,7 +94,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
               ChangeNotifierProvider.value(value: _authService),
               ChangeNotifierProvider.value(value: _errorLoggerService),
             ],
-            child: MaterialApp(
+            child: MaterialApp.router(
               title: 'Daily Manna',
               theme: ThemeData(
                 colorScheme: ColorScheme.fromSeed(

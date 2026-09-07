@@ -54,7 +54,6 @@ class _BooksTabState extends State<BooksTab> {
     final selectedBook = _selectedBookId == null
         ? null
         : bibleService.books.firstWhere((book) => book.id == _selectedBookId);
-    final modeQuery = widget.rangeMode ? '?mode=range' : '';
 
     // Only show breadcrumbs when navigated into a book
     if (_selectedBookId == null) {
@@ -82,6 +81,7 @@ class _BooksTabState extends State<BooksTab> {
   }
 
   Widget _buildContent(BibleService bibleService) {
+    final modeQuery = widget.rangeMode ? '?mode=range' : '';
     if (_selectedBookId == null) {
       return _BooksList(
         books: bibleService.books,

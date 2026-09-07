@@ -1,7 +1,4 @@
 import 'dart:async';
-import 'dart:io';
-
-import 'package:path_provider/path_provider.dart';
 import 'package:daily_manna/models/recitation_result.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
