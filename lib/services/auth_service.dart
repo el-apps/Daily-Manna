@@ -29,15 +29,12 @@ class AuthService extends ChangeNotifier {
   AuthService({http.Client? client, AuthTokenStore? store, Uri? baseUrl})
     : _client = client ?? http.Client(),
       _store = store ?? const SecureAuthTokenStore(),
-      baseUrl = baseUrl ?? _configuredBaseUrl;
+      baseUrl = baseUrl ?? _defaultBaseUrl;
 
   static const _tokenKey = 'auth_token';
   static const _emailKey = 'auth_email';
-  static final Uri _configuredBaseUrl = Uri.parse(
-    const String.fromEnvironment(
-      'DAILY_MANNA_POCKETBASE_URL',
-      defaultValue: 'https://dailymanna.kwila.cloud',
-    ),
+  static final Uri _defaultBaseUrl = Uri.parse(
+    'https://dailymanna.kwila.cloud',
   );
 
   final http.Client _client;
