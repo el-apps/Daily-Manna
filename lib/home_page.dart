@@ -1,6 +1,8 @@
 import 'package:daily_manna/mode_card.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
+import 'package:daily_manna/ui/interaction_sheet.dart';
 import 'package:daily_manna/ui/streak/streak_card.dart';
+import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -25,7 +27,7 @@ class HomePage extends StatelessWidget {
         ModeCard(
           title: 'Interact',
           icon: Icons.play_arrow,
-          onTap: () => context.push('/interact'),
+          onTap: () => _startInteraction(context),
         ),
         ModeCard(
           title: 'History',
@@ -44,5 +46,16 @@ class HomePage extends StatelessWidget {
         ),
       ],
     ),
+    floatingActionButton: FloatingActionButton(
+      onPressed: () => _startInteraction(context),
+      child: const Icon(Icons.play_arrow),
+    ),
   );
+
+  Future<void> _startInteraction(BuildContext context) async {
+    final passage = await showPassageSelector(context);
+    if (context.mounted && passage != null) {
+      showPassageInteractionSheet(context, passage);
+    }
+  }
 }

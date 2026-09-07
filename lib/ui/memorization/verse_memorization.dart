@@ -6,7 +6,6 @@ import 'package:daily_manna/ui/score_emoji.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/theme_card.dart';
-import 'package:daily_manna/ui/memorization/verse_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -59,7 +58,6 @@ class _VerseMemorizationState extends State<VerseMemorization> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: 16,
             children: [
-              VerseSelector(ref: _ref, onSelected: _selectRef),
               if (_result != Result.unknown && bibleService.hasVerse(_ref))
                 ThemeCard(
                   style: ThemeCardStyle.brown,
@@ -217,12 +215,7 @@ class _VerseMemorizationState extends State<VerseMemorization> {
   }
 }
 
-enum Result {
-  unknown,
-  learn,
-  incorrect,
-  correct,
-}
+enum Result { unknown, learn, incorrect, correct }
 
 class _DiffPassage extends StatelessWidget {
   const _DiffPassage({required this.diff});
@@ -231,8 +224,8 @@ class _DiffPassage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseStyle = Theme.of(context).textTheme.bodyLarge ??
-        const TextStyle();
+    final baseStyle =
+        Theme.of(context).textTheme.bodyLarge ?? const TextStyle();
 
     return RichText(
       text: TextSpan(

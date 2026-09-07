@@ -3,7 +3,6 @@ import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 const int _gridCrossAxisCount = 5;
@@ -12,6 +11,7 @@ const int _gridCrossAxisCount = 5;
 class BooksTab extends StatefulWidget {
   final void Function(ScriptureRef)? onVerseSelected;
   final void Function(ScriptureRangeRef)? onRangeSelected;
+  final void Function(String)? onSelectionChanged;
   final String? initialBookId;
   final int? initialChapter;
 
@@ -20,6 +20,7 @@ class BooksTab extends StatefulWidget {
     required this.onVerseSelected,
     this.initialBookId,
     this.initialChapter,
+    this.onSelectionChanged,
   }) : onRangeSelected = null;
 
   const BooksTab.range({
@@ -27,6 +28,7 @@ class BooksTab extends StatefulWidget {
     required this.onRangeSelected,
     this.initialBookId,
     this.initialChapter,
+    this.onSelectionChanged,
   }) : onVerseSelected = null;
 
   bool get rangeMode => onRangeSelected != null;
@@ -75,22 +77,14 @@ class _BooksTabState extends State<BooksTab> {
   }
 
   Widget _buildContent(BibleService bibleService) {
-    final modeQuery = widget.rangeMode ? '?mode=range' : '';
     if (_selectedBookId == null) {
-      return _BooksList(
-        books: bibleService.books,
-        onBookSelected: (book) {
-          context.push('/select/books/${book.id}$modeQuery');
-        },
-      );
+      return _BooksList(books: bibleService.books, onBookSelected: _selectBook);
     }
 
     if (_selectedChapter == null) {
       return _ChaptersList(
         chapters: bibleService.getChapters(_selectedBookId!),
-        onChapterSelected: (chapter) {
-          context.push('/select/books/$_selectedBookId/$chapter$modeQuery');
-        },
+        onChapterSelected: _selectChapter,
       );
     }
 
@@ -130,12 +124,43 @@ class _BooksTabState extends State<BooksTab> {
     return _VersesList(verses: verses, onVerseSelected: _handleVerseSelected);
   }
 
+  void _selectBook(Book book) {
+    setState(() {
+      _selectedBookId = book.id;
+      _selectedBookTitle = book.title;
+      _selectedChapter = null;
+      _startVerse = null;
+    });
+    widget.onSelectionChanged?.call(book.title);
+  }
+
+  void _selectChapter(int chapter) {
+    final bookTitle =
+        _selectedBookTitle ??
+        context
+            .read<BibleService>()
+            .books
+            .firstWhere((book) => book.id == _selectedBookId)
+            .title;
+    setState(() {
+      _selectedChapter = chapter;
+      _startVerse = null;
+    });
+    widget.onSelectionChanged?.call('$bookTitle $chapter');
+  }
+
   void _handleVerseSelected(int verse) {
     if (widget.rangeMode) {
       setState(() {
         _startVerse = verse;
       });
+      widget.onSelectionChanged?.call(
+        '${_selectedBookTitle ?? _selectedBookId} $_selectedChapter:$verse',
+      );
     } else {
+      widget.onSelectionChanged?.call(
+        '${_selectedBookTitle ?? _selectedBookId} $_selectedChapter:$verse',
+      );
       widget.onVerseSelected!(
         ScriptureRef(
           bookId: _selectedBookId,
@@ -344,21 +369,27 @@ class _ChaptersList extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => GridView.builder(
-    padding: const EdgeInsets.all(16),
-    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: _gridCrossAxisCount,
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
+  Widget build(BuildContext context) => Center(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 560),
+      child: GridView.builder(
+        padding: const EdgeInsets.all(16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: _gridCrossAxisCount,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 2.2,
+        ),
+        itemCount: chapters.length,
+        itemBuilder: (context, index) {
+          final chapter = chapters[index];
+          return _NumberButton(
+            number: chapter.num,
+            onTap: () => onChapterSelected(chapter.num),
+          );
+        },
+      ),
     ),
-    itemCount: chapters.length,
-    itemBuilder: (context, index) {
-      final chapter = chapters[index];
-      return _NumberButton(
-        number: chapter.num,
-        onTap: () => onChapterSelected(chapter.num),
-      );
-    },
   );
 }
 
@@ -369,21 +400,27 @@ class _VersesList extends StatelessWidget {
   const _VersesList({required this.verses, required this.onVerseSelected});
 
   @override
-  Widget build(BuildContext context) => GridView.builder(
-    padding: const EdgeInsets.all(16),
-    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: _gridCrossAxisCount,
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
+  Widget build(BuildContext context) => Center(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 560),
+      child: GridView.builder(
+        padding: const EdgeInsets.all(16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: _gridCrossAxisCount,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 2.2,
+        ),
+        itemCount: verses.length,
+        itemBuilder: (context, index) {
+          final verse = verses[index];
+          return _NumberButton(
+            number: verse.num,
+            onTap: () => onVerseSelected(verse.num),
+          );
+        },
+      ),
     ),
-    itemCount: verses.length,
-    itemBuilder: (context, index) {
-      final verse = verses[index];
-      return _NumberButton(
-        number: verse.num,
-        onTap: () => onVerseSelected(verse.num),
-      );
-    },
   );
 }
 
@@ -399,25 +436,31 @@ class _VersesListRangeEnd extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => GridView.builder(
-    padding: const EdgeInsets.all(16),
-    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: _gridCrossAxisCount,
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
+  Widget build(BuildContext context) => Center(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 560),
+      child: GridView.builder(
+        padding: const EdgeInsets.all(16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: _gridCrossAxisCount,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 2.2,
+        ),
+        itemCount: verses.length,
+        itemBuilder: (context, index) {
+          final verse = verses[index];
+          final isSelectable = verse.num >= startVerse;
+          final isStartVerse = verse.num == startVerse;
+          return _NumberButtonRangeEnd(
+            number: verse.num,
+            isSelectable: isSelectable,
+            isStartVerse: isStartVerse,
+            onTap: isSelectable ? () => onEndVerseSelected(verse.num) : null,
+          );
+        },
+      ),
     ),
-    itemCount: verses.length,
-    itemBuilder: (context, index) {
-      final verse = verses[index];
-      final isSelectable = verse.num >= startVerse;
-      final isStartVerse = verse.num == startVerse;
-      return _NumberButtonRangeEnd(
-        number: verse.num,
-        isSelectable: isSelectable,
-        isStartVerse: isStartVerse,
-        onTap: isSelectable ? () => onEndVerseSelected(verse.num) : null,
-      );
-    },
   );
 }
 
