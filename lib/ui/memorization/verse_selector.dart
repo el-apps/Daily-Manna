@@ -62,9 +62,17 @@ class VerseSelector extends StatelessWidget {
         _onRangeSelected!(selectedRef);
       }
     } else {
-      final selectedRef = await context.push<ScriptureRef>('/select');
-      if (selectedRef != null) {
-        _onSelected!(selectedRef);
+      final selectedPassage = await context.push<ScriptureRangeRef>(
+        '/select?mode=range',
+      );
+      if (selectedPassage != null) {
+        _onSelected!(
+          ScriptureRef(
+            bookId: selectedPassage.bookId,
+            chapterNumber: selectedPassage.chapter,
+            verseNumber: selectedPassage.startVerse,
+          ),
+        );
       }
     }
   }
