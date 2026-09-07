@@ -19,7 +19,7 @@ class EngageActions extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: () => _practiceAnyVerse(context),
             icon: const Icon(Icons.add),
-            label: const Text('Add verse'),
+            label: const Text('Start verse'),
           ),
         ),
         const SizedBox(width: 12),
