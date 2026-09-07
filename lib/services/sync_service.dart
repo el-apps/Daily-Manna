@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:daily_manna/services/database/database.dart';
@@ -108,24 +107,11 @@ class SyncService {
   final Future<SharedPreferences> Function() _preferencesProvider;
   final ErrorLoggerService? _errorLogger;
   static const _clientIdKey = 'sync_client_id';
-  StreamSubscription<List<SyncOutboxData>>? _outboxSubscription;
   bool _syncing = false;
   bool _syncAgain = false;
 
-  /// Starts syncing newly queued local changes for authenticated users.
-  void startAutoSync() {
-    _outboxSubscription ??= _db.watchPendingChanges().listen((pending) {
-      if (pending.isNotEmpty) requestSync();
-    });
-  }
-
   /// Requests one sync attempt after a local write has been committed.
   Future<void> requestSync() => _requestSync();
-
-  Future<void> dispose() async {
-    await _outboxSubscription?.cancel();
-    _outboxSubscription = null;
-  }
 
   Future<void> _requestSync() async {
     if (_syncing) {

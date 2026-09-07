@@ -56,7 +56,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
       authTokenProvider: _authService.tokenProvider,
       errorLogger: _errorLoggerService,
     );
-    _database.onLocalChange = _syncService.requestSync;
+    _resultsService.onLocalChange = _syncService.requestSync;
     _initFuture =
         Future.wait([
           _authService.init(),
@@ -67,7 +67,6 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
           _errorLoggerService.init(),
           _bibleService.load(context),
         ]).then((_) async {
-          _syncService.startAutoSync();
           if (_authService.isSignedIn) {
             try {
               await _syncService.sync();

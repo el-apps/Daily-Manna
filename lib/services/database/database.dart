@@ -50,9 +50,6 @@ class SyncMetadata extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
-  /// Called after a local change has been committed.
-  Future<void> Function()? onLocalChange;
-
   /// Constructor for testing with an in-memory database.
   AppDatabase.forTesting(super.e);
 
@@ -125,7 +122,6 @@ class AppDatabase extends _$AppDatabase {
       await _enqueueResult(clientId, 'upsert', now);
       return id;
     });
-    await onLocalChange?.call();
     return id;
   }
 
@@ -141,7 +137,6 @@ class AppDatabase extends _$AppDatabase {
       );
       await _enqueueResult(row.clientId, 'upsert', now);
     });
-    await onLocalChange?.call();
   }
 
   Future<void> _enqueueResult(
@@ -159,9 +154,6 @@ class AppDatabase extends _$AppDatabase {
   );
 
   Future<List<SyncOutboxData>> pendingChanges() => select(syncOutbox).get();
-
-  Stream<List<SyncOutboxData>> watchPendingChanges() =>
-      select(syncOutbox).watch();
 
   Future<void> acknowledgeChanges(Iterable<int> ids) async {
     if (ids.isEmpty) return;

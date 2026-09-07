@@ -2,6 +2,7 @@ import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart';
+import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/practice_mode_dialog.dart';
@@ -31,13 +32,17 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage> {
   @override
   Widget build(BuildContext context) {
     final bibleService = context.read<BibleService>();
-    final refName = bibleService.getRangeRefName(ScriptureRangeRef(
-      bookId: widget.result.bookId,
-      chapter: widget.result.startChapter,
-      startVerse: widget.result.startVerse,
-      endVerse: widget.result.endVerse,
-    ));
-    final dateTime = DateFormat.yMMMd().add_jm().format(widget.result.timestamp);
+    final refName = bibleService.getRangeRefName(
+      ScriptureRangeRef(
+        bookId: widget.result.bookId,
+        chapter: widget.result.startChapter,
+        startVerse: widget.result.startVerse,
+        endVerse: widget.result.endVerse,
+      ),
+    );
+    final dateTime = DateFormat.yMMMd().add_jm().format(
+      widget.result.timestamp,
+    );
     final hasNotes = _notes != null && _notes!.isNotEmpty;
 
     return AppScaffold(
@@ -60,15 +65,12 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage> {
                   Text(
                     dateTime,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   if (hasNotes)
-                    Text(
-                      _notes!,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    )
+                    Text(_notes!, style: Theme.of(context).textTheme.bodyLarge)
                   else
                     const EmptyState(
                       icon: Icons.edit_note,
@@ -118,9 +120,10 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage> {
     );
 
     if (newNotes != null && mounted) {
-      await context
-          .read<AppDatabase>()
-          .updateResultNotes(widget.result.id, newNotes);
+      await context.read<ResultsService>().updateNotes(
+        widget.result.id,
+        newNotes,
+      );
       setState(() => _notes = newNotes);
     }
   }
@@ -150,25 +153,25 @@ class _ButtonBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: FilledButton.tonal(
-                  onPressed: onEditPressed,
-                  child: Text(hasNotes ? 'Edit Notes' : 'Add Notes'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: FilledButton(
-                  onPressed: onPracticePressed,
-                  child: const Text('Practice'),
-                ),
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: FilledButton.tonal(
+              onPressed: onEditPressed,
+              child: Text(hasNotes ? 'Edit Notes' : 'Add Notes'),
+            ),
           ),
-        ),
-      );
+          const SizedBox(width: 16),
+          Expanded(
+            child: FilledButton(
+              onPressed: onPracticePressed,
+              child: const Text('Practice'),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }

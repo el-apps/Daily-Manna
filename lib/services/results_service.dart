@@ -10,6 +10,7 @@ import 'package:drift/drift.dart';
 
 class ResultsService {
   final AppDatabase _db;
+  Future<void> Function()? onLocalChange;
 
   ResultsService(this._db);
 
@@ -26,6 +27,7 @@ class ResultsService {
         attempts: Value(result.attempts),
       ),
     );
+    await onLocalChange?.call();
   }
 
   /// Add a recitation result to persistent storage.
@@ -41,6 +43,7 @@ class ResultsService {
         score: result.score,
       ),
     );
+    await onLocalChange?.call();
   }
 
   /// Add a study result through the same tracked local-write path.
@@ -57,6 +60,12 @@ class ResultsService {
         notes: Value(notes),
       ),
     );
+    await onLocalChange?.call();
+  }
+
+  Future<void> updateNotes(int id, String? notes) async {
+    await _db.updateResultNotes(id, notes);
+    await onLocalChange?.call();
   }
 
   /// Get sections for the share dialog (today's results only).
