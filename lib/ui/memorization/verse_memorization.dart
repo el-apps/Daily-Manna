@@ -31,6 +31,7 @@ class _VerseMemorizationState extends State<VerseMemorization> {
   Result _result = Result.unknown;
   double _score = 0;
   int _attempts = 0;
+  List<DiffWord>? _diff;
 
   @override
   void initState() {
@@ -62,10 +63,12 @@ class _VerseMemorizationState extends State<VerseMemorization> {
               if (_result != Result.unknown && bibleService.hasVerse(_ref))
                 ThemeCard(
                   style: ThemeCardStyle.brown,
-                  child: Text(
-                    actualVerse,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
+                  child: _diff == null
+                      ? Text(
+                          actualVerse,
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        )
+                      : _DiffPassage(diff: _diff!),
                 ),
               if (bibleService.hasVerse(_ref))
                 TextFormField(
@@ -156,6 +159,7 @@ class _VerseMemorizationState extends State<VerseMemorization> {
       _result = Result.unknown;
       _attempts = 0;
       _score = 0;
+      _diff = null;
       _clearInput();
       // Focus the input field after we render the next frame.
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -186,6 +190,7 @@ class _VerseMemorizationState extends State<VerseMemorization> {
     setState(() {
       _attempts += 1;
       _score = compareWordSequences(actualVerse, _input);
+      _diff = computeWordDiff(actualVerse, _input);
       _result = _score >= _passThreshold ? Result.correct : Result.incorrect;
       if (_result == Result.correct) {
         final result = MemorizationResult(
@@ -217,4 +222,41 @@ enum Result {
   learn,
   incorrect,
   correct,
+}
+
+class _DiffPassage extends StatelessWidget {
+  const _DiffPassage({required this.diff});
+
+  final List<DiffWord> diff;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = Theme.of(context).textTheme.bodyLarge ??
+        const TextStyle();
+
+    return RichText(
+      text: TextSpan(
+        children: [
+          // Memorization shows the expected verse only; extra spoken words
+          // are omitted rather than added to the displayed passage.
+          for (final word in diff.where(
+            (word) =>
+                word.status == DiffStatus.correct ||
+                word.status == DiffStatus.missing,
+          ))
+            TextSpan(
+              text: word.status == DiffStatus.correct
+                  ? '${word.text} '
+                  : ' ${word.text} ',
+              style: word.status == DiffStatus.correct
+                  ? baseStyle
+                  : baseStyle.copyWith(
+                      color: Colors.red,
+                      backgroundColor: Colors.red.withValues(alpha: 0.3),
+                    ),
+            ),
+        ],
+      ),
+    );
+  }
 }
