@@ -18,7 +18,7 @@ class EngageActions extends StatelessWidget {
         Expanded(
           child: FilledButton.icon(
             onPressed: () => _practiceAnyVerse(context),
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.search),
             label: const Text('Find'),
           ),
         ),
