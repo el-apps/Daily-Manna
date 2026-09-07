@@ -55,6 +55,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
       _database,
       authTokenProvider: _authService.tokenProvider,
     );
+    _database.onLocalChange = _syncService.syncAutomatically;
     _initFuture = Future.wait([
       _authService.init().then((_) async {
         _syncService.startAutoSync();

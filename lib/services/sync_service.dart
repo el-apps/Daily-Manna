@@ -115,6 +115,8 @@ class SyncService {
     });
   }
 
+  Future<void> syncAutomatically() => _requestSync();
+
   Future<void> dispose() async {
     await _outboxSubscription?.cancel();
     _outboxSubscription = null;

@@ -50,6 +50,9 @@ class SyncMetadata extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  /// Called after a local change has been committed.
+  Future<void> Function()? onLocalChange;
+
   /// Constructor for testing with an in-memory database.
   AppDatabase.forTesting(super.e);
 
@@ -107,33 +110,39 @@ class AppDatabase extends _$AppDatabase {
   );
 
   /// Inserts a local result and records it for a later push atomically.
-  Future<int> insertResult(ResultsCompanion result) => transaction(() async {
-    final now = DateTime.now().toUtc();
-    final clientId = result.clientId.present
-        ? result.clientId.value
-        : newClientId();
-    final id = await into(results).insert(
-      result.copyWith(
-        clientId: Value(clientId),
-        updatedAt: result.updatedAt.present ? result.updatedAt : Value(now),
-      ),
-    );
-    await _enqueueResult(clientId, 'upsert', now);
+  Future<int> insertResult(ResultsCompanion result) async {
+    final id = await transaction(() async {
+      final now = DateTime.now().toUtc();
+      final clientId = result.clientId.present
+          ? result.clientId.value
+          : newClientId();
+      final id = await into(results).insert(
+        result.copyWith(
+          clientId: Value(clientId),
+          updatedAt: result.updatedAt.present ? result.updatedAt : Value(now),
+        ),
+      );
+      await _enqueueResult(clientId, 'upsert', now);
+      return id;
+    });
+    await onLocalChange?.call();
     return id;
-  });
+  }
 
   /// Update notes for a result.
-  Future<void> updateResultNotes(int id, String? notes) =>
-      transaction(() async {
-        final row = await (select(
-          results,
-        )..where((r) => r.id.equals(id))).getSingle();
-        final now = DateTime.now().toUtc();
-        await (update(results)..where((r) => r.id.equals(id))).write(
-          ResultsCompanion(notes: Value(notes), updatedAt: Value(now)),
-        );
-        await _enqueueResult(row.clientId, 'upsert', now);
-      });
+  Future<void> updateResultNotes(int id, String? notes) async {
+    await transaction(() async {
+      final row = await (select(
+        results,
+      )..where((r) => r.id.equals(id))).getSingle();
+      final now = DateTime.now().toUtc();
+      await (update(results)..where((r) => r.id.equals(id))).write(
+        ResultsCompanion(notes: Value(notes), updatedAt: Value(now)),
+      );
+      await _enqueueResult(row.clientId, 'upsert', now);
+    });
+    await onLocalChange?.call();
+  }
 
   Future<void> _enqueueResult(
     String clientId,
