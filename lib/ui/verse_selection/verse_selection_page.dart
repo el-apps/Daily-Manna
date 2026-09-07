@@ -2,7 +2,7 @@ import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/verse_selection/books_tab.dart';
-import 'package:daily_manna/ui/verse_selection/recents_tab.dart';
+import 'package:daily_manna/ui/verse_selection/suggestions_tab.dart';
 import 'package:daily_manna/ui/verse_selection/review_tab.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:flutter/material.dart';
@@ -59,7 +59,7 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
               tabs: [
                 Tab(text: 'Books'),
                 Tab(text: 'Review'),
-                Tab(text: 'Recents'),
+                Tab(text: 'Suggestions'),
               ],
             ),
       body: widget.rangeMode
@@ -77,7 +77,7 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
         onRangeSelected: (ref) => context.pop(ref),
       ),
       ReviewTab(onVerseSelected: (ref) => _selectSingleVerse(context, ref)),
-      RecentsTab(onVerseSelected: (ref) => _selectSingleVerse(context, ref)),
+      SuggestionsTab(onPassageSelected: (ref) => context.pop(ref)),
     ],
   );
 
@@ -90,7 +90,16 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
         onVerseSelected: (ref) => _selectVerse(context, ref),
       ),
       ReviewTab(onVerseSelected: (ref) => _selectVerse(context, ref)),
-      RecentsTab(onVerseSelected: (ref) => _selectVerse(context, ref)),
+      SuggestionsTab(
+        onPassageSelected: (ref) => _selectVerse(
+          context,
+          ScriptureRef(
+            bookId: ref.bookId,
+            chapterNumber: ref.chapter,
+            verseNumber: ref.startVerse,
+          ),
+        ),
+      ),
     ],
   );
 

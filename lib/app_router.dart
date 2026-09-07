@@ -54,7 +54,7 @@ final appRouter = GoRouter(
       ),
     ),
     GoRoute(
-      path: '/select/recents',
+      path: '/select/suggestions',
       pageBuilder: (_, state) => NoTransitionPage(
         key: state.pageKey,
         child: VerseSelectionPage(
