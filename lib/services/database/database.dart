@@ -54,7 +54,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -81,6 +81,16 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(syncMetadata);
         await customStatement('''
           INSERT INTO sync_outbox (entity_type, entity_id, operation, created_at)
+          SELECT 'result', client_id, 'upsert', updated_at
+          FROM results
+        ''');
+      }
+      if (from < 4) {
+        // Backfill installations that already migrated to version 3 before
+        // legacy results were added to the initial sync outbox.
+        await customStatement('''
+          INSERT OR IGNORE INTO sync_outbox
+            (entity_type, entity_id, operation, created_at)
           SELECT 'result', client_id, 'upsert', updated_at
           FROM results
         ''');
