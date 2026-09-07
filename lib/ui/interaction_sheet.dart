@@ -1,10 +1,9 @@
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
-import 'package:daily_manna/ui/memorization/verse_memorization.dart';
-import 'package:daily_manna/ui/recitation/recitation_mode.dart';
 import 'package:daily_manna/ui/study/record_study_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 /// Shows a bottom sheet for choosing how to interact with a selected passage.
@@ -63,11 +62,15 @@ void _showInteractionSheet(
                   label: 'Memorize',
                   onPressed: () {
                     Navigator.pop(sheetContext);
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            VerseMemorization(initialRef: memorizeRef),
-                      ),
+                    context.push(
+                      Uri(
+                        path: '/memorize',
+                        queryParameters: {
+                          'book': memorizeRef.bookId!,
+                          'chapter': '${memorizeRef.chapterNumber}',
+                          'startVerse': '${memorizeRef.verseNumber}',
+                        },
+                      ).toString(),
                     );
                   },
                 ),
@@ -76,9 +79,7 @@ void _showInteractionSheet(
                   label: 'Recite',
                   onPressed: () {
                     Navigator.pop(sheetContext);
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const RecitationMode()),
-                    );
+                    context.push('/recite');
                   },
                 ),
                 _InteractionButton(

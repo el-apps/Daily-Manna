@@ -12,13 +12,14 @@ import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/loading_section.dart';
 import 'package:daily_manna/ui/recitation/recitation_confirmation_section.dart';
 import 'package:daily_manna/ui/recitation/recitation_playback_section.dart';
-import 'package:daily_manna/ui/recitation/recitation_results.dart';
 import 'package:daily_manna/ui/recitation/recording_card.dart';
 import 'package:daily_manna/ui/recitation/transcription_review_section.dart';
 import 'package:daily_manna/recording_platform.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:daily_manna/app_router.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
@@ -518,21 +519,20 @@ class _RecitationModeState extends State<RecitationMode> {
       );
 
       // Navigate to results page
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => RecitationResults(
-            ref: passageRef,
-            transcribedText: transcribedText,
-            score: score,
-            onReciteAgain: () {
-              Navigator.of(context).pop(); // Pop results page
-              setState(() {
-                _step = RecitationStep.idle;
-                _clearAudio();
-                _transcriptionController.clear();
-              });
-            },
-          ),
+      context.push(
+        '/recite/results',
+        extra: RecitationResultsArgs(
+          ref: passageRef,
+          transcribedText: transcribedText,
+          score: score,
+          onReciteAgain: () {
+            context.pop();
+            setState(() {
+              _step = RecitationStep.idle;
+              _clearAudio();
+              _transcriptionController.clear();
+            });
+          },
         ),
       );
     } catch (e) {

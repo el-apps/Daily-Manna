@@ -1,4 +1,4 @@
-import 'package:daily_manna/home_page.dart';
+import 'package:daily_manna/app_router.dart';
 import 'package:daily_manna/services/auth_service.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart';
@@ -108,7 +108,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
                   ),
                 ),
               ),
-              home: HomePage(),
+              routerConfig: appRouter,
             ),
           )
         : Center(child: CircularProgressIndicator()),

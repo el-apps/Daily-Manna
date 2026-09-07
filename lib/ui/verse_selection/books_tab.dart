@@ -3,6 +3,7 @@ import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 const int _gridCrossAxisCount = 5;
@@ -11,12 +12,22 @@ const int _gridCrossAxisCount = 5;
 class BooksTab extends StatefulWidget {
   final void Function(ScriptureRef)? onVerseSelected;
   final void Function(ScriptureRangeRef)? onRangeSelected;
+  final String? initialBookId;
+  final int? initialChapter;
 
-  const BooksTab({super.key, required this.onVerseSelected})
-    : onRangeSelected = null;
+  const BooksTab({
+    super.key,
+    required this.onVerseSelected,
+    this.initialBookId,
+    this.initialChapter,
+  }) : onRangeSelected = null;
 
-  const BooksTab.range({super.key, required this.onRangeSelected})
-    : onVerseSelected = null;
+  const BooksTab.range({
+    super.key,
+    required this.onRangeSelected,
+    this.initialBookId,
+    this.initialChapter,
+  }) : onVerseSelected = null;
 
   bool get rangeMode => onRangeSelected != null;
 
@@ -31,8 +42,19 @@ class _BooksTabState extends State<BooksTab> {
   int? _startVerse; // For range mode: the start verse being selected
 
   @override
+  void initState() {
+    super.initState();
+    _selectedBookId = widget.initialBookId;
+    _selectedChapter = widget.initialChapter;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final bibleService = context.read<BibleService>();
+    final selectedBook = _selectedBookId == null
+        ? null
+        : bibleService.books.firstWhere((book) => book.id == _selectedBookId);
+    final modeQuery = widget.rangeMode ? '?mode=range' : '';
 
     // Only show breadcrumbs when navigated into a book
     if (_selectedBookId == null) {
@@ -42,7 +64,7 @@ class _BooksTabState extends State<BooksTab> {
     return Column(
       children: [
         _Breadcrumbs(
-          bookTitle: _selectedBookTitle!,
+          bookTitle: _selectedBookTitle ?? selectedBook!.title,
           chapter: _selectedChapter,
           onHomeTap: _goToBooks,
           onBookTap: _goToChapters,
@@ -63,19 +85,18 @@ class _BooksTabState extends State<BooksTab> {
     if (_selectedBookId == null) {
       return _BooksList(
         books: bibleService.books,
-        onBookSelected: (book) => setState(() {
-          _selectedBookId = book.id;
-          _selectedBookTitle = book.title;
-        }),
+        onBookSelected: (book) {
+          context.go('/select/books/${book.id}$modeQuery');
+        },
       );
     }
 
     if (_selectedChapter == null) {
       return _ChaptersList(
         chapters: bibleService.getChapters(_selectedBookId!),
-        onChapterSelected: (chapter) => setState(() {
-          _selectedChapter = chapter;
-        }),
+        onChapterSelected: (chapter) {
+          context.go('/select/books/$_selectedBookId/$chapter$modeQuery');
+        },
       );
     }
 
@@ -153,17 +174,13 @@ class _BooksTabState extends State<BooksTab> {
     );
   }
 
-  void _goToBooks() => setState(() {
-    _selectedBookId = null;
-    _selectedBookTitle = null;
-    _selectedChapter = null;
-    _startVerse = null;
-  });
+  void _goToBooks() => context.go(
+    '/select/books${widget.rangeMode ? '?mode=range' : ''}',
+  );
 
-  void _goToChapters() => setState(() {
-    _selectedChapter = null;
-    _startVerse = null;
-  });
+  void _goToChapters() => context.go(
+    '/select/books/$_selectedBookId${widget.rangeMode ? '?mode=range' : ''}',
+  );
 }
 
 class _RangeHeader extends StatelessWidget {

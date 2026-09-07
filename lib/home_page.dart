@@ -1,18 +1,11 @@
-import 'package:daily_manna/about_page.dart';
 import 'package:daily_manna/mode_card.dart';
-import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
-import 'package:daily_manna/ui/history/history_page.dart';
-import 'package:daily_manna/ui/interact/interact_page.dart';
 import 'package:daily_manna/ui/streak/streak_card.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
-
-  void _navigateTo(BuildContext context, Widget page) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
-  }
 
   @override
   Widget build(BuildContext context) => AppScaffold(
@@ -32,22 +25,22 @@ class HomePage extends StatelessWidget {
         ModeCard(
           title: 'Interact',
           icon: Icons.play_arrow,
-          onTap: () => _navigateTo(context, const InteractPage()),
+          onTap: () => context.push('/interact'),
         ),
         ModeCard(
           title: 'History',
           icon: Icons.history,
-          onTap: () => _navigateTo(context, const HistoryPage()),
+          onTap: () => context.push('/history'),
         ),
         ModeCard(
           title: 'Settings',
           icon: Icons.settings,
-          onTap: () => _navigateTo(context, const SettingsPage()),
+          onTap: () => context.push('/settings'),
         ),
         ModeCard(
           title: 'About',
           icon: Icons.info_outline,
-          onTap: () => _navigateTo(context, const AboutPage()),
+          onTap: () => context.push('/about'),
         ),
       ],
     ),
