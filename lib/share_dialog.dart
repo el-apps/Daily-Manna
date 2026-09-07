@@ -36,7 +36,7 @@ class ShareDialog extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Daily sharing your results with others is a great way to practice accountability!',
+                        'Daily sharing your results with others is a great way to interact and build accountability!',
                       ),
                       if (hasContent) ...[
                         const Divider(),

@@ -5,7 +5,7 @@ import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart';
-import 'package:daily_manna/ui/memorization/practice_result.dart';
+import 'package:daily_manna/ui/memorization/interact_result.dart';
 import 'package:drift/drift.dart';
 
 class ResultsService {
@@ -70,7 +70,7 @@ class ResultsService {
 
   /// Get sections for the share dialog (today's results only).
   ///
-  /// Results are ordered by practice time (first to last). Consecutive results
+  /// Results are ordered by interaction time (first to last). Consecutive results
   /// of the same type are grouped into a single section.
   Future<List<ResultSection>> getTodaySections(
     BibleService bibleService,
@@ -78,7 +78,7 @@ class ResultsService {
     final results = await _db.getTodayResults();
     if (results.isEmpty) return [];
 
-    // Reverse to get chronological order (first practiced to last)
+    // Reverse to get chronological order (first interacted with to last)
     final chronological = results.reversed.toList();
 
     final sections = <ResultSection>[];
@@ -161,9 +161,9 @@ class ResultsService {
     int verse,
   ) => _db.getResultsForVerse(bookId, chapter, verse);
 
-  /// Get unique verses that have been practiced.
+  /// Get unique verses that have been interacted with.
   Future<List<({String bookId, int chapter, int verse})>>
-  getUniqueVersesPracticed() => _db.getUniqueVersesPracticed();
+  getUniqueVersesInteracted() => _db.getUniqueVersesInteracted();
 
   /// Get today's results.
   Future<List<Result>> getTodayResults() => _db.getTodayResults();

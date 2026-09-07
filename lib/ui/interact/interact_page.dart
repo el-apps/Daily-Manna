@@ -6,24 +6,24 @@ import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/count_badge.dart';
-import 'package:daily_manna/ui/engagement_sheet.dart';
+import 'package:daily_manna/ui/interaction_sheet.dart';
 import 'package:daily_manna/ui/theme_card.dart';
 import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// Engage hub showing actions and verses due for review.
-class EngagePage extends StatefulWidget {
-  const EngagePage({super.key});
+/// Interact hub showing actions and verses due for review.
+class InteractPage extends StatefulWidget {
+  const InteractPage({super.key});
 
   @override
-  State<EngagePage> createState() => _EngagePageState();
+  State<InteractPage> createState() => _InteractPageState();
 }
 
-class _EngagePageState extends State<EngagePage> {
+class _InteractPageState extends State<InteractPage> {
   @override
   Widget build(BuildContext context) => AppScaffold(
-    title: 'Engage',
+    title: 'Interact',
     body: const Column(children: [Expanded(child: ReviewContent())]),
     floatingActionButton: FloatingActionButton(
       onPressed: () => _findVerse(context),
@@ -38,12 +38,12 @@ class _EngagePageState extends State<EngagePage> {
       ),
     );
     if (context.mounted && passage != null) {
-      showPassageEngagementSheet(context, passage);
+      showPassageInteractionSheet(context, passage);
     }
   }
 }
 
-/// Review queue content that can be embedded in the Engage page.
+/// Review queue content that can be embedded in the Interact page.
 class ReviewContent extends StatefulWidget {
   const ReviewContent({super.key});
 
@@ -71,7 +71,7 @@ class _ReviewContentState extends State<ReviewContent> {
           return const EmptyState(
             icon: Icons.check_circle_outline,
             message:
-                'No verses in your review queue yet.\nPractice some verses to get started!',
+                'No verses in your review queue yet.\nInteract with some verses to get started!',
           );
         }
 
@@ -91,7 +91,7 @@ class _ReviewContentState extends State<ReviewContent> {
                 urgency: _Urgency.overdue,
                 isCollapsed: _collapsedSections.contains(_Urgency.overdue),
                 onToggle: () => _toggleSection(_Urgency.overdue),
-                onVerseTap: (ref) => showEngagementSheet(context, ref),
+                onVerseTap: (ref) => showInteractionSheet(context, ref),
               ),
             if (grouped.dueToday.isNotEmpty)
               _VerseSection(
@@ -101,7 +101,7 @@ class _ReviewContentState extends State<ReviewContent> {
                 urgency: _Urgency.dueToday,
                 isCollapsed: _collapsedSections.contains(_Urgency.dueToday),
                 onToggle: () => _toggleSection(_Urgency.dueToday),
-                onVerseTap: (ref) => showEngagementSheet(context, ref),
+                onVerseTap: (ref) => showInteractionSheet(context, ref),
               ),
             if (grouped.comingUp.isNotEmpty)
               _VerseSection(
@@ -111,7 +111,7 @@ class _ReviewContentState extends State<ReviewContent> {
                 urgency: _Urgency.comingUp,
                 isCollapsed: _collapsedSections.contains(_Urgency.comingUp),
                 onToggle: () => _toggleSection(_Urgency.comingUp),
-                onVerseTap: (ref) => showEngagementSheet(context, ref),
+                onVerseTap: (ref) => showInteractionSheet(context, ref),
               ),
           ],
         );

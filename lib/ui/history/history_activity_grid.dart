@@ -339,6 +339,6 @@ class _DayCell extends StatelessWidget {
       '${day.year}-${day.month}-${day.day}, ${isSelected ? 'selected, ' : ''}${isFuture
           ? 'future'
           : hasActivity
-          ? 'practiced'
-          : 'no practice'}';
+          ? 'interacted'
+          : 'no interaction'}';
 }

@@ -1,7 +1,7 @@
 import 'package:daily_manna/models/score_data.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/results_service.dart';
-import 'package:daily_manna/ui/memorization/practice_result.dart';
+import 'package:daily_manna/ui/memorization/interact_result.dart';
 import 'package:daily_manna/ui/score_emoji.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
@@ -82,7 +82,7 @@ class _VerseMemorizationState extends State<VerseMemorization> {
                 ThemeCard(
                   style: _getThemeCardStyle(_result),
                   child: Text(switch (_result) {
-                    Result.learn => 'Practice the verse...',
+                    Result.learn => 'Interact with the verse...',
                     Result.incorrect => 'Try again',
                     Result.correct => 'Correct!',
                     // This case should never be reached

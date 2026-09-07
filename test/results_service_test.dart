@@ -4,7 +4,7 @@ import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/results_service.dart';
-import 'package:daily_manna/ui/memorization/practice_result.dart';
+import 'package:daily_manna/ui/memorization/interact_result.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -263,7 +263,7 @@ void main() {
     });
 
     test(
-      'getTodaySections preserves practice order with alternating types',
+      'getTodaySections preserves interaction order with alternating types',
       () async {
         // Add results in specific order: memorization, recitation, memorization
         await resultsService.addMemorizationResult(
