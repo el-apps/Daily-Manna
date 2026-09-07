@@ -24,7 +24,6 @@ class _EngagePageState extends State<EngagePage> {
   @override
   Widget build(BuildContext context) => AppScaffold(
     title: 'Engage',
-    showShareButton: false,
     body: const Column(children: [Expanded(child: ReviewContent())]),
     floatingActionButton: FloatingActionButton(
       onPressed: () => _findVerse(context),
