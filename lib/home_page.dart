@@ -27,7 +27,7 @@ class HomePage extends StatelessWidget {
         ModeCard(
           title: 'Interact',
           icon: Icons.play_arrow,
-          onTap: () => _selectPassage(context),
+          onTap: () => _startInteraction(context),
         ),
         ModeCard(
           title: 'History',
@@ -47,12 +47,12 @@ class HomePage extends StatelessWidget {
       ],
     ),
     floatingActionButton: FloatingActionButton(
-      onPressed: () => _selectPassage(context),
+      onPressed: () => _startInteraction(context),
       child: const Icon(Icons.play_arrow),
     ),
   );
 
-  Future<void> _selectPassage(BuildContext context) async {
+  Future<void> _startInteraction(BuildContext context) async {
     final passage = await context.push<ScriptureRangeRef>('/select?mode=range');
     if (context.mounted && passage != null) {
       showPassageInteractionSheet(context, passage);
