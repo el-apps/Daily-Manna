@@ -387,7 +387,7 @@ class _TestamentColumn extends StatelessWidget {
       ),
       ...books.map(
         (book) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: 4),
           child: OutlinedButton(
             onPressed: () => onBookSelected(book),
             style: OutlinedButton.styleFrom(
@@ -504,19 +504,14 @@ class _NumberButton extends StatelessWidget {
   const _NumberButton({required this.number, required this.onTap});
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-    borderRadius: BorderRadius.circular(8),
-    child: InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: onTap,
-      child: Center(
-        child: Text(
-          number.toString(),
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-      ),
+  Widget build(BuildContext context) => OutlinedButton(
+    onPressed: onTap,
+    style: OutlinedButton.styleFrom(
+      minimumSize: Size.zero,
+      padding: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     ),
+    child: Text(number.toString()),
   );
 }
 
@@ -552,19 +547,21 @@ class _NumberButtonRangeEnd extends StatelessWidget {
       textColor = theme.colorScheme.onSurface.withValues(alpha: 0.38);
     }
 
-    return Material(
-      color: backgroundColor,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Center(
-          child: Text(
-            number.toString(),
-            style: theme.textTheme.titleMedium?.copyWith(color: textColor),
-          ),
+    return OutlinedButton(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        minimumSize: Size.zero,
+        padding: EdgeInsets.zero,
+        backgroundColor: backgroundColor,
+        foregroundColor: textColor,
+        side: BorderSide(
+          color: isStartVerse
+              ? theme.colorScheme.primary
+              : theme.colorScheme.outline,
         ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
+      child: Text(number.toString()),
     );
   }
 }
