@@ -3,7 +3,7 @@ import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/ui/memorization/verse_memorization.dart';
 import 'package:daily_manna/ui/recitation/recitation_mode.dart';
-import 'package:daily_manna/ui/study/study_log_dialog.dart';
+import 'package:daily_manna/ui/study/record_study_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -90,7 +90,7 @@ void _showEngagementDialog(
                       context: context,
                       isScrollControlled: true,
                       builder: (_) =>
-                          StudyLogDialog(initialPassage: initialPassage),
+                          RecordStudySheet(initialPassage: initialPassage),
                     );
                   },
                 ),
