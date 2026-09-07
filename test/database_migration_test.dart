@@ -37,7 +37,10 @@ void main() {
     final result = (await database.getAllResults()).single;
     expect(result.clientId, 'legacy-1');
     expect(result.updatedAt, result.timestamp);
-    expect(await database.pendingChanges(), isEmpty);
+    final pending = await database.pendingChanges();
+    expect(pending, hasLength(1));
+    expect(pending.single.entityId, 'legacy-1');
+    expect(pending.single.operation, 'upsert');
 
     await database.close();
     await directory.delete(recursive: true);

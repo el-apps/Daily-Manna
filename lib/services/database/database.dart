@@ -79,6 +79,11 @@ class AppDatabase extends _$AppDatabase {
         );
         await m.createTable(syncOutbox);
         await m.createTable(syncMetadata);
+        await customStatement('''
+          INSERT INTO sync_outbox (entity_type, entity_id, operation, created_at)
+          SELECT 'result', client_id, 'upsert', updated_at
+          FROM results
+        ''');
       }
     },
   );
