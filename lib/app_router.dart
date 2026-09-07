@@ -12,12 +12,6 @@ import 'package:go_router/go_router.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
-  // Redirect selector URLs from older builds so stale browser history does
-  // not reopen a removed routed selector page.
-  redirect: (_, state) =>
-      state.uri.path == '/select' || state.uri.path.startsWith('/select/')
-      ? '/'
-      : null,
   routes: [
     GoRoute(path: '/', builder: (_, __) => const HomePage()),
     GoRoute(path: '/history', builder: (_, __) => const HistoryPage()),
