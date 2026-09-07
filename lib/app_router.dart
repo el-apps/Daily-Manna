@@ -1,32 +1,16 @@
 import 'package:daily_manna/about_page.dart';
 import 'package:daily_manna/home_page.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
-import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/ui/history/history_page.dart';
 import 'package:daily_manna/ui/interact/interact_page.dart';
 import 'package:daily_manna/ui/memorization/verse_memorization.dart';
 import 'package:daily_manna/ui/recitation/recitation_mode.dart';
-import 'package:daily_manna/ui/recitation/recitation_results.dart';
 import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
 import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
-class RecitationResultsArgs {
-  const RecitationResultsArgs({
-    required this.ref,
-    required this.transcribedText,
-    required this.score,
-    required this.onReciteAgain,
-  });
-
-  final ScriptureRangeRef ref;
-  final String transcribedText;
-  final double score;
-  final VoidCallback onReciteAgain;
-}
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -119,22 +103,6 @@ final appRouter = GoRouter(
       ),
     ),
     GoRoute(path: '/recite', builder: (_, __) => const RecitationMode()),
-    GoRoute(
-      path: '/recite/results',
-      builder: (_, state) {
-        final args = state.extra;
-        return args is RecitationResultsArgs
-            ? RecitationResults(
-                ref: args.ref,
-                transcribedText: args.transcribedText,
-                score: args.score,
-                onReciteAgain: args.onReciteAgain,
-              )
-            : const _RouteUnavailablePage(
-                message: 'This recitation result is no longer available.',
-              );
-      },
-    ),
     GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
     GoRoute(path: '/about', builder: (_, __) => const AboutPage()),
   ],

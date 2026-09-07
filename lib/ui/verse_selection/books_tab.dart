@@ -331,7 +331,7 @@ class _BooksListState extends State<_BooksList> {
       children: [
         Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
+            constraints: const BoxConstraints(maxWidth: 560),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 12,
