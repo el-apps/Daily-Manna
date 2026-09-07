@@ -3,7 +3,7 @@ import 'package:daily_manna/mode_card.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/history/history_page.dart';
-import 'package:daily_manna/ui/review/review_page.dart';
+import 'package:daily_manna/ui/engage/engage_page.dart';
 import 'package:daily_manna/ui/streak/streak_card.dart';
 import 'package:flutter/material.dart';
 
