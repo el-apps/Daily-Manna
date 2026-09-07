@@ -12,10 +12,11 @@ class BooksTab extends StatefulWidget {
   final void Function(ScriptureRef)? onVerseSelected;
   final void Function(ScriptureRangeRef)? onRangeSelected;
 
-  const BooksTab({super.key, required this.onVerseSelected}) : onRangeSelected = null;
+  const BooksTab({super.key, required this.onVerseSelected})
+    : onRangeSelected = null;
 
   const BooksTab.range({super.key, required this.onRangeSelected})
-      : onVerseSelected = null;
+    : onVerseSelected = null;
 
   bool get rangeMode => onRangeSelected != null;
 
@@ -80,6 +81,29 @@ class _BooksTabState extends State<BooksTab> {
 
     final verses = bibleService.getVerses(_selectedBookId!, _selectedChapter!);
 
+    if (widget.rangeMode && _startVerse == null) {
+      return Column(
+        children: [
+          _ChapterAction(
+            onSelect: () => widget.onRangeSelected!(
+              ScriptureRangeRef(
+                bookId: _selectedBookId!,
+                chapter: _selectedChapter!,
+                startVerse: verses.first.num,
+                endVerse: verses.last.num,
+              ),
+            ),
+          ),
+          Expanded(
+            child: _VersesList(
+              verses: verses,
+              onVerseSelected: _handleVerseSelected,
+            ),
+          ),
+        ],
+      );
+    }
+
     if (_startVerse != null) {
       return _VersesListRangeEnd(
         verses: verses,
@@ -88,10 +112,7 @@ class _BooksTabState extends State<BooksTab> {
       );
     }
 
-    return _VersesList(
-      verses: verses,
-      onVerseSelected: _handleVerseSelected,
-    );
+    return _VersesList(verses: verses, onVerseSelected: _handleVerseSelected);
   }
 
   void _handleVerseSelected(int verse) {
@@ -183,6 +204,25 @@ class _RangeHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ChapterAction extends StatelessWidget {
+  final VoidCallback onSelect;
+
+  const _ChapterAction({required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+    child: SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: onSelect,
+        icon: const Icon(Icons.menu_book),
+        label: const Text('Select entire chapter'),
+      ),
+    ),
+  );
 }
 
 class _Breadcrumbs extends StatelessWidget {
@@ -568,7 +608,9 @@ class _NumberButtonRangeEnd extends StatelessWidget {
       backgroundColor = theme.colorScheme.surfaceContainerHighest;
       textColor = theme.colorScheme.onSurface;
     } else {
-      backgroundColor = theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5);
+      backgroundColor = theme.colorScheme.surfaceContainerHighest.withValues(
+        alpha: 0.5,
+      );
       textColor = theme.colorScheme.onSurface.withValues(alpha: 0.38);
     }
 
