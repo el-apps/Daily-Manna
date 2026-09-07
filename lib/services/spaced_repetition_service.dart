@@ -34,13 +34,13 @@ class SpacedRepetitionService {
 
   SpacedRepetitionService(this._db);
 
-  /// Get all practiced verses sorted by next review date.
+  /// Get all interacted verses sorted by next review date.
   Future<List<VerseReviewState>> getVersesByReviewDate() async {
     final allStates = await _getAllVerseStates();
     return _sortByReviewDate(allStates);
   }
 
-  /// Watch all practiced verses sorted by next review date (reactive stream).
+  /// Watch all interacted verses sorted by next review date (reactive stream).
   Stream<List<VerseReviewState>> watchVersesByReviewDate() =>
       _db.watchAllResults().map((results) {
         final allStates = _computeAllVerseStates(results);
@@ -82,14 +82,14 @@ class SpacedRepetitionService {
     return allStates.where((s) => !s.nextReviewDate.isAfter(endOfToday)).length;
   }
 
-  /// Get recently practiced verses (by last review date).
+  /// Get recently interacted verses (by last review date).
   Future<List<VerseReviewState>> getRecentVerses({int limit = 20}) async {
     final allStates = await _getAllVerseStates();
     allStates.sort((a, b) => b.lastReview.compareTo(a.lastReview));
     return allStates.take(limit).toList();
   }
 
-  /// Calculate SR state for all practiced verses.
+  /// Calculate SR state for all interacted verses.
   /// Expands passage ranges into individual verses.
   Future<List<VerseReviewState>> _getAllVerseStates() async {
     final allResults = await _db.getAllResults();
@@ -113,9 +113,9 @@ class SpacedRepetitionService {
     // Calculate SR state for each unique verse
     final states = <VerseReviewState>[];
     for (final entry in verseResults.entries) {
-      // Skip verses that only have study entries (no practice results)
-      final hasPractice = entry.value.any((r) => r.type != ResultType.study);
-      if (!hasPractice) continue;
+      // Skip verses that only have study entries (no interaction results)
+      final hasInteraction = entry.value.any((r) => r.type != ResultType.study);
+      if (!hasInteraction) continue;
 
       final parts = entry.key.split(':');
       final ref = ScriptureRef(
@@ -147,17 +147,17 @@ class SpacedRepetitionService {
   }
 
   /// Replay result history to calculate current interval.
-  /// Assumes at least one practice result exists (study-only filtered upstream).
+  /// Assumes at least one interaction result exists (study-only filtered upstream).
   VerseReviewState _calculateState(ScriptureRef ref, List<Result> results) {
     // Filter out study entries - they don't affect SR intervals
-    final practiceResults = results
+    final interactionResults = results
         .where((r) => r.type != ResultType.study)
         .toList();
 
     int reps = 0;
     var intervalDays = _initialIntervalDays;
 
-    for (final result in practiceResults) {
+    for (final result in interactionResults) {
       final multipleTries = (result.attempts ?? 1) > 1;
 
       if (result.score >= _passingScore) {
@@ -179,7 +179,7 @@ class SpacedRepetitionService {
 
     return VerseReviewState(
       ref: ref,
-      lastReview: practiceResults.last.timestamp,
+      lastReview: interactionResults.last.timestamp,
       intervalDays: intervalDays,
       repetitions: reps,
     );

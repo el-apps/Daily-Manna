@@ -9,14 +9,14 @@ class ResultCard extends StatelessWidget {
   final Result result;
   final String reference;
   final ScoreData score;
-  final VoidCallback? onPractice;
+  final VoidCallback? onInteract;
 
   const ResultCard({
     super.key,
     required this.result,
     required this.reference,
     required this.score,
-    this.onPractice,
+    this.onInteract,
   });
 
   @override
@@ -50,10 +50,10 @@ class ResultCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               ScoreEmoji(score: score, fontSize: 20),
-              if (onPractice != null) ...[
+              if (onInteract != null) ...[
                 const SizedBox(height: 8),
                 OutlinedButton(
-                  onPressed: onPractice,
+                  onPressed: onInteract,
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -66,7 +66,7 @@ class ResultCard extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  child: const Text('Practice'),
+                  child: const Text('Interact'),
                 ),
               ],
             ],

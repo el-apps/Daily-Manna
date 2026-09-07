@@ -34,7 +34,7 @@ class ReviewTab extends StatelessWidget {
         if (verses.isEmpty) {
           return const EmptyState(
           icon: Icons.check_circle_outline,
-          message: 'No verses due for review!\nPractice some verses to build your queue.',
+          message: 'No verses due for review!\nInteract with some verses to build your queue.',
         );
         }
 

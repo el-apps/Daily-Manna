@@ -134,8 +134,8 @@ void main() {
       expect(results[2].timestamp, DateTime(2024, 1, 15));
     });
 
-    test('getUniqueVersesPracticed returns distinct verses', () async {
-      // Same verse practiced twice
+    test('getUniqueVersesInteracted returns distinct verses', () async {
+      // Same verse interacted with twice
       await database.insertResult(
         ResultsCompanion.insert(
           timestamp: DateTime(2024, 1, 15),
@@ -168,7 +168,7 @@ void main() {
         ),
       );
 
-      final verses = await database.getUniqueVersesPracticed();
+      final verses = await database.getUniqueVersesInteracted();
       expect(verses, hasLength(2));
     });
   });

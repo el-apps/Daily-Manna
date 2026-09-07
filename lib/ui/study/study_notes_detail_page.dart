@@ -5,7 +5,7 @@ import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
-import 'package:daily_manna/ui/engagement_sheet.dart';
+import 'package:daily_manna/ui/interaction_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -83,7 +83,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage> {
           _ButtonBar(
             hasNotes: hasNotes,
             onEditPressed: _showEditDialog,
-            onPracticePressed: _showPracticeDialog,
+            onInteractPressed: _showInteractionDialog,
           ),
         ],
       ),
@@ -128,8 +128,8 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage> {
     }
   }
 
-  void _showPracticeDialog() {
-    showEngagementSheet(
+  void _showInteractionDialog() {
+    showInteractionSheet(
       context,
       ScriptureRef(
         bookId: widget.result.bookId,
@@ -144,12 +144,12 @@ class _ButtonBar extends StatelessWidget {
   const _ButtonBar({
     required this.hasNotes,
     required this.onEditPressed,
-    required this.onPracticePressed,
+    required this.onInteractPressed,
   });
 
   final bool hasNotes;
   final VoidCallback onEditPressed;
-  final VoidCallback onPracticePressed;
+  final VoidCallback onInteractPressed;
 
   @override
   Widget build(BuildContext context) => SafeArea(
@@ -166,8 +166,8 @@ class _ButtonBar extends StatelessWidget {
           const SizedBox(width: 16),
           Expanded(
             child: FilledButton(
-              onPressed: onPracticePressed,
-              child: const Text('Practice'),
+              onPressed: onInteractPressed,
+              child: const Text('Interact'),
             ),
           ),
         ],
