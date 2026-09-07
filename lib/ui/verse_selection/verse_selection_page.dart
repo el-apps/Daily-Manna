@@ -14,6 +14,13 @@ Future<ScriptureRangeRef?> showPassageSelector(BuildContext context) =>
       useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+      ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      clipBehavior: Clip.antiAlias,
       builder: (_) => const VerseSelectionPage(rangeMode: true),
     );
 
