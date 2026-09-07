@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 Future<ScriptureRangeRef?> showPassageSelector(BuildContext context) =>
     showModalBottomSheet<ScriptureRangeRef>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => const VerseSelectionPage(rangeMode: true),
@@ -81,11 +82,16 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
         initialBookId: widget.initialBookId,
         initialChapter: widget.initialChapter,
         onSelectionChanged: _updateTitle,
-        onRangeSelected: (ref) => Navigator.of(context).pop(ref),
+        onRangeSelected: (ref) =>
+            Navigator.of(context, rootNavigator: true).pop(ref),
       ),
-      ReviewTab(onPassageSelected: (ref) => Navigator.of(context).pop(ref)),
+      ReviewTab(
+        onPassageSelected: (ref) =>
+            Navigator.of(context, rootNavigator: true).pop(ref),
+      ),
       SuggestionsTab(
-        onPassageSelected: (ref) => Navigator.of(context).pop(ref),
+        onPassageSelected: (ref) =>
+            Navigator.of(context, rootNavigator: true).pop(ref),
       ),
     ],
   );
@@ -122,7 +128,7 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
   );
 
   void _selectVerse(BuildContext context, ScriptureRef ref) {
-    Navigator.of(context).pop(ref);
+    Navigator.of(context, rootNavigator: true).pop(ref);
   }
 
   void _updateTitle(String title) {
