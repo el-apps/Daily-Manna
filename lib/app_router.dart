@@ -3,7 +3,6 @@ import 'package:daily_manna/home_page.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/ui/history/history_page.dart';
-import 'package:daily_manna/ui/interact/interact_page.dart';
 import 'package:daily_manna/ui/memorization/verse_memorization.dart';
 import 'package:daily_manna/ui/recitation/recitation_mode.dart';
 import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
@@ -16,7 +15,6 @@ final appRouter = GoRouter(
   initialLocation: '/',
   routes: [
     GoRoute(path: '/', builder: (_, __) => const HomePage()),
-    GoRoute(path: '/interact', builder: (_, __) => const InteractPage()),
     GoRoute(
       path: '/select',
       pageBuilder: (_, state) => NoTransitionPage(

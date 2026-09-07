@@ -27,7 +27,7 @@ class HomePage extends StatelessWidget {
         ModeCard(
           title: 'Interact',
           icon: Icons.play_arrow,
-          onTap: () => context.push('/interact'),
+          onTap: () => _selectPassage(context),
         ),
         ModeCard(
           title: 'History',
