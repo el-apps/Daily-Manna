@@ -237,7 +237,13 @@ class _DiffPassage extends StatelessWidget {
     return RichText(
       text: TextSpan(
         children: [
-          for (final word in diff)
+          // Memorization shows the expected verse only; extra spoken words
+          // are omitted rather than added to the displayed passage.
+          for (final word in diff.where(
+            (word) =>
+                word.status == DiffStatus.correct ||
+                word.status == DiffStatus.missing,
+          ))
             TextSpan(
               text: word.status == DiffStatus.correct
                   ? '${word.text} '
