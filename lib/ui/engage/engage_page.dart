@@ -6,7 +6,7 @@ import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/count_badge.dart';
-import 'package:daily_manna/ui/practice_mode_dialog.dart';
+import 'package:daily_manna/ui/engagement_sheet.dart';
 import 'package:daily_manna/ui/theme_card.dart';
 import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
@@ -39,7 +39,7 @@ class _EngagePageState extends State<EngagePage> {
       ),
     );
     if (context.mounted && passage != null) {
-      showPassageEngagementDialog(context, passage);
+      showPassageEngagementSheet(context, passage);
     }
   }
 }
@@ -92,7 +92,7 @@ class _ReviewContentState extends State<ReviewContent> {
                 urgency: _Urgency.overdue,
                 isCollapsed: _collapsedSections.contains(_Urgency.overdue),
                 onToggle: () => _toggleSection(_Urgency.overdue),
-                onVerseTap: (ref) => showPracticeModeDialog(context, ref),
+                onVerseTap: (ref) => showEngagementSheet(context, ref),
               ),
             if (grouped.dueToday.isNotEmpty)
               _VerseSection(
@@ -102,7 +102,7 @@ class _ReviewContentState extends State<ReviewContent> {
                 urgency: _Urgency.dueToday,
                 isCollapsed: _collapsedSections.contains(_Urgency.dueToday),
                 onToggle: () => _toggleSection(_Urgency.dueToday),
-                onVerseTap: (ref) => showPracticeModeDialog(context, ref),
+                onVerseTap: (ref) => showEngagementSheet(context, ref),
               ),
             if (grouped.comingUp.isNotEmpty)
               _VerseSection(
@@ -112,7 +112,7 @@ class _ReviewContentState extends State<ReviewContent> {
                 urgency: _Urgency.comingUp,
                 isCollapsed: _collapsedSections.contains(_Urgency.comingUp),
                 onToggle: () => _toggleSection(_Urgency.comingUp),
-                onVerseTap: (ref) => showPracticeModeDialog(context, ref),
+                onVerseTap: (ref) => showEngagementSheet(context, ref),
               ),
           ],
         );

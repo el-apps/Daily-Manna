@@ -7,10 +7,10 @@ import 'package:daily_manna/ui/study/record_study_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-/// Shows a dialog for choosing how to engage with a selected passage.
-void showPracticeModeDialog(BuildContext context, ScriptureRef ref) {
+/// Shows a bottom sheet for choosing how to engage with a selected passage.
+void showEngagementSheet(BuildContext context, ScriptureRef ref) {
   final bibleService = context.read<BibleService>();
-  _showEngagementDialog(
+  _showEngagementSheet(
     context,
     title: bibleService.getRefName(ref),
     memorizeRef: ref,
@@ -22,12 +22,12 @@ void showPracticeModeDialog(BuildContext context, ScriptureRef ref) {
   );
 }
 
-void showPassageEngagementDialog(
+void showPassageEngagementSheet(
   BuildContext context,
   ScriptureRangeRef passage,
 ) {
   final bibleService = context.read<BibleService>();
-  _showEngagementDialog(
+  _showEngagementSheet(
     context,
     title: bibleService.getRangeRefName(passage),
     memorizeRef: ScriptureRef(
@@ -39,7 +39,7 @@ void showPassageEngagementDialog(
   );
 }
 
-void _showEngagementDialog(
+void _showEngagementSheet(
   BuildContext context, {
   required String title,
   required ScriptureRef memorizeRef,

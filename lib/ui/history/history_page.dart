@@ -8,7 +8,7 @@ import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/history/result_card.dart';
-import 'package:daily_manna/ui/practice_mode_dialog.dart';
+import 'package:daily_manna/ui/engagement_sheet.dart';
 import 'package:daily_manna/utils/date_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -209,7 +209,7 @@ class _DateGroup extends StatelessWidget {
   );
 
   void _showPracticeDialog(BuildContext context, db.Result result) {
-    showPracticeModeDialog(
+    showEngagementSheet(
       context,
       ScriptureRef(
         bookId: result.bookId,
