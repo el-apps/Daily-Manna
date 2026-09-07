@@ -24,6 +24,14 @@ List<db.Result> filterResultsForDate(
       .toList();
 }
 
+List<db.Result> filterResultsByType(
+  List<db.Result> results,
+  db.ResultType? type,
+) {
+  if (type == null) return results;
+  return results.where((result) => result.type == type).toList();
+}
+
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
 
@@ -64,9 +72,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 }
 
                 final results = snapshot.data ?? [];
-                final filtered = _filterType == null
-                    ? results
-                    : results.where((r) => r.type == _filterType).toList();
+                final filtered = filterResultsByType(results, _filterType);
                 final selectedResults = filterResultsForDate(
                   filtered,
                   _selectedDate,
@@ -122,6 +128,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
 class _FilterChips extends StatelessWidget {
   static const _filterOptions = [
+    (label: 'Study', type: db.ResultType.study),
     (label: 'Recitation', type: db.ResultType.recitation),
     (label: 'Memorization', type: db.ResultType.memorization),
   ];

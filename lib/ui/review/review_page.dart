@@ -19,6 +19,23 @@ class ReviewPage extends StatefulWidget {
 }
 
 class _ReviewPageState extends State<ReviewPage> {
+  @override
+  Widget build(BuildContext context) => AppScaffold(
+    title: 'Review',
+    showShareButton: false,
+    body: const ReviewContent(),
+  );
+}
+
+/// Review queue content that can be embedded in the Engage page.
+class ReviewContent extends StatefulWidget {
+  const ReviewContent({super.key});
+
+  @override
+  State<ReviewContent> createState() => _ReviewContentState();
+}
+
+class _ReviewContentState extends State<ReviewContent> {
   final Set<_Urgency> _collapsedSections = {};
 
   @override
@@ -26,67 +43,63 @@ class _ReviewPageState extends State<ReviewPage> {
     final srService = context.read<SpacedRepetitionService>();
     final bibleService = context.read<BibleService>();
 
-    return AppScaffold(
-      title: 'Review',
-      showShareButton: false,
-      body: StreamBuilder<List<VerseReviewState>>(
-        stream: srService.watchVersesByReviewDate(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return StreamBuilder<List<VerseReviewState>>(
+      stream: srService.watchVersesByReviewDate(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          final verses = snapshot.data ?? [];
-          if (verses.isEmpty) {
-            return const EmptyState(
-              icon: Icons.check_circle_outline,
-              message:
-                  'No verses in your review queue yet.\nPractice some verses to get started!',
-            );
-          }
-
-          final grouped = _groupByUrgency(verses);
-          final dueCount = grouped.overdue.length + grouped.dueToday.length;
-
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _SummaryCard(dueCount: dueCount),
-              const SizedBox(height: 16),
-              if (grouped.overdue.isNotEmpty)
-                _VerseSection(
-                  title: 'Overdue',
-                  verses: grouped.overdue,
-                  bibleService: bibleService,
-                  urgency: _Urgency.overdue,
-                  isCollapsed: _collapsedSections.contains(_Urgency.overdue),
-                  onToggle: () => _toggleSection(_Urgency.overdue),
-                  onVerseTap: (ref) => showPracticeModeDialog(context, ref),
-                ),
-              if (grouped.dueToday.isNotEmpty)
-                _VerseSection(
-                  title: 'Due Today',
-                  verses: grouped.dueToday,
-                  bibleService: bibleService,
-                  urgency: _Urgency.dueToday,
-                  isCollapsed: _collapsedSections.contains(_Urgency.dueToday),
-                  onToggle: () => _toggleSection(_Urgency.dueToday),
-                  onVerseTap: (ref) => showPracticeModeDialog(context, ref),
-                ),
-              if (grouped.comingUp.isNotEmpty)
-                _VerseSection(
-                  title: 'Coming Up',
-                  verses: grouped.comingUp,
-                  bibleService: bibleService,
-                  urgency: _Urgency.comingUp,
-                  isCollapsed: _collapsedSections.contains(_Urgency.comingUp),
-                  onToggle: () => _toggleSection(_Urgency.comingUp),
-                  onVerseTap: (ref) => showPracticeModeDialog(context, ref),
-                ),
-            ],
+        final verses = snapshot.data ?? [];
+        if (verses.isEmpty) {
+          return const EmptyState(
+            icon: Icons.check_circle_outline,
+            message:
+                'No verses in your review queue yet.\nPractice some verses to get started!',
           );
-        },
-      ),
+        }
+
+        final grouped = _groupByUrgency(verses);
+        final dueCount = grouped.overdue.length + grouped.dueToday.length;
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _SummaryCard(dueCount: dueCount),
+            const SizedBox(height: 16),
+            if (grouped.overdue.isNotEmpty)
+              _VerseSection(
+                title: 'Overdue',
+                verses: grouped.overdue,
+                bibleService: bibleService,
+                urgency: _Urgency.overdue,
+                isCollapsed: _collapsedSections.contains(_Urgency.overdue),
+                onToggle: () => _toggleSection(_Urgency.overdue),
+                onVerseTap: (ref) => showPracticeModeDialog(context, ref),
+              ),
+            if (grouped.dueToday.isNotEmpty)
+              _VerseSection(
+                title: 'Due Today',
+                verses: grouped.dueToday,
+                bibleService: bibleService,
+                urgency: _Urgency.dueToday,
+                isCollapsed: _collapsedSections.contains(_Urgency.dueToday),
+                onToggle: () => _toggleSection(_Urgency.dueToday),
+                onVerseTap: (ref) => showPracticeModeDialog(context, ref),
+              ),
+            if (grouped.comingUp.isNotEmpty)
+              _VerseSection(
+                title: 'Coming Up',
+                verses: grouped.comingUp,
+                bibleService: bibleService,
+                urgency: _Urgency.comingUp,
+                isCollapsed: _collapsedSections.contains(_Urgency.comingUp),
+                onToggle: () => _toggleSection(_Urgency.comingUp),
+                onVerseTap: (ref) => showPracticeModeDialog(context, ref),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -308,4 +321,3 @@ class _VerseItem extends StatelessWidget {
     return 'in $difference days';
   }
 }
-

@@ -4,9 +4,7 @@ import 'package:daily_manna/settings_page.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/history/history_page.dart';
 import 'package:daily_manna/ui/practice/practice_page.dart';
-import 'package:daily_manna/ui/review/review_card.dart';
 import 'package:daily_manna/ui/streak/streak_card.dart';
-import 'package:daily_manna/ui/study/study_log_page.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatelessWidget {
@@ -32,15 +30,9 @@ class HomePage extends StatelessWidget {
         ),
         const StreakCard(),
         ModeCard(
-          title: 'Practice',
+          title: 'Engage',
           icon: Icons.play_arrow,
           onTap: () => _navigateTo(context, const PracticePage()),
-        ),
-        const ReviewCard(),
-        ModeCard(
-          title: 'Study Log',
-          icon: Icons.menu_book,
-          onTap: () => _navigateTo(context, const StudyLogPage()),
         ),
         ModeCard(
           title: 'History',
