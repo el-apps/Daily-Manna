@@ -92,14 +92,6 @@ class _RecitationModeState extends State<RecitationMode> {
         ref: result.ref,
         transcribedText: result.transcribedText,
         score: result.score,
-        onReciteAgain: () {
-          setState(() {
-            _result = null;
-            _step = RecitationStep.idle;
-            _clearAudio();
-            _transcriptionController.clear();
-          });
-        },
       );
     }
 
