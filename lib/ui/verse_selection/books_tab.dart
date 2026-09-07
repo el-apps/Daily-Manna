@@ -3,7 +3,6 @@ import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 const int _gridCrossAxisCount = 5;
@@ -75,22 +74,17 @@ class _BooksTabState extends State<BooksTab> {
   }
 
   Widget _buildContent(BibleService bibleService) {
-    final modeQuery = widget.rangeMode ? '?mode=range' : '';
     if (_selectedBookId == null) {
       return _BooksList(
         books: bibleService.books,
-        onBookSelected: (book) {
-          context.push('/select/books/${book.id}$modeQuery');
-        },
+        onBookSelected: _selectBook,
       );
     }
 
     if (_selectedChapter == null) {
       return _ChaptersList(
         chapters: bibleService.getChapters(_selectedBookId!),
-        onChapterSelected: (chapter) {
-          context.push('/select/books/$_selectedBookId/$chapter$modeQuery');
-        },
+        onChapterSelected: _selectChapter,
       );
     }
 
@@ -128,6 +122,22 @@ class _BooksTabState extends State<BooksTab> {
     }
 
     return _VersesList(verses: verses, onVerseSelected: _handleVerseSelected);
+  }
+
+  void _selectBook(Book book) {
+    setState(() {
+      _selectedBookId = book.id;
+      _selectedBookTitle = book.title;
+      _selectedChapter = null;
+      _startVerse = null;
+    });
+  }
+
+  void _selectChapter(int chapter) {
+    setState(() {
+      _selectedChapter = chapter;
+      _startVerse = null;
+    });
   }
 
   void _handleVerseSelected(int verse) {

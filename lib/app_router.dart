@@ -46,17 +46,6 @@ final appRouter = GoRouter(
       ),
     ),
     GoRoute(
-      path: '/select/books/:bookId/:chapter',
-      pageBuilder: (_, state) => NoTransitionPage(
-        key: state.pageKey,
-        child: VerseSelectionPage(
-          rangeMode: state.uri.queryParameters['mode'] == 'range',
-          initialBookId: state.pathParameters['bookId'],
-          initialChapter: int.tryParse(state.pathParameters['chapter']!),
-        ),
-      ),
-    ),
-    GoRoute(
       path: '/select/review',
       pageBuilder: (_, state) => NoTransitionPage(
         key: state.pageKey,
