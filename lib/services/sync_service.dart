@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:daily_manna/services/database/database.dart';
+import 'package:daily_manna/services/error_logger_service.dart';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -94,15 +95,18 @@ class SyncService {
     SyncTransport? transport,
     AuthTokenProvider? authTokenProvider,
     Future<SharedPreferences> Function()? preferencesProvider,
+    ErrorLoggerService? errorLogger,
   }) : _transport = transport ?? HttpSyncTransport(),
        _authTokenProvider = authTokenProvider,
        _preferencesProvider =
-           preferencesProvider ?? SharedPreferences.getInstance;
+           preferencesProvider ?? SharedPreferences.getInstance,
+       _errorLogger = errorLogger;
 
   final AppDatabase _db;
   final SyncTransport _transport;
   final AuthTokenProvider? _authTokenProvider;
   final Future<SharedPreferences> Function() _preferencesProvider;
+  final ErrorLoggerService? _errorLogger;
   static const _clientIdKey = 'sync_client_id';
   StreamSubscription<List<SyncOutboxData>>? _outboxSubscription;
   bool _syncing = false;
@@ -111,11 +115,12 @@ class SyncService {
   /// Starts syncing newly queued local changes for authenticated users.
   void startAutoSync() {
     _outboxSubscription ??= _db.watchPendingChanges().listen((pending) {
-      if (pending.isNotEmpty) _requestSync();
+      if (pending.isNotEmpty) requestSync();
     });
   }
 
-  Future<void> syncAutomatically() => _requestSync();
+  /// Requests one sync attempt after a local write has been committed.
+  Future<void> requestSync() => _requestSync();
 
   Future<void> dispose() async {
     await _outboxSubscription?.cancel();
@@ -132,7 +137,14 @@ class SyncService {
       do {
         _syncAgain = false;
         try {
-          if (await _authTokenProvider?.call() != null) await sync();
+          if (await _authTokenProvider?.call() != null) {
+            await sync();
+          } else {
+            _errorLogger?.logInfo(
+              'Auto-sync skipped because no account is signed in.',
+              context: 'Sync',
+            );
+          }
         } catch (_) {
           // Keep the local outbox intact; a later write or manual retry can
           // attempt synchronization again.
@@ -155,47 +167,58 @@ class SyncService {
   /// Executes pull -> merge -> push -> final pull. Authentication is injected
   /// by the host app and may be omitted for endpoints that allow anonymous sync.
   Future<void> sync() async {
-    final clientId = await getClientId();
-    final token = await _authTokenProvider?.call();
-    var cursor = int.tryParse(await _db.getSyncCursor() ?? '') ?? 0;
+    _errorLogger?.logInfo('Sync attempt started.', context: 'Sync');
+    final startedAt = DateTime.now();
+    try {
+      final clientId = await getClientId();
+      final token = await _authTokenProvider?.call();
+      var cursor = int.tryParse(await _db.getSyncCursor() ?? '') ?? 0;
 
-    final pulled = await _transport.exchange(
-      clientId: clientId,
-      cursor: cursor,
-      baseCursor: cursor,
-      changes: const [],
-      authToken: token,
-    );
-    await _merge(pulled);
-    cursor = pulled.cursor;
-
-    final outbox = await _db.pendingChanges();
-    final outgoing = <Map<String, dynamic>>[];
-    for (final change in outbox) {
-      final result = await _db.resultByClientId(change.entityId);
-      if (result != null) outgoing.add(_encodeResult(result));
-    }
-    if (outgoing.isNotEmpty) {
-      final pushed = await _transport.exchange(
+      final pulled = await _transport.exchange(
         clientId: clientId,
         cursor: cursor,
         baseCursor: cursor,
-        changes: outgoing,
+        changes: const [],
         authToken: token,
       );
-      await _merge(pushed);
-      await _db.acknowledgeChanges(outbox.map((change) => change.id));
-      cursor = pushed.cursor;
-    }
+      await _merge(pulled);
+      cursor = pulled.cursor;
 
-    final finalPull = await _transport.exchange(
-      clientId: clientId,
-      cursor: cursor,
-      baseCursor: cursor,
-      changes: const [],
-      authToken: token,
-    );
-    await _merge(finalPull);
+      final outbox = await _db.pendingChanges();
+      final outgoing = <Map<String, dynamic>>[];
+      for (final change in outbox) {
+        final result = await _db.resultByClientId(change.entityId);
+        if (result != null) outgoing.add(_encodeResult(result));
+      }
+      if (outgoing.isNotEmpty) {
+        final pushed = await _transport.exchange(
+          clientId: clientId,
+          cursor: cursor,
+          baseCursor: cursor,
+          changes: outgoing,
+          authToken: token,
+        );
+        await _merge(pushed);
+        await _db.acknowledgeChanges(outbox.map((change) => change.id));
+        cursor = pushed.cursor;
+      }
+
+      final finalPull = await _transport.exchange(
+        clientId: clientId,
+        cursor: cursor,
+        baseCursor: cursor,
+        changes: const [],
+        authToken: token,
+      );
+      await _merge(finalPull);
+      _errorLogger?.logInfo(
+        'Sync completed in ${DateTime.now().difference(startedAt).inMilliseconds}ms.',
+        context: 'Sync',
+      );
+    } catch (error) {
+      _errorLogger?.logError('Sync failed: $error', context: 'Sync');
+      rethrow;
+    }
   }
 
   Future<void> _merge(SyncResponse response) => _db.transaction(() async {

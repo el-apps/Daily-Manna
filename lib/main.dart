@@ -54,26 +54,28 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
     _syncService = SyncService(
       _database,
       authTokenProvider: _authService.tokenProvider,
+      errorLogger: _errorLoggerService,
     );
-    _database.onLocalChange = _syncService.syncAutomatically;
-    _initFuture = Future.wait([
-      _authService.init().then((_) async {
-        _syncService.startAutoSync();
-        if (_authService.isSignedIn) {
-          try {
-            await _syncService.sync();
-          } catch (_) {
-            // Startup remains usable offline; Settings offers a manual retry.
+    _database.onLocalChange = _syncService.requestSync;
+    _initFuture =
+        Future.wait([
+          _authService.init(),
+          _settingsService.init().then((_) async {
+            await _notificationService.initialize();
+            await _notificationService.scheduleDailyNotification();
+          }),
+          _errorLoggerService.init(),
+          _bibleService.load(context),
+        ]).then((_) async {
+          _syncService.startAutoSync();
+          if (_authService.isSignedIn) {
+            try {
+              await _syncService.sync();
+            } catch (_) {
+              // Startup remains usable offline; Settings offers a manual retry.
+            }
           }
-        }
-      }),
-      _settingsService.init().then((_) async {
-        await _notificationService.initialize();
-        await _notificationService.scheduleDailyNotification();
-      }),
-      _errorLoggerService.init(),
-      _bibleService.load(context),
-    ]);
+        });
   }
 
   @override
