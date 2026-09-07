@@ -1,5 +1,7 @@
 import 'package:daily_manna/mode_card.dart';
+import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
+import 'package:daily_manna/ui/interaction_sheet.dart';
 import 'package:daily_manna/ui/streak/streak_card.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -44,5 +46,16 @@ class HomePage extends StatelessWidget {
         ),
       ],
     ),
+    floatingActionButton: FloatingActionButton(
+      onPressed: () => _selectPassage(context),
+      child: const Icon(Icons.play_arrow),
+    ),
   );
+
+  Future<void> _selectPassage(BuildContext context) async {
+    final passage = await context.push<ScriptureRangeRef>('/select?mode=range');
+    if (context.mounted && passage != null) {
+      showPassageInteractionSheet(context, passage);
+    }
+  }
 }
