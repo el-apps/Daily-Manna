@@ -1,6 +1,6 @@
 import 'package:daily_manna/models/score_data.dart';
 import 'package:daily_manna/ui/history/history_activity_grid.dart';
-import 'package:daily_manna/models/scripture_ref.dart';
+import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
 import 'package:daily_manna/services/results_service.dart';
@@ -208,12 +208,13 @@ class _DateGroup extends StatelessWidget {
   );
 
   void _showInteractionDialog(BuildContext context, db.Result result) {
-    showInteractionSheet(
+    showPassageInteractionSheet(
       context,
-      ScriptureRef(
+      ScriptureRangeRef(
         bookId: result.bookId,
-        chapterNumber: result.startChapter,
-        verseNumber: result.startVerse,
+        chapter: result.startChapter,
+        startVerse: result.startVerse,
+        endVerse: result.endVerse,
       ),
     );
   }
