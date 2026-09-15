@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(pwd -P)"
+nix_bin="$(command -v nix)"
+profile="$HOME/.bash_profile"
+marker="# daily-manna Nix development shell"
+
+if ! grep -Fqx "$marker" "$profile" 2>/dev/null; then
+  cat >> "$profile" <<EOF
+
+$marker
+if [[ -z "\${IN_NIX_SHELL:-}" && "\${PWD}" == "$repo_root" ]]; then
+  eval "\$("$nix_bin" print-dev-env "$repo_root")"
+fi
+EOF
+fi
+
+# Use the dev shell directly here. A login shell can reset PATH and hide the
+# tools exported by the flake, so don't wrap this command in `bash -lc`.
+nix develop "$repo_root" --command flutter pub get
