@@ -409,17 +409,36 @@ class _RecitationModeState extends State<RecitationMode> {
 
       if (!mounted) return;
 
-      if (recognizedRef == null) {
+      // Validate that the returned reference actually resolves to real
+      // verses in the loaded Bible before accepting it. This guards against
+      // the classifier returning a book id / verse that doesn't exist (which
+      // would otherwise surface as "Unknown").
+      //
+      // The server already retries on invalid output, so a failure here is
+      // treated as definitive and surfaces an error for manual entry.
+      final resolved = recognizedRef == null
+          ? null
+          : bibleService.resolveRangeRef(
+              recognizedRef.bookId,
+              recognizedRef.chapter,
+              recognizedRef.startVerse,
+              recognizedRef.endVerse,
+            );
+
+      if (resolved == null) {
         setState(() => _step = RecitationStep.referenceReview);
         _handleError(
-          'Could not recognize passage. Please enter it manually.',
+          'Could not recognize a valid passage. Please enter it manually.',
           context: 'recognition',
+          errorDetails:
+              'Recognition returned null or an invalid reference.\n'
+              'Transcription length: ${transcribedText.length} chars',
         );
         return;
       }
 
       setState(() {
-        _selectedPassageRef = recognizedRef;
+        _selectedPassageRef = resolved;
         _step = RecitationStep.referenceReview;
       });
     } on TimeoutException catch (e, st) {

@@ -105,4 +105,37 @@ class BibleService {
     }
     return '$bookTitle ${ref.chapter}:${ref.startVerse}-${ref.endVerse}';
   }
+
+  /// Validates and normalizes a passage reference coming from external
+  /// recognition. Returns a [ScriptureRangeRef] using the canonical
+  /// (lowercase) book id if the reference resolves to real verses in the
+  /// loaded Bible, otherwise returns null.
+  ScriptureRangeRef? resolveRangeRef(
+    String bookId,
+    int chapter,
+    int startVerse,
+    int? endVerse,
+  ) {
+    final book = _bookById(bookId);
+    if (book == null || chapter < 1 || chapter > book.chapters.length) {
+      return null;
+    }
+
+    final verses = book.chapters[chapter - 1].verses;
+    if (startVerse < 1 || startVerse > verses.length) {
+      return null;
+    }
+
+    final resolvedEnd = endVerse ?? startVerse;
+    if (resolvedEnd < startVerse || resolvedEnd > verses.length) {
+      return null;
+    }
+
+    return ScriptureRangeRef(
+      bookId: book.id,
+      chapter: chapter,
+      startVerse: startVerse,
+      endVerse: resolvedEnd,
+    );
+  }
 }
