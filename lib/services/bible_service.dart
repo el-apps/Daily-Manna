@@ -4,10 +4,20 @@ import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:flutter/material.dart';
 
 class BibleService {
+  BibleService();
+
   late BibleParser _parser;
   late List<Book> _books;
   late Map<String, Book> _booksMap;
   bool _isLoaded = false;
+
+  /// Builds a service pre-populated from the given books (no XML load).
+  /// Used by tests to exercise real lookup/display logic.
+  BibleService.fromBooks(Iterable<Book> books) {
+    _books = books.toList();
+    _booksMap = Map.fromEntries(_books.map((b) => MapEntry(b.id, b)));
+    _isLoaded = true;
+  }
 
   get isLoaded => _isLoaded;
   List<Book> get books => _books;
@@ -25,7 +35,20 @@ class BibleService {
     _isLoaded = true;
   }
 
-  List<Chapter> getChapters(String bookId) => _booksMap[bookId]?.chapters ?? [];
+  /// Looks up a book by ID, matching case-insensitively so IDs returned by
+  /// external recognition (e.g. "Psa", "1Cor") resolve to the app's
+  /// lowercase keys ("psa", "1cor"). Returns null if not found.
+  Book? _bookById(String id) {
+    if (id.isEmpty) return null;
+    final lower = id.toLowerCase();
+    return _booksMap[lower] ??
+        _booksMap[_booksMap.keys.firstWhere(
+          (key) => key.toLowerCase() == lower,
+          orElse: () => '',
+        )];
+  }
+
+  List<Chapter> getChapters(String bookId) => _bookById(bookId)?.chapters ?? [];
 
   List<Verse> getVerses(String bookId, int chapterNumber) {
     if (chapterNumber < 1 || chapterNumber > getChapters(bookId).length) {
@@ -67,14 +90,14 @@ class BibleService {
       getVerse(ref.bookId!, ref.chapterNumber!, ref.verseNumber!).isNotEmpty;
 
   getRefName(ScriptureRef ref) => refString(
-    booksMap[ref.bookId]?.title ?? 'Unknown',
+    _bookById(ref.bookId!)?.title ?? 'Unknown',
     ref.chapterNumber,
     ref.verseNumber,
   );
 
   String getRangeRefName(ScriptureRangeRef ref) {
     final bookTitle = _booksMap.isNotEmpty
-        ? (_booksMap[ref.bookId]?.title ?? 'Unknown')
+        ? (_bookById(ref.bookId)?.title ?? 'Unknown')
         : 'Unknown';
 
     if (ref.endVerse == null || ref.endVerse == ref.startVerse) {

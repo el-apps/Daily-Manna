@@ -1,3 +1,4 @@
+import 'package:bible_parser_flutter/bible_parser_flutter.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,37 +38,23 @@ void main() {
 
       expect(bibleService.getRangeRefName(ref), 'John 3:16');
     });
+
+    test('resolves capitalized book id returned by recognition', () {
+      final ref = ScriptureRangeRef(bookId: 'Gen', chapter: 1, startVerse: 1);
+
+      expect(bibleService.getRangeRefName(ref), 'Genesis 1:1');
+    });
+
+    test('falls back to Unknown for unrecognized book id', () {
+      final ref = ScriptureRangeRef(bookId: 'Xxx', chapter: 1, startVerse: 1);
+
+      expect(bibleService.getRangeRefName(ref), 'Unknown 1:1');
+    });
   });
 }
 
-class _MockBook {
-  final String id;
-  final String title;
-
-  _MockBook({required this.id, required this.title});
-}
-
-BibleService _createTestBibleService() {
-  final mockBooks = {
-    'gen': _MockBook(id: 'gen', title: 'Genesis'),
-    'john': _MockBook(id: 'john', title: 'John'),
-  };
-
-  return _TestBibleService(mockBooks);
-}
-
-class _TestBibleService extends BibleService {
-  final Map<String, _MockBook> mockBooks;
-
-  _TestBibleService(this.mockBooks);
-
-  @override
-  String getRangeRefName(ScriptureRangeRef ref) {
-    final bookTitle = mockBooks[ref.bookId]?.title ?? 'Unknown';
-
-    if (ref.endVerse == null || ref.endVerse == ref.startVerse) {
-      return '$bookTitle ${ref.chapter}:${ref.startVerse}';
-    }
-    return '$bookTitle ${ref.chapter}:${ref.startVerse}-${ref.endVerse}';
-  }
-}
+BibleService _createTestBibleService() =>
+    BibleService.fromBooks([
+      Book(id: 'gen', num: 1, title: 'Genesis'),
+      Book(id: 'john', num: 43, title: 'John'),
+    ]);
