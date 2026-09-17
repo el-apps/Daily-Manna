@@ -27,11 +27,16 @@ const (
 	transcriptionModel = "nvidia/parakeet-tdt-0.6b-v3"
 	recognitionModel   = "openai/gpt-5.6-luna"
 	maxRequestBytes    = 8 << 20
+
+	// recognitionAttempts is how many times the classifier is asked to
+	// re-identify the passage when it returns unparsable or invalid output.
+	recognitionAttempts = 3
 )
 
 type server struct {
 	client    *http.Client
 	syncStore syncStore
+	classify  classifyFunc
 }
 
 type transcribeRequest struct {
@@ -149,38 +154,164 @@ func (s *server) recognizePassage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "transcribedText and availableBookIds are required", http.StatusBadRequest)
 		return
 	}
-	systemPrompt := fmt.Sprintf("You are a Bible passage recognition AI. Given transcribed text from someone reciting a Bible passage, identify which passage they are reciting. The text may contain transcription errors, paraphrasing, or slight variations. Available books: %s. Return a book ID exactly as listed. Respond only with JSON in this format: {\"bookId\":\"Gen\",\"chapter\":1,\"startVerse\":1,\"endVerse\":3}. Only single-chapter passages are supported. If uncertain, return all null values.", strings.Join(req.AvailableBookIDs, ", "))
-	body, err := json.Marshal(map[string]any{
-		"model":           recognitionModel,
-		"temperature":     0.3,
-		"response_format": map[string]string{"type": "json_object"},
-		"messages":        []map[string]string{{"role": "system", "content": systemPrompt}, {"role": "user", "content": "Identify this Bible passage from the transcribed text:\n\n\"" + req.TranscribedText + "\""}},
-	})
+
+	classify := s.classify
+	if classify == nil {
+		classify = s.classifyPassage
+	}
+	result, err := classify(r.Context(), req.TranscribedText, req.AvailableBookIDs)
 	if err != nil {
-		http.Error(w, "could not build request", http.StatusInternalServerError)
-		return
-	}
-	var response struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-	}
-	if err := s.openRouter(r.Context(), "/chat/completions", body, &response); err != nil {
 		writeBackendError(w, err)
 		return
 	}
-	if len(response.Choices) == 0 || response.Choices[0].Message.Content == "" {
-		http.Error(w, "recognition response was empty", http.StatusBadGateway)
-		return
-	}
-	var result map[string]any
-	if err := json.Unmarshal([]byte(response.Choices[0].Message.Content), &result); err != nil {
-		http.Error(w, "recognition response was invalid JSON", http.StatusBadGateway)
-		return
-	}
 	writeJSON(w, http.StatusOK, result)
+}
+
+// passageRecognition stores one recognized passage from the classifier.
+type passageRecognition struct {
+	BookID     *string `json:"bookId"`
+	Book       *string `json:"book"`
+	Chapter    *int    `json:"chapter"`
+	StartVerse *int    `json:"startVerse"`
+	EndVerse   *int    `json:"endVerse"`
+}
+
+// classifyFunc queries the classifier LLM against a single-chapter passage
+// and returns its parsed output. Extracted so tests can inject a stub.
+type classifyFunc func(ctx context.Context, transcribedText string, availableBookIDs []string) (map[string]any, error)
+
+// classifyPassage asks the classifier LLM to identify the passage, logs the
+// raw output for traceability, and retries when the output is unparsable or
+// invalid (missing or out-of-scope fields). It returns the first valid
+// recognition, or an empty (all-null) recognition if none of the attempts
+// produced valid output.
+func (s *server) classifyPassage(ctx context.Context, transcribedText string, availableBookIDs []string) (map[string]any, error) {
+	allowed := make(map[string]bool, len(availableBookIDs))
+	for _, id := range availableBookIDs {
+		allowed[strings.ToLower(id)] = true
+	}
+
+	systemPrompt := fmt.Sprintf("You are a Bible passage recognition AI. Given transcribed text from someone reciting a Bible passage, identify which passage they are reciting. The text may contain transcription errors, paraphrasing, or slight variations. Available books (exactly these book IDs): %s. Return a book ID exactly as listed. Respond only with JSON in this format: {\"bookId\":\"Psa\",\"book\":\"Psalms\",\"chapter\":23,\"startVerse\":1,\"endVerse\":3}. Only single-chapter passages are supported. If uncertain, return all null values.", strings.Join(availableBookIDs, ", "))
+	messages := []map[string]string{
+		{"role": "system", "content": systemPrompt},
+		{"role": "user", "content": "Identify this Bible passage from the transcribed text:\n\n\"" + transcribedText + "\""},
+	}
+
+	for attempt := 1; attempt <= recognitionAttempts; attempt++ {
+		body, err := json.Marshal(map[string]any{
+			"model":           recognitionModel,
+			"temperature":     0.3,
+			"response_format": map[string]string{"type": "json_object"},
+			"messages":        messages,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("could not build request: %w", err)
+		}
+
+		var response struct {
+			Choices []struct {
+				Message struct {
+					Content string `json:"content"`
+				} `json:"message"`
+			} `json:"choices"`
+		}
+		if err := s.openRouter(ctx, "/chat/completions", body, &response); err != nil {
+			return nil, err
+		}
+		if len(response.Choices) == 0 {
+			log.Printf("[recognize] attempt %d/%d: no choices returned", attempt, recognitionAttempts)
+			continue
+		}
+		rawContent := response.Choices[0].Message.Content
+		log.Printf("[recognize] attempt %d/%d raw output: %s", attempt, recognitionAttempts, rawContent)
+
+		var parsed map[string]any
+		if err := json.Unmarshal([]byte(rawContent), &parsed); err != nil {
+			log.Printf("[recognize] attempt %d/%d: invalid JSON (%v)", attempt, recognitionAttempts, err)
+			continue
+		}
+
+		recognized := passageRecognition{}
+		if bookID, ok := parsed["bookId"].(string); ok {
+			recognized.BookID = &bookID
+		}
+		if book, ok := parsed["book"].(string); ok {
+			recognized.Book = &book
+		}
+		if chapter, ok := parsed["chapter"].(float64); ok {
+			c := int(chapter)
+			recognized.Chapter = &c
+		}
+		if startVerse, ok := parsed["startVerse"].(float64); ok {
+			sv := int(startVerse)
+			recognized.StartVerse = &sv
+		}
+		if endVerse, ok := parsed["endVerse"].(float64); ok {
+			ev := int(endVerse)
+			recognized.EndVerse = &ev
+		}
+
+		if !validRecognition(&recognized, allowed) {
+			log.Printf("[recognize] attempt %d/%d: invalid recognition: %+v", attempt, recognitionAttempts, recognized)
+			continue
+		}
+
+		return recognitionResponse(&recognized), nil
+	}
+
+	log.Printf("[recognize] no valid recognition after %d attempts", recognitionAttempts)
+	return map[string]any{
+		"bookId":     nil,
+		"book":       nil,
+		"chapter":    nil,
+		"startVerse": nil,
+		"endVerse":   nil,
+	}, nil
+}
+
+func validRecognition(r *passageRecognition, allowed map[string]bool) bool {
+	if r.BookID == nil || r.Chapter == nil || r.StartVerse == nil {
+		return false
+	}
+	if !allowed[strings.ToLower(*r.BookID)] {
+		return false
+	}
+	if *r.Chapter < 1 || *r.StartVerse < 1 {
+		return false
+	}
+	if r.EndVerse == nil {
+		e := *r.StartVerse
+		r.EndVerse = &e
+	}
+	return *r.EndVerse >= *r.StartVerse
+}
+
+// recognitionResponse maps a validated recognition to the API response,
+// normalizing the book id to lowercase so it matches the app's canonical
+// (lowercase) book keys. This prevents the app from looking up an id that
+// isn't in its map (which surfaced as "Unknown").
+func recognitionResponse(r *passageRecognition) map[string]any {
+	return map[string]any{
+		"bookId":     strings.ToLower(*r.BookID),
+		"book":       derefString(r.Book),
+		"chapter":    *r.Chapter,
+		"startVerse": *r.StartVerse,
+		"endVerse":   derefInt(r.EndVerse),
+	}
+}
+
+func derefString(v *string) string {
+	if v == nil {
+		return ""
+	}
+	return *v
+}
+
+func derefInt(v *int) int {
+	if v == nil {
+		return -1
+	}
+	return *v
 }
 
 func (s *server) openRouter(ctx context.Context, path string, body []byte, result any) error {
