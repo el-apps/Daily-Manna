@@ -7,6 +7,7 @@ import 'package:daily_manna/ui/memorization/verse_memorization.dart';
 import 'package:daily_manna/ui/recitation/recitation_mode.dart';
 import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
 import 'package:daily_manna/ui/study/study_notes_page.dart';
+import 'package:daily_manna/ui/study/study_result_detail_page.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
