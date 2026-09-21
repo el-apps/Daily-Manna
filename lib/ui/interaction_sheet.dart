@@ -2,7 +2,7 @@ import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
-import 'package:daily_manna/ui/study/study_notes_page.dart';
+import 'package:daily_manna/ui/study/study_note_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
