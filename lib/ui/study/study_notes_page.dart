@@ -204,7 +204,7 @@ class _FilteredNotes extends StatelessWidget {
                         .map(
                           (reference) => context
                               .read<BibleService>()
-                              .getRangeRefName(reference.ref),
+                              .getRangeRefName(reference),
                         )
                         .join(' · '),
               maxLines: 2,

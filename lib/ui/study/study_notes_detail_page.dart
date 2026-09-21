@@ -137,7 +137,7 @@ class _NotesTab extends StatelessWidget {
               .map(
                 (passage) => Chip(
                   avatar: const Icon(Icons.menu_book, size: 18),
-                  label: Text(bibleService.getRangeRefName(passage.ref)),
+                  label: Text(bibleService.getRangeRefName(passage)),
                 ),
               )
               .toList(),

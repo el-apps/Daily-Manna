@@ -15,4 +15,11 @@ abstract class ScriptureRangeRef with _$ScriptureRangeRef {
   }) = _ScriptureRangeRef;
 
   bool get complete => bookId.isNotEmpty && chapter > 0 && startVerse > 0;
+
+  bool overlaps(ScriptureRangeRef query) {
+    if (bookId != query.bookId || chapter != query.chapter) return false;
+    final thisEnd = endVerse ?? startVerse;
+    final queryEnd = query.endVerse ?? query.startVerse;
+    return startVerse <= queryEnd && thisEnd >= query.startVerse;
+  }
 }

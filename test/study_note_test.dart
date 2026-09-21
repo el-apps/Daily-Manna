@@ -1,9 +1,8 @@
 import 'package:daily_manna/models/scripture_range_ref.dart';
-import 'package:daily_manna/models/study_note_passage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('StudyNotePassage.overlaps', () {
+  group('ScriptureRangeRef.overlaps', () {
     const query = ScriptureRangeRef(
       bookId: 'Jas',
       chapter: 1,
@@ -13,7 +12,7 @@ void main() {
 
     test('matches any shared verse', () {
       expect(
-        const StudyNotePassage(
+        const ScriptureRangeRef(
           bookId: 'Jas',
           chapter: 1,
           startVerse: 10,
@@ -22,7 +21,7 @@ void main() {
         isTrue,
       );
       expect(
-        const StudyNotePassage(
+        const ScriptureRangeRef(
           bookId: 'Jas',
           chapter: 1,
           startVerse: 1,
@@ -34,7 +33,7 @@ void main() {
 
     test('does not match a different book or chapter', () {
       expect(
-        const StudyNotePassage(
+        const ScriptureRangeRef(
           bookId: 'Jas',
           chapter: 2,
           startVerse: 9,
@@ -42,7 +41,7 @@ void main() {
         isFalse,
       );
       expect(
-        const StudyNotePassage(
+        const ScriptureRangeRef(
           bookId: 'Pet1',
           chapter: 1,
           startVerse: 9,
