@@ -1,7 +1,8 @@
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
-import 'package:daily_manna/ui/study/record_study_sheet.dart';
+import 'package:daily_manna/services/database/database.dart' as db;
+import 'package:daily_manna/ui/study/study_notes_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -87,12 +88,15 @@ void _showInteractionSheet(
                   label: 'Study',
                   onPressed: () {
                     Navigator.pop(sheetContext);
-                    showModalBottomSheet<void>(
+                    showModalBottomSheet<db.StudyNote>(
                       context: context,
                       isScrollControlled: true,
-                      builder: (_) =>
-                          RecordStudySheet(initialPassage: initialPassage),
-                    );
+                      builder: (_) => StudyNotePicker(passage: initialPassage),
+                    ).then((note) {
+                      if (context.mounted && note != null) {
+                        context.push('/study-notes/${note.id}', extra: note);
+                      }
+                    });
                   },
                 ),
               ],

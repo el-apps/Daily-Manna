@@ -173,8 +173,13 @@ class SyncService {
       final outbox = await _db.pendingChanges();
       final outgoing = <Map<String, dynamic>>[];
       for (final change in outbox) {
-        final result = await _db.resultByClientId(change.entityId);
-        if (result != null) outgoing.add(_encodeResult(result));
+        if (change.entityType == 'result') {
+          final result = await _db.resultByClientId(change.entityId);
+          if (result != null) outgoing.add(_encodeResult(result));
+        } else if (change.entityType == 'study_note') {
+          final note = await _db.studyNoteByClientId(change.entityId);
+          if (note != null) outgoing.add(_encodeStudyNote(note));
+        }
       }
       if (outgoing.isNotEmpty) {
         final pushed = await _transport.exchange(
@@ -209,13 +214,20 @@ class SyncService {
 
   Future<void> _merge(SyncResponse response) => _db.transaction(() async {
     for (final change in response.changes) {
-      if (change['type'] != 'result') continue;
       final id = change['id'] as String;
       if (await _db.hasPendingChange(id)) continue;
       if (change['deleted'] == true) {
-        await _db.deleteRemoteResult(id);
+        if (change['type'] == 'result') {
+          await _db.deleteRemoteResult(id);
+        }
       } else {
-        await _db.mergeRemoteResult(_decodeResult(id, change['data'] as Map));
+        if (change['type'] == 'result') {
+          await _db.mergeRemoteResult(_decodeResult(id, change['data'] as Map));
+        } else if (change['type'] == 'study_note') {
+          await _db.mergeRemoteStudyNote(
+            _decodeStudyNote(id, change['data'] as Map),
+          );
+        }
       }
     }
     await _db.setSyncCursor(response.cursor.toString());
@@ -239,10 +251,22 @@ class SyncService {
     },
   };
 
+  Map<String, dynamic> _encodeStudyNote(StudyNote note) => {
+    'type': 'study_note',
+    'id': note.clientId,
+    'data': {
+      'title': note.title,
+      'notes': note.notes,
+      'passages': note.passages,
+      'createdAt': note.createdAt.toUtc().toIso8601String(),
+      'updatedAt': note.updatedAt.toUtc().toIso8601String(),
+    },
+  };
+
   ResultsCompanion _decodeResult(String id, Map<dynamic, dynamic> raw) {
     final data = Map<String, dynamic>.from(raw);
     return ResultsCompanion.insert(
-      timestamp: DateTime.parse(data['timestamp'] as String),
+      timestamp: DateTime.parse(data['timestamp'] as String).toUtc(),
       type: ResultType.values.byName(data['resultType'] as String),
       bookId: data['bookId'] as String,
       startChapter: (data['startChapter'] as num).toInt(),
@@ -253,7 +277,19 @@ class SyncService {
       attempts: Value((data['attempts'] as num?)?.toInt()),
       notes: Value(data['notes'] as String?),
       clientId: Value(id),
-      updatedAt: Value(DateTime.parse(data['updatedAt'] as String)),
+      updatedAt: Value(DateTime.parse(data['updatedAt'] as String).toUtc()),
+    );
+  }
+
+  StudyNotesCompanion _decodeStudyNote(String id, Map<dynamic, dynamic> raw) {
+    final data = Map<String, dynamic>.from(raw);
+    return StudyNotesCompanion.insert(
+      title: data['title'] as String,
+      notes: Value(data['notes'] as String?),
+      passages: data['passages'] as String,
+      createdAt: DateTime.parse(data['createdAt'] as String).toUtc(),
+      updatedAt: DateTime.parse(data['updatedAt'] as String).toUtc(),
+      clientId: Value(id),
     );
   }
 }

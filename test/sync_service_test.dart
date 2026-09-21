@@ -1,6 +1,6 @@
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/sync_service.dart';
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -156,7 +156,7 @@ void main() {
     final result = (await database.getAllResults()).single;
     expect(result.clientId, 'legacy-1087');
     expect(result.notes, 'copy to outline');
-    expect(result.updatedAt, DateTime.utc(2026, 9, 7, 7, 30));
+    expect(result.updatedAt.toUtc(), DateTime.utc(2026, 9, 7, 7, 30));
   });
 }
 
