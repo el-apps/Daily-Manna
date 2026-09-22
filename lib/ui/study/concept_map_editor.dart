@@ -45,6 +45,7 @@ class ConceptMapEditor extends StatefulWidget {
 
 class ConceptMapEditorState extends State<ConceptMapEditor> {
   String? _connectingFrom;
+  final _nodeSizes = <String, Size>{};
 
   void addNode([ConceptMapNodeType type = ConceptMapNodeType.note]) {
     final id = 'node${widget.document.nodes.length + 1}';
@@ -114,7 +115,7 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
         width: math.max(900, widget.document.nodes.length * 280.0),
         height: math.max(700, widget.document.nodes.length * 180.0),
         child: CustomPaint(
-          painter: _ConceptMapEdgesPainter(widget.document),
+          painter: _ConceptMapEdgesPainter(widget.document, _nodeSizes),
           child: Stack(
             children: [
               for (final entry in positions.entries)
@@ -128,6 +129,7 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
                   connecting: _connectingFrom != null,
                   onTap: () => _selectNode(entry.key),
                   onLongPress: () => _showNodeMenu(entry.key),
+                  onSizeChanged: _updateNodeSize,
                   onChanged: (node) =>
                       widget.onChanged(widget.document.updateNode(node)),
                 ),
@@ -136,6 +138,11 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
         ),
       ),
     );
+  }
+
+  void _updateNodeSize(String id, Size size) {
+    if (_nodeSizes[id] == size) return;
+    setState(() => _nodeSizes[id] = size);
   }
 
   void _selectNode(String id) {
@@ -191,6 +198,7 @@ class _ConceptMapNodeWidget extends StatefulWidget {
     required this.connecting,
     required this.onTap,
     required this.onLongPress,
+    required this.onSizeChanged,
     required this.onChanged,
   });
 
@@ -200,6 +208,7 @@ class _ConceptMapNodeWidget extends StatefulWidget {
   final bool connecting;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+  final void Function(String id, Size size) onSizeChanged;
   final ValueChanged<ConceptMapNode> onChanged;
 
   @override
@@ -233,6 +242,11 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
 
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && context.size != null) {
+        widget.onSizeChanged(widget.node.id, context.size!);
+      }
+    });
     final colors = Theme.of(context).colorScheme;
     final bibleService = context.read<BibleService>();
     final color = switch (widget.node.type) {
@@ -325,9 +339,10 @@ class _PassageNodeContent extends StatelessWidget {
 }
 
 class _ConceptMapEdgesPainter extends CustomPainter {
-  const _ConceptMapEdgesPainter(this.document);
+  const _ConceptMapEdgesPainter(this.document, this.nodeSizes);
 
   final ConceptMapDocument document;
+  final Map<String, Size> nodeSizes;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -342,10 +357,12 @@ class _ConceptMapEdgesPainter extends CustomPainter {
       final to = positions[edge.to];
       if (from == null || to == null) continue;
 
-      final fromCenter = from + const Offset(105, 45);
-      final toCenter = to + const Offset(105, 45);
-      final start = _boundaryPoint(fromCenter, toCenter);
-      final end = _boundaryPoint(toCenter, fromCenter);
+      final fromSize = nodeSizes[edge.from] ?? const Size(210, 90);
+      final toSize = nodeSizes[edge.to] ?? const Size(210, 90);
+      final fromCenter = from + Offset(fromSize.width / 2, fromSize.height / 2);
+      final toCenter = to + Offset(toSize.width / 2, toSize.height / 2);
+      final start = _boundaryPoint(fromCenter, toCenter, fromSize);
+      final end = _boundaryPoint(toCenter, fromCenter, toSize);
       final horizontal =
           (toCenter.dx - fromCenter.dx).abs() >=
           (toCenter.dy - fromCenter.dy).abs();
@@ -362,12 +379,12 @@ class _ConceptMapEdgesPainter extends CustomPainter {
     }
   }
 
-  static Offset _boundaryPoint(Offset center, Offset target) {
+  static Offset _boundaryPoint(Offset center, Offset target, Size size) {
     final delta = target - center;
     if (delta.dx.abs() >= delta.dy.abs()) {
-      return center + Offset(delta.dx.sign * 105, 0);
+      return center + Offset(delta.dx.sign * size.width / 2, 0);
     }
-    return center + Offset(0, delta.dy.sign * 45);
+    return center + Offset(0, delta.dy.sign * size.height / 2);
   }
 
   static void _drawArrowhead(
@@ -396,5 +413,5 @@ class _ConceptMapEdgesPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ConceptMapEdgesPainter oldDelegate) =>
-      oldDelegate.document != document;
+      oldDelegate.document != document || oldDelegate.nodeSizes != nodeSizes;
 }
