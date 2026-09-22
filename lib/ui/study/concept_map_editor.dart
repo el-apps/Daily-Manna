@@ -125,7 +125,9 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
                   ),
                   position: entry.value,
                   editing: widget.editing,
+                  connecting: _connectingFrom != null,
                   onTap: () => _selectNode(entry.key),
+                  onLongPress: () => _showNodeMenu(entry.key),
                   onChanged: (node) =>
                       widget.onChanged(widget.document.updateNode(node)),
                 ),
@@ -150,6 +152,23 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
     setState(() => _connectingFrom = null);
   }
 
+  Future<void> _showNodeMenu(String id) async {
+    if (!widget.editing || _connectingFrom != null) return;
+    final shouldDelete = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ListTile(
+          leading: const Icon(Icons.delete_outline),
+          title: const Text('Delete box'),
+          onTap: () => Navigator.pop(context, true),
+        ),
+      ),
+    );
+    if (shouldDelete == true && mounted) {
+      widget.onChanged(widget.document.deleteNode(id));
+    }
+  }
+
   static String _labelFor(ConceptMapNodeType type) => switch (type) {
     ConceptMapNodeType.keyPoint => 'Key point',
     ConceptMapNodeType.note => 'Note',
@@ -169,14 +188,18 @@ class _ConceptMapNodeWidget extends StatefulWidget {
     required this.node,
     required this.position,
     required this.editing,
+    required this.connecting,
     required this.onTap,
+    required this.onLongPress,
     required this.onChanged,
   });
 
   final ConceptMapNode node;
   final Offset position;
   final bool editing;
+  final bool connecting;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
   final ValueChanged<ConceptMapNode> onChanged;
 
   @override
@@ -223,11 +246,13 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
       width: 210,
       child: GestureDetector(
         onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
         child: Card(
           color: color,
           child: Padding(
             padding: const EdgeInsets.all(10),
-            child: widget.node.type == ConceptMapNodeType.passage
+            child: widget.node.type == ConceptMapNodeType.passage &&
+                    !widget.connecting
                 ? _PassageNodeContent(
                     node: widget.node,
                     bibleService: bibleService,
@@ -236,7 +261,7 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
                       () => _showPassageContent = !_showPassageContent,
                     ),
                   )
-                : widget.editing
+                : widget.editing && !widget.connecting
                 ? TextField(
                     controller: _controller,
                     maxLines: null,

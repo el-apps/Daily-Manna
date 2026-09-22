@@ -80,6 +80,9 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
           Expanded(
             child: TabBarView(
               controller: _tabController,
+              // The concept map owns horizontal gestures for panning. Tabs are
+              // switched explicitly so a map swipe cannot leave the editor.
+              physics: const NeverScrollableScrollPhysics(),
               children: [
                 _NotesTab(
                   notes: _notes,

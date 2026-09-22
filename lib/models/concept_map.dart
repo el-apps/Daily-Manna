@@ -127,6 +127,13 @@ class ConceptMapDocument {
     edges: edges,
   );
 
+  ConceptMapDocument deleteNode(String id) => ConceptMapDocument(
+    nodes: nodes.where((node) => node.id != id).toList(),
+    edges: edges
+        .where((edge) => edge.from != id && edge.to != id)
+        .toList(),
+  );
+
   ConceptMapDocument addEdge(ConceptMapEdge edge) =>
       ConceptMapDocument(nodes: nodes, edges: [...edges, edge]);
 
