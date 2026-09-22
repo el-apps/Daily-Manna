@@ -1,7 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:daily_manna/models/concept_map.dart';
+import 'package:daily_manna/services/bible_service.dart';
+import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 Map<String, Offset> conceptMapLayout(ConceptMapDocument document) {
   final ranks = <String, int>{for (final node in document.nodes) node.id: 0};
@@ -70,7 +73,25 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
         ),
       ),
     );
-    if (type != null && mounted) addNode(type);
+    if (type == null || !mounted) return;
+    if (type == ConceptMapNodeType.passage) {
+      final passage = await showPassageSelector(context);
+      if (passage == null || !mounted) return;
+      final bibleService = context.read<BibleService>();
+      final id = 'node${widget.document.nodes.length + 1}';
+      widget.onChanged(
+        widget.document.addNode(
+          ConceptMapNode(
+            id: id,
+            type: type,
+            label: bibleService.getRangeRefName(passage),
+            passage: passage,
+          ),
+        ),
+      );
+      return;
+    }
+    addNode(type);
   }
 
   void startConnecting() {
@@ -164,6 +185,7 @@ class _ConceptMapNodeWidget extends StatefulWidget {
 
 class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
   late final TextEditingController _controller;
+  bool _showPassageContent = false;
 
   @override
   void initState() {
@@ -189,6 +211,7 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final bibleService = context.read<BibleService>();
     final color = switch (widget.node.type) {
       ConceptMapNodeType.keyPoint => colors.primaryContainer,
       ConceptMapNodeType.note => colors.secondaryContainer,
@@ -204,7 +227,16 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
           color: color,
           child: Padding(
             padding: const EdgeInsets.all(10),
-            child: widget.editing
+            child: widget.node.type == ConceptMapNodeType.passage
+                ? _PassageNodeContent(
+                    node: widget.node,
+                    bibleService: bibleService,
+                    showContent: _showPassageContent,
+                    onToggleContent: () => setState(
+                      () => _showPassageContent = !_showPassageContent,
+                    ),
+                  )
+                : widget.editing
                 ? TextField(
                     controller: _controller,
                     maxLines: null,
@@ -218,6 +250,55 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PassageNodeContent extends StatelessWidget {
+  const _PassageNodeContent({
+    required this.node,
+    required this.bibleService,
+    required this.showContent,
+    required this.onToggleContent,
+  });
+
+  final ConceptMapNode node;
+  final BibleService bibleService;
+  final bool showContent;
+  final VoidCallback onToggleContent;
+
+  @override
+  Widget build(BuildContext context) {
+    final passage = node.passage;
+    final content = passage == null
+        ? ''
+        : bibleService.getPassageRange(
+            passage.bookId,
+            passage.chapter,
+            passage.startVerse,
+            endVerse: passage.endVerse,
+          );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.menu_book_outlined, size: 18),
+            const SizedBox(width: 6),
+            Expanded(child: Text(node.label)),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              tooltip: showContent ? 'Show reference only' : 'Show passage',
+              onPressed: onToggleContent,
+              icon: Icon(showContent ? Icons.visibility_off : Icons.visibility),
+            ),
+          ],
+        ),
+        if (showContent) ...[
+          const Divider(),
+          Text(content),
+        ],
+      ],
     );
   }
 }
