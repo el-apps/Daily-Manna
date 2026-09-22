@@ -59,15 +59,13 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
     return AppScaffold(
       title: widget.note.title,
       showShareButton: false,
-      appBarActions: _isEditing
+      floatingActionButton: _isEditing
           ? null
-          : [
-              IconButton(
-                onPressed: _enterEditMode,
-                tooltip: 'Edit',
-                icon: const Icon(Icons.edit),
-              ),
-            ],
+          : FloatingActionButton(
+              onPressed: _enterEditMode,
+              tooltip: 'Edit',
+              child: const Icon(Icons.edit),
+            ),
       body: Column(
         children: [
           TabBar(
