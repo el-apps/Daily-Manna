@@ -34,6 +34,11 @@ class StudyNotesService {
     await onLocalChange?.call();
   }
 
+  Future<void> updateConceptMap(int id, String conceptMap) async {
+    await _db.updateStudyNote(id, conceptMap: conceptMap);
+    await onLocalChange?.call();
+  }
+
   Future<void> addPassage(int id, ScriptureRangeRef passage) async {
     final note = await _db.studyNoteById(id);
     if (note == null) return;

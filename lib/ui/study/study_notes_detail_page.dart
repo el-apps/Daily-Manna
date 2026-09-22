@@ -1,8 +1,11 @@
+import 'package:daily_manna/models/concept_map.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
 import 'package:daily_manna/services/study_notes_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
+import 'package:daily_manna/ui/study/concept_map_editor.dart';
+import 'package:daily_manna/ui/study/study_edit_toolbar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,21 +19,34 @@ class StudyNotesDetailPage extends StatefulWidget {
   State<StudyNotesDetailPage> createState() => _StudyNotesDetailPageState();
 }
 
-class _StudyNotesDetailPageState extends State<StudyNotesDetailPage> {
+class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
+    with SingleTickerProviderStateMixin {
   late String? _notes;
   late final TextEditingController _notesController;
+  late ConceptMapDocument _conceptMap;
+  late final TabController _tabController;
+  final _conceptMapKey = GlobalKey<ConceptMapEditorState>();
   bool _isEditing = false;
+  int _activeTab = 0;
 
   @override
   void initState() {
     super.initState();
     _notes = widget.note.notes;
     _notesController = TextEditingController(text: _notes);
+    _conceptMap = ConceptMapDocument.fromMermaid(widget.note.conceptMap ?? '');
+    _tabController = TabController(length: 2, vsync: this)
+      ..addListener(() {
+        if (!_tabController.indexIsChanging && mounted) {
+          setState(() => _activeTab = _tabController.index);
+        }
+      });
   }
 
   @override
   void dispose() {
     _notesController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -43,54 +59,61 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage> {
     return AppScaffold(
       title: widget.note.title,
       showShareButton: false,
-      appBarActions: [
-        IconButton(
-          onPressed: _toggleEditMode,
-          tooltip: _isEditing ? 'Save' : 'Edit',
-          icon: Icon(_isEditing ? Icons.check : Icons.edit),
-        ),
-      ],
-      body: DefaultTabController(
-        length: 2,
-        child: Column(
-          children: [
-            const TabBar(
-              tabs: [
-                Tab(text: 'Notes'),
-                Tab(text: 'Concept Map'),
+      appBarActions: _isEditing
+          ? null
+          : [
+              IconButton(
+                onPressed: _enterEditMode,
+                tooltip: 'Edit',
+                icon: const Icon(Icons.edit),
+              ),
+            ],
+      body: Column(
+        children: [
+          TabBar(
+            controller: _tabController,
+            tabs: [
+              Tab(text: 'Notes'),
+              Tab(text: 'Concept Map'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _NotesTab(
+                  notes: _notes,
+                  notesController: _notesController,
+                  isEditing: _isEditing,
+                  passages: passages,
+                  bibleService: bibleService,
+                ),
+                ConceptMapEditor(
+                  key: _conceptMapKey,
+                  document: _conceptMap,
+                  editing: _isEditing,
+                  onChanged: (document) =>
+                      setState(() => _conceptMap = document),
+                ),
               ],
             ),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  _NotesTab(
-                    notes: _notes,
-                    notesController: _notesController,
-                    isEditing: _isEditing,
-                    passages: passages,
-                    bibleService: bibleService,
-                  ),
-                  _ConceptMapPlaceholder(isEditing: _isEditing),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+          if (_isEditing) _buildEditToolbar(),
+        ],
       ),
     );
   }
 
-  Future<void> _toggleEditMode() async {
-    if (!_isEditing) {
-      setState(() => _isEditing = true);
-      return;
-    }
+  void _enterEditMode() => setState(() => _isEditing = true);
 
+  Future<void> _save() async {
     final newNotes = _notesController.text;
-    await context.read<StudyNotesService>().updateNotes(
+    final service = context.read<StudyNotesService>();
+    await service.updateNotes(
       widget.note.id,
       newNotes.isEmpty ? null : newNotes,
     );
+    await service.updateConceptMap(widget.note.id, _conceptMap.toMermaid());
     if (mounted) {
       setState(() {
         _notes = newNotes;
@@ -98,6 +121,84 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage> {
       });
     }
   }
+
+  Widget _buildEditToolbar() => StudyEditToolbar(
+    actions: _activeTab == 0
+        ? [
+            IconButton(
+              tooltip: 'Decrease heading',
+              onPressed: () => _adjustHeading(-1),
+              icon: const Icon(Icons.title),
+            ),
+            IconButton(
+              tooltip: 'Increase heading',
+              onPressed: () => _adjustHeading(1),
+              icon: const Icon(Icons.format_size),
+            ),
+            IconButton(
+              tooltip: 'Decrease bullet indent',
+              onPressed: () => _adjustBullets(-1),
+              icon: const Icon(Icons.format_indent_decrease),
+            ),
+            IconButton(
+              tooltip: 'Increase bullet indent',
+              onPressed: () => _adjustBullets(1),
+              icon: const Icon(Icons.format_indent_increase),
+            ),
+          ]
+        : [
+            IconButton(
+              tooltip: 'Add key point',
+              onPressed: () => _conceptMapKey.currentState?.addNode(
+                ConceptMapNodeType.keyPoint,
+              ),
+              icon: const Icon(Icons.star_outline),
+            ),
+            IconButton(
+              tooltip: 'Add note',
+              onPressed: () => _conceptMapKey.currentState?.addNode(),
+              icon: const Icon(Icons.note_add_outlined),
+            ),
+            IconButton(
+              tooltip: 'Connect boxes',
+              onPressed: () => _conceptMapKey.currentState?.startConnecting(),
+              icon: const Icon(Icons.account_tree_outlined),
+            ),
+          ],
+    onSave: _save,
+  );
+
+  void _adjustLine(String Function(String) update) {
+    final value = _notesController.value;
+    final text = value.text;
+    final offset = value.selection.baseOffset.clamp(0, text.length);
+    final lineStart = text.lastIndexOf('\n', offset - 1) + 1;
+    final lineEnd = text.indexOf('\n', offset);
+    final end = lineEnd == -1 ? text.length : lineEnd;
+    final updated = update(text.substring(lineStart, end));
+    _notesController.value = value.copyWith(
+      text: text.replaceRange(lineStart, end, updated),
+      selection: TextSelection.collapsed(offset: lineStart + updated.length),
+    );
+  }
+
+  void _adjustHeading(int delta) => _adjustLine((line) {
+    final content = line.replaceFirst(RegExp(r'^#{1,3}\s?'), '');
+    final current = line.startsWith('#')
+        ? RegExp(r'^#+').firstMatch(line)!.group(0)!.length
+        : 0;
+    final level = (current + delta).clamp(0, 3);
+    return '${level == 0 ? '' : '${'#' * level} '}$content';
+  });
+
+  void _adjustBullets(int delta) => _adjustLine((line) {
+    final content = line.replaceFirst(RegExp(r'^(  ){0,3}-\s?'), '');
+    final match = RegExp(r'^(  +)-\s').firstMatch(line);
+    final current = match == null ? (line.startsWith('- ') ? 1 : 0) :
+        (match.group(1)!.length ~/ 2) + 1;
+    final level = (current + delta).clamp(0, 3);
+    return '${level == 0 ? '' : '${'  ' * (level - 1)}- '}$content';
+  });
 }
 
 class _NotesTab extends StatelessWidget {
@@ -148,7 +249,7 @@ class _NotesTab extends StatelessWidget {
           ),
         )
       else if (notes?.isNotEmpty == true)
-        Text(notes!, style: Theme.of(context).textTheme.bodyLarge)
+        _MarkdownPreview(notes!)
       else
         const EmptyState(
           icon: Icons.edit_note,
@@ -156,18 +257,44 @@ class _NotesTab extends StatelessWidget {
         ),
     ],
   );
+
 }
 
-class _ConceptMapPlaceholder extends StatelessWidget {
-  const _ConceptMapPlaceholder({required this.isEditing});
+class _MarkdownPreview extends StatelessWidget {
+  const _MarkdownPreview(this.source);
 
-  final bool isEditing;
+  final String source;
 
   @override
-  Widget build(BuildContext context) => EmptyState(
-    icon: Icons.account_tree_outlined,
-    message: isEditing
-        ? 'Concept map editing will appear here.'
-        : 'Concept maps are coming next.\nYour tracked passages are ready.',
-  );
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: source.split('\n').map((line) {
+        final heading = RegExp(r'^(#{1,3})\s+(.*)$').firstMatch(line);
+        if (heading != null) {
+          final size = [0.0, 24.0, 20.0, 17.0][heading.group(1)!.length];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              heading.group(2)!,
+              style: theme.textTheme.titleLarge?.copyWith(fontSize: size),
+            ),
+          );
+        }
+        final bullet = RegExp(r'^(  ){0,2}-\s+(.*)$').firstMatch(line);
+        if (bullet != null) {
+          final indent = ((bullet.group(1)?.length ?? 0) * 16).toDouble();
+          return Padding(
+            padding: EdgeInsets.only(left: indent, bottom: 4),
+            child: Text('• ${bullet.group(2)}'),
+          );
+        }
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(line, style: theme.textTheme.bodyLarge),
+        );
+      }).toList(),
+    );
+  }
 }

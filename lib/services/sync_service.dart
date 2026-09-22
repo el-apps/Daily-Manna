@@ -257,6 +257,7 @@ class SyncService {
     'data': {
       'title': note.title,
       'notes': note.notes,
+      'conceptMap': note.conceptMap,
       'passages': note.passages,
       'createdAt': note.createdAt.toUtc().toIso8601String(),
       'updatedAt': note.updatedAt.toUtc().toIso8601String(),
@@ -286,6 +287,7 @@ class SyncService {
     return StudyNotesCompanion.insert(
       title: data['title'] as String,
       notes: Value(data['notes'] as String?),
+      conceptMap: Value(data['conceptMap'] as String?),
       passages: data['passages'] as String,
       createdAt: DateTime.parse(data['createdAt'] as String).toUtc(),
       updatedAt: DateTime.parse(data['updatedAt'] as String).toUtc(),

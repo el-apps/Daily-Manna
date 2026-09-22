@@ -29,6 +29,7 @@ class StudyNotes extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text()();
   TextColumn get notes => text().nullable()();
+  TextColumn get conceptMap => text().nullable()();
   TextColumn get passages => text()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
@@ -64,7 +65,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -107,6 +108,17 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 5) {
         await m.createTable(studyNotes);
+      }
+      if (from < 6) {
+        // Creating the table during a v2-v5 upgrade uses the current table
+        // definition, which already includes this column. Avoid trying to
+        // add it a second time while still supporting existing v5 databases.
+        final columns = await customSelect(
+          'PRAGMA table_info(study_notes)',
+        ).get();
+        if (!columns.any((row) => row.data['name'] == 'concept_map')) {
+          await m.addColumn(studyNotes, studyNotes.conceptMap);
+        }
       }
     },
   );
@@ -173,6 +185,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> updateStudyNote(
     int id, {
     String? notes,
+    String? conceptMap,
     String? passages,
   }) async {
     await transaction(() async {
@@ -182,6 +195,9 @@ class AppDatabase extends _$AppDatabase {
       await (update(studyNotes)..where((note) => note.id.equals(id))).write(
         StudyNotesCompanion(
           notes: notes == null ? const Value.absent() : Value(notes),
+          conceptMap: conceptMap == null
+              ? const Value.absent()
+              : Value(conceptMap),
           passages: passages == null ? const Value.absent() : Value(passages),
           updatedAt: Value(now),
         ),
