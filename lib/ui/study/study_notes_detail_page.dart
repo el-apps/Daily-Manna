@@ -61,11 +61,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
       showShareButton: false,
       floatingActionButton: _isEditing
           ? null
-          : FloatingActionButton(
-              onPressed: _enterEditMode,
-              tooltip: 'Edit',
-              child: const Icon(Icons.edit),
-            ),
+          : _buildEditToolbar(editing: false),
       body: Column(
         children: [
           TabBar(
@@ -99,7 +95,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
               ],
             ),
           ),
-          if (_isEditing) _buildEditToolbar(),
+          if (_isEditing) _buildEditToolbar(editing: true),
         ],
       ),
     );
@@ -123,7 +119,8 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
     }
   }
 
-  Widget _buildEditToolbar() => StudyEditToolbar(
+  Widget _buildEditToolbar({required bool editing}) => StudyEditToolbar(
+    editing: editing,
     actions: _activeTab == 0
         ? [
             IconButton(
@@ -160,6 +157,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
             ),
           ],
     onSave: _save,
+    onEdit: _enterEditMode,
   );
 
   void _adjustLine(String Function(String) update) {
@@ -188,8 +186,9 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   void _adjustBullets(int delta) => _adjustLine((line) {
     final content = line.replaceFirst(RegExp(r'^(  ){0,3}-\s?'), '');
     final match = RegExp(r'^(  +)-\s').firstMatch(line);
-    final current = match == null ? (line.startsWith('- ') ? 1 : 0) :
-        (match.group(1)!.length ~/ 2) + 1;
+    final current = match == null
+        ? (line.startsWith('- ') ? 1 : 0)
+        : (match.group(1)!.length ~/ 2) + 1;
     final level = (current + delta).clamp(0, 3);
     return '${level == 0 ? '' : '${'  ' * (level - 1)}- '}$content';
   });
@@ -251,7 +250,6 @@ class _NotesTab extends StatelessWidget {
         ),
     ],
   );
-
 }
 
 class _MarkdownPreview extends StatelessWidget {
