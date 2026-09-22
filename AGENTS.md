@@ -5,6 +5,7 @@
 ### Always Do (no asking)
 
 - Commit with conventional commit
+- Keep one public widget per file
 
 ### Ask First (pause for approval)
 

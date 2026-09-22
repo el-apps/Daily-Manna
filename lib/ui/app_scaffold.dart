@@ -8,7 +8,7 @@ class AppScaffold extends StatelessWidget {
   final bool showShareButton;
   final List<Widget>? appBarActions;
   final PreferredSizeWidget? bottom;
-  final FloatingActionButton? floatingActionButton;
+  final Widget? floatingActionButton;
   final Color? backgroundColor;
 
   const AppScaffold({

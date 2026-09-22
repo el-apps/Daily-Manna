@@ -4,6 +4,7 @@ import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/error_logger_service.dart';
 import 'package:daily_manna/services/results_service.dart';
+import 'package:daily_manna/services/study_notes_service.dart';
 import 'package:daily_manna/services/settings_service.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/services/streak_service.dart';
@@ -30,6 +31,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
   late BibleService _bibleService;
   late SettingsService _settingsService;
   late ResultsService _resultsService;
+  late StudyNotesService _studyNotesService;
   late ErrorLoggerService _errorLoggerService;
   late SpacedRepetitionService _spacedRepetitionService;
   late StreakService _streakService;
@@ -45,6 +47,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
     _bibleService = BibleService();
     _settingsService = SettingsService();
     _resultsService = ResultsService(_database);
+    _studyNotesService = StudyNotesService(_database);
     _errorLoggerService = ErrorLoggerService();
     _spacedRepetitionService = SpacedRepetitionService(_database);
     _streakService = StreakService(_database);
@@ -59,6 +62,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
       errorLogger: _errorLoggerService,
     );
     _resultsService.onLocalChange = _syncService.requestSync;
+    _studyNotesService.onLocalChange = _syncService.requestSync;
     _initFuture =
         Future.wait([
           _authService.init(),
@@ -89,6 +93,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
               Provider.value(value: _bibleService),
               Provider.value(value: _settingsService),
               Provider.value(value: _resultsService),
+              Provider.value(value: _studyNotesService),
               Provider.value(value: _spacedRepetitionService),
               Provider.value(value: _streakService),
               Provider.value(value: _notificationService),

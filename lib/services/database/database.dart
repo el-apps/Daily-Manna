@@ -25,6 +25,17 @@ class Results extends Table {
   DateTimeColumn get updatedAt => dateTime().clientDefault(DateTime.now)();
 }
 
+class StudyNotes extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get title => text()();
+  TextColumn get notes => text().nullable()();
+  TextColumn get conceptMap => text().nullable()();
+  TextColumn get passages => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  TextColumn get clientId => text().unique().clientDefault(newClientId)();
+}
+
 class SyncOutbox extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get entityType => text()();
@@ -46,7 +57,7 @@ class SyncMetadata extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Results, SyncOutbox, SyncMetadata])
+@DriftDatabase(tables: [Results, StudyNotes, SyncOutbox, SyncMetadata])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -54,7 +65,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -94,6 +105,20 @@ class AppDatabase extends _$AppDatabase {
           SELECT 'result', client_id, 'upsert', updated_at
           FROM results
         ''');
+      }
+      if (from < 5) {
+        await m.createTable(studyNotes);
+      }
+      if (from < 6) {
+        // Creating the table during a v2-v5 upgrade uses the current table
+        // definition, which already includes this column. Avoid trying to
+        // add it a second time while still supporting existing v5 databases.
+        final columns = await customSelect(
+          'PRAGMA table_info(study_notes)',
+        ).get();
+        if (!columns.any((row) => row.data['name'] == 'concept_map')) {
+          await m.addColumn(studyNotes, studyNotes.conceptMap);
+        }
       }
     },
   );
@@ -139,6 +164,90 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  Future<int> insertStudyNote(StudyNotesCompanion note) async {
+    final now = DateTime.now().toUtc();
+    return transaction(() async {
+      final clientId = note.clientId.present
+          ? note.clientId.value
+          : newClientId();
+      final id = await into(studyNotes).insert(
+        note.copyWith(
+          clientId: Value(clientId),
+          createdAt: note.createdAt.present ? note.createdAt : Value(now),
+          updatedAt: note.updatedAt.present ? note.updatedAt : Value(now),
+        ),
+      );
+      await _enqueueStudyNote(clientId, now);
+      return id;
+    });
+  }
+
+  Future<void> updateStudyNote(
+    int id, {
+    String? notes,
+    String? conceptMap,
+    String? passages,
+  }) async {
+    await transaction(() async {
+      final row = await studyNoteById(id);
+      if (row == null) return;
+      final now = DateTime.now().toUtc();
+      await (update(studyNotes)..where((note) => note.id.equals(id))).write(
+        StudyNotesCompanion(
+          notes: notes == null ? const Value.absent() : Value(notes),
+          conceptMap: conceptMap == null
+              ? const Value.absent()
+              : Value(conceptMap),
+          passages: passages == null ? const Value.absent() : Value(passages),
+          updatedAt: Value(now),
+        ),
+      );
+      await _enqueueStudyNote(row.clientId, now);
+    });
+  }
+
+  Future<StudyNote?> studyNoteById(int id) => (select(
+    studyNotes,
+  )..where((note) => note.id.equals(id))).getSingleOrNull();
+
+  Future<StudyNote?> studyNoteByClientId(String clientId) => (select(
+    studyNotes,
+  )..where((note) => note.clientId.equals(clientId))).getSingleOrNull();
+
+  Stream<List<StudyNote>> watchStudyNotes() => (select(
+    studyNotes,
+  )..orderBy([(note) => OrderingTerm.desc(note.updatedAt)])).watch();
+
+  Future<List<StudyNote>> getStudyNotes() => (select(
+    studyNotes,
+  )..orderBy([(note) => OrderingTerm.desc(note.updatedAt)])).get();
+
+  Future<void> _enqueueStudyNote(String clientId, DateTime now) =>
+      into(syncOutbox).insert(
+        SyncOutboxCompanion.insert(
+          entityType: 'study_note',
+          entityId: clientId,
+          operation: 'upsert',
+          createdAt: now,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+
+  Future<void> mergeRemoteStudyNote(StudyNotesCompanion remote) async {
+    final existing = await studyNoteByClientId(remote.clientId.value);
+    if (existing != null &&
+        !remote.updatedAt.value.isAfter(existing.updatedAt)) {
+      return;
+    }
+    if (existing != null) {
+      await (update(
+        studyNotes,
+      )..where((note) => note.id.equals(existing.id))).write(remote);
+      return;
+    }
+    await into(studyNotes).insert(remote);
+  }
+
   Future<void> _enqueueResult(
     String clientId,
     String operation,
@@ -182,9 +291,9 @@ class AppDatabase extends _$AppDatabase {
       // An insertOnConflictUpdate cannot resolve a client_id collision when
       // the incoming companion does not contain the local auto-increment id.
       // Update the row we found by client_id instead.
-      await (update(results)..where((row) => row.id.equals(existing.id))).write(
-        remote,
-      );
+      await (update(
+        results,
+      )..where((row) => row.id.equals(existing.id))).write(remote);
       return;
     }
     await into(results).insert(remote);

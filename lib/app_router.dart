@@ -6,6 +6,8 @@ import 'package:daily_manna/ui/history/history_page.dart';
 import 'package:daily_manna/ui/memorization/verse_memorization.dart';
 import 'package:daily_manna/ui/recitation/recitation_mode.dart';
 import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
+import 'package:daily_manna/ui/study/study_notes_page.dart';
+import 'package:daily_manna/ui/study/study_result_detail_page.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -15,12 +17,24 @@ final appRouter = GoRouter(
   routes: [
     GoRoute(path: '/', builder: (_, __) => const HomePage()),
     GoRoute(path: '/history', builder: (_, __) => const HistoryPage()),
+    GoRoute(path: '/study-notes', builder: (_, __) => const StudyNotesPage()),
+    GoRoute(
+      path: '/study-notes/:noteId',
+      builder: (_, state) {
+        final note = state.extra;
+        return note is db.StudyNote
+            ? StudyNotesDetailPage(note: note)
+            : const _RouteUnavailablePage(
+                message: 'This study note is no longer available.',
+              );
+      },
+    ),
     GoRoute(
       path: '/history/study/:resultId',
       builder: (_, state) {
         final result = state.extra;
         return result is db.Result
-            ? StudyNotesDetailPage(result: result)
+            ? StudyResultDetailPage(result: result)
             : const _RouteUnavailablePage(
                 message: 'This study result is no longer available.',
               );
