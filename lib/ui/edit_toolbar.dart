@@ -1,27 +1,22 @@
 import 'package:flutter/material.dart';
 
-class StudyEditToolbar extends StatelessWidget {
-  const StudyEditToolbar({
+class EditToolbar extends StatelessWidget {
+  const EditToolbar({
     super.key,
     required this.editing,
     required this.actions,
-    required this.onEdit,
-    required this.onSave,
+    required this.editButton,
+    required this.saveButton,
   });
 
   final bool editing;
   final List<Widget> actions;
-  final VoidCallback onEdit;
-  final VoidCallback onSave;
+  final Widget editButton;
+  final Widget saveButton;
 
   @override
-  Widget build(BuildContext context) => editing
-      ? _buildEditingToolbar(context)
-      : FloatingActionButton(
-          onPressed: onEdit,
-          tooltip: 'Edit',
-          child: const Icon(Icons.edit),
-        );
+  Widget build(BuildContext context) =>
+      editing ? _buildEditingToolbar(context) : editButton;
 
   Widget _buildEditingToolbar(BuildContext context) => SafeArea(
     top: false,
@@ -39,11 +34,7 @@ class StudyEditToolbar extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: onSave,
-              tooltip: 'Save',
-              icon: const Icon(Icons.check),
-            ),
+            saveButton,
           ],
         ),
       ),

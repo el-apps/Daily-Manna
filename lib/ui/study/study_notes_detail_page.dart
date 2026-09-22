@@ -5,7 +5,7 @@ import 'package:daily_manna/services/study_notes_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/study/concept_map_editor.dart';
-import 'package:daily_manna/ui/study/study_edit_toolbar.dart';
+import 'package:daily_manna/ui/edit_toolbar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -119,7 +119,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
     }
   }
 
-  Widget _buildEditToolbar({required bool editing}) => StudyEditToolbar(
+  Widget _buildEditToolbar({required bool editing}) => EditToolbar(
     editing: editing,
     actions: _activeTab == 0
         ? [
@@ -156,8 +156,16 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
               icon: const Icon(Icons.account_tree_outlined),
             ),
           ],
-    onSave: _save,
-    onEdit: _enterEditMode,
+    editButton: FloatingActionButton(
+      onPressed: _enterEditMode,
+      tooltip: 'Edit',
+      child: const Icon(Icons.edit),
+    ),
+    saveButton: IconButton.filled(
+      onPressed: _save,
+      tooltip: 'Save',
+      icon: const Icon(Icons.check),
+    ),
   );
 
   void _adjustLine(String Function(String) update) {
