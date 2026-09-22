@@ -156,16 +156,8 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
               icon: const Icon(Icons.account_tree_outlined),
             ),
           ],
-    editButton: FloatingActionButton(
-      onPressed: _enterEditMode,
-      tooltip: 'Edit',
-      child: const Icon(Icons.edit),
-    ),
-    saveButton: IconButton.filled(
-      onPressed: _save,
-      tooltip: 'Save',
-      icon: const Icon(Icons.check),
-    ),
+    onEdit: _enterEditMode,
+    onSave: _save,
   );
 
   void _adjustLine(String Function(String) update) {

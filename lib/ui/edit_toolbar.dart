@@ -5,18 +5,23 @@ class EditToolbar extends StatelessWidget {
     super.key,
     required this.editing,
     required this.actions,
-    required this.editButton,
-    required this.saveButton,
+    required this.onEdit,
+    required this.onSave,
   });
 
   final bool editing;
   final List<Widget> actions;
-  final Widget editButton;
-  final Widget saveButton;
+  final VoidCallback onEdit;
+  final VoidCallback onSave;
 
   @override
-  Widget build(BuildContext context) =>
-      editing ? _buildEditingToolbar(context) : editButton;
+  Widget build(BuildContext context) => editing
+      ? _buildEditingToolbar(context)
+      : FloatingActionButton(
+          onPressed: onEdit,
+          tooltip: 'Edit',
+          child: const Icon(Icons.edit),
+        );
 
   Widget _buildEditingToolbar(BuildContext context) => SafeArea(
     top: false,
@@ -34,7 +39,11 @@ class EditToolbar extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            saveButton,
+            IconButton.filled(
+              onPressed: onSave,
+              tooltip: 'Save',
+              icon: const Icon(Icons.check),
+            ),
           ],
         ),
       ),
