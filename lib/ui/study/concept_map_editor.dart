@@ -251,7 +251,8 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
           color: color,
           child: Padding(
             padding: const EdgeInsets.all(10),
-            child: widget.node.type == ConceptMapNodeType.passage &&
+            child:
+                widget.node.type == ConceptMapNodeType.passage &&
                     !widget.connecting
                 ? _PassageNodeContent(
                     node: widget.node,
@@ -267,9 +268,7 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
                     maxLines: null,
                     onChanged: (value) =>
                         widget.onChanged(widget.node.copyWith(label: value)),
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                    ),
+                    decoration: const InputDecoration(border: InputBorder.none),
                   )
                 : Text(widget.node.label),
           ),
@@ -319,10 +318,7 @@ class _PassageNodeContent extends StatelessWidget {
             ),
           ],
         ),
-        if (showContent) ...[
-          const Divider(),
-          Text(content),
-        ],
+        if (showContent) ...[const Divider(), Text(content)],
       ],
     );
   }
@@ -336,20 +332,66 @@ class _ConceptMapEdgesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white54
-      ..strokeWidth = 2;
+      ..color = Colors.white70
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
     final positions = conceptMapLayout(document);
     for (final edge in document.edges) {
-      final start = positions[edge.from];
-      final end = positions[edge.to];
-      if (start != null && end != null) {
-        canvas.drawLine(
-          start + const Offset(210, 45),
-          end + const Offset(0, 45),
-          paint,
-        );
+      final from = positions[edge.from];
+      final to = positions[edge.to];
+      if (from == null || to == null) continue;
+
+      final fromCenter = from + const Offset(105, 45);
+      final toCenter = to + const Offset(105, 45);
+      final start = _boundaryPoint(fromCenter, toCenter);
+      final end = _boundaryPoint(toCenter, fromCenter);
+      final horizontal =
+          (toCenter.dx - fromCenter.dx).abs() >=
+          (toCenter.dy - fromCenter.dy).abs();
+      final path = Path()..moveTo(start.dx, start.dy);
+      if (horizontal) {
+        final midpoint = (start.dx + end.dx) / 2;
+        path.cubicTo(midpoint, start.dy, midpoint, end.dy, end.dx, end.dy);
+      } else {
+        final midpoint = (start.dy + end.dy) / 2;
+        path.cubicTo(start.dx, midpoint, end.dx, midpoint, end.dx, end.dy);
       }
+      canvas.drawPath(path, paint);
+      _drawArrowhead(canvas, end, toCenter, paint.color);
     }
+  }
+
+  static Offset _boundaryPoint(Offset center, Offset target) {
+    final delta = target - center;
+    if (delta.dx.abs() >= delta.dy.abs()) {
+      return center + Offset(delta.dx.sign * 105, 0);
+    }
+    return center + Offset(0, delta.dy.sign * 45);
+  }
+
+  static void _drawArrowhead(
+    Canvas canvas,
+    Offset tip,
+    Offset targetCenter,
+    Color color,
+  ) {
+    final direction = (targetCenter - tip);
+    if (direction.distance == 0) return;
+    final unit = direction / direction.distance;
+    final perpendicular = Offset(-unit.dy, unit.dx);
+    final base = tip - unit * 12;
+    final arrow = Path()
+      ..moveTo(tip.dx, tip.dy)
+      ..lineTo(base.dx + perpendicular.dx * 6, base.dy + perpendicular.dy * 6)
+      ..lineTo(base.dx - perpendicular.dx * 6, base.dy - perpendicular.dy * 6)
+      ..close();
+    canvas.drawPath(
+      arrow,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill,
+    );
   }
 
   @override
