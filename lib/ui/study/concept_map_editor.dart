@@ -52,6 +52,27 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
     );
   }
 
+  Future<void> addNodeMenu() async {
+    if (!widget.editing) return;
+    final type = await showModalBottomSheet<ConceptMapNodeType>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final nodeType in ConceptMapNodeType.values)
+              ListTile(
+                leading: Icon(_iconFor(nodeType)),
+                title: Text(_labelFor(nodeType)),
+                onTap: () => Navigator.pop(context, nodeType),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (type != null && mounted) addNode(type);
+  }
+
   void startConnecting() {
     if (!widget.editing) return;
     setState(() => _connectingFrom = 'pending');
@@ -112,6 +133,12 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
     ConceptMapNodeType.keyPoint => 'Key point',
     ConceptMapNodeType.note => 'Note',
     ConceptMapNodeType.passage => 'Passage',
+  };
+
+  static IconData _iconFor(ConceptMapNodeType type) => switch (type) {
+    ConceptMapNodeType.keyPoint => Icons.star_outline,
+    ConceptMapNodeType.note => Icons.note_outlined,
+    ConceptMapNodeType.passage => Icons.menu_book_outlined,
   };
 }
 
@@ -183,24 +210,8 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
                     maxLines: null,
                     onChanged: (value) =>
                         widget.onChanged(widget.node.copyWith(label: value)),
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       border: InputBorder.none,
-                      suffixIcon: DropdownButton<ConceptMapNodeType>(
-                        value: widget.node.type,
-                        onChanged: (type) {
-                          if (type != null) {
-                            widget.onChanged(widget.node.copyWith(type: type));
-                          }
-                        },
-                        items: ConceptMapNodeType.values
-                            .map(
-                              (type) => DropdownMenuItem(
-                                value: type,
-                                child: Text(type.name),
-                              ),
-                            )
-                            .toList(),
-                      ),
                     ),
                   )
                 : Text(widget.node.label),

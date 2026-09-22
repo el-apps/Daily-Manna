@@ -148,16 +148,9 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
           ]
         : [
             IconButton(
-              tooltip: 'Add key point',
-              onPressed: () => _conceptMapKey.currentState?.addNode(
-                ConceptMapNodeType.keyPoint,
-              ),
-              icon: const Icon(Icons.star_outline),
-            ),
-            IconButton(
-              tooltip: 'Add note',
-              onPressed: () => _conceptMapKey.currentState?.addNode(),
-              icon: const Icon(Icons.note_add_outlined),
+              tooltip: 'Add box',
+              onPressed: () => _conceptMapKey.currentState?.addNodeMenu(),
+              icon: const Icon(Icons.add_box_outlined),
             ),
             IconButton(
               tooltip: 'Connect boxes',

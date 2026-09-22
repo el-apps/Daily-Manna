@@ -147,6 +147,9 @@ class _StudyNotesPageState extends State<StudyNotesPage> {
         ],
       ),
     );
+    // Let the dialog finish its route transition before releasing the
+    // controller used by its TextField.
+    await Future<void>.delayed(const Duration(milliseconds: 250));
     controller.dispose();
     return title;
   }

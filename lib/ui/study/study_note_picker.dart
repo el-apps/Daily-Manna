@@ -105,6 +105,7 @@ class _StudyNotePickerState extends State<StudyNotePicker> {
         ],
       ),
     );
+    await Future<void>.delayed(const Duration(milliseconds: 250));
     controller.dispose();
     if (!mounted || title == null || title.trim().isEmpty) return;
     final note = await notesService.createNote(
