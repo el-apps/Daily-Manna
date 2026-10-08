@@ -29,6 +29,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   late final TabController _tabController;
   final _conceptMapKey = GlobalKey<ConceptMapEditorState>();
   bool _isEditing = false;
+  String? _selectedMapNodeId;
   int _activeTab = 0;
   late List<ScriptureRangeRef> _passages;
 
@@ -92,6 +93,9 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
                   key: _conceptMapKey,
                   document: _conceptMap,
                   editing: _isEditing,
+                  selectedNodeId: _selectedMapNodeId,
+                  onNodeSelected: (id) =>
+                      setState(() => _selectedMapNodeId = id),
                   onChanged: (document) =>
                       setState(() => _conceptMap = document),
                 ),
@@ -162,6 +166,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
             ),
           ]
         : [
+            _passageVisibilityButton(),
             IconButton(
               tooltip: 'Add box',
               onPressed: () => _conceptMapKey.currentState?.addNodeMenu(),
@@ -176,6 +181,33 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
     onEdit: _enterEditMode,
     onSave: _save,
   );
+
+  Widget _passageVisibilityButton() {
+    final selected = _conceptMap.nodes
+        .where(
+          (node) =>
+              node.id == _selectedMapNodeId &&
+              node.type == ConceptMapNodeType.passage,
+        )
+        .firstOrNull;
+    return IconButton(
+      tooltip: selected == null
+          ? 'Select a passage card'
+          : selected.showPassage
+          ? 'Hide passage'
+          : 'Show passage',
+      isSelected: selected?.showPassage ?? false,
+      onPressed: selected == null
+          ? null
+          : () => setState(() {
+              _conceptMap = _conceptMap.updateNode(
+                selected.copyWith(showPassage: !selected.showPassage),
+              );
+            }),
+      icon: const Icon(Icons.article_outlined),
+      selectedIcon: const Icon(Icons.article),
+    );
+  }
 
   void _adjustLine(String Function(String) update) {
     final value = _notesController.value;

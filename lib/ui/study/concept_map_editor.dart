@@ -6,7 +6,10 @@ import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-Map<String, Offset> conceptMapLayout(ConceptMapDocument document) {
+Map<String, Offset> conceptMapLayout(
+  ConceptMapDocument document, {
+  Map<String, Size> nodeSizes = const {},
+}) {
   final ranks = <String, int>{for (final node in document.nodes) node.id: 0};
   for (var pass = 0; pass < document.nodes.length; pass++) {
     for (final edge in document.edges) {
@@ -20,11 +23,15 @@ Map<String, Offset> conceptMapLayout(ConceptMapDocument document) {
   for (final node in document.nodes) {
     groups.putIfAbsent(ranks[node.id] ?? 0, () => []).add(node);
   }
-  return {
-    for (final group in groups.entries)
-      for (var index = 0; index < group.value.length; index++)
-        group.value[index].id: Offset(80 + group.key * 260, 80 + index * 160),
-  };
+  final positions = <String, Offset>{};
+  for (final group in groups.entries) {
+    var y = 80.0;
+    for (final node in group.value) {
+      positions[node.id] = Offset(80 + group.key * 260, y);
+      y += math.max(160, (nodeSizes[node.id]?.height ?? 90) + 24);
+    }
+  }
+  return positions;
 }
 
 class ConceptMapEditor extends StatefulWidget {
@@ -33,10 +40,14 @@ class ConceptMapEditor extends StatefulWidget {
     required this.document,
     required this.editing,
     required this.onChanged,
+    this.selectedNodeId,
+    this.onNodeSelected,
   });
 
   final ConceptMapDocument document;
   final bool editing;
+  final String? selectedNodeId;
+  final ValueChanged<String>? onNodeSelected;
   final ValueChanged<ConceptMapDocument> onChanged;
 
   @override
@@ -105,7 +116,7 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final positions = conceptMapLayout(widget.document);
+    final positions = conceptMapLayout(widget.document, nodeSizes: _nodeSizes);
     return InteractiveViewer(
       constrained: false,
       boundaryMargin: const EdgeInsets.all(double.infinity),
@@ -113,7 +124,13 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
       maxScale: 4,
       child: SizedBox(
         width: math.max(900, widget.document.nodes.length * 280.0),
-        height: math.max(700, widget.document.nodes.length * 180.0),
+        height: positions.entries.fold<double>(
+          700,
+          (height, entry) => math.max(
+            height,
+            entry.value.dy + (_nodeSizes[entry.key]?.height ?? 90) + 80,
+          ),
+        ),
         child: CustomPaint(
           painter: _ConceptMapEdgesPainter(widget.document, _nodeSizes),
           child: Stack(
@@ -127,6 +144,8 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
                   position: entry.value,
                   editing: widget.editing,
                   connecting: _connectingFrom != null,
+                  selected:
+                      widget.editing && widget.selectedNodeId == entry.key,
                   onTap: () => _selectNode(entry.key),
                   onLongPress: () => _showNodeMenu(entry.key),
                   onSizeChanged: _updateNodeSize,
@@ -146,7 +165,11 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
   }
 
   void _selectNode(String id) {
-    if (!widget.editing || _connectingFrom == null) return;
+    if (!widget.editing) return;
+    if (_connectingFrom == null) {
+      widget.onNodeSelected?.call(id);
+      return;
+    }
     if (_connectingFrom == 'pending') {
       setState(() => _connectingFrom = id);
       return;
@@ -196,6 +219,7 @@ class _ConceptMapNodeWidget extends StatefulWidget {
     required this.position,
     required this.editing,
     required this.connecting,
+    required this.selected,
     required this.onTap,
     required this.onLongPress,
     required this.onSizeChanged,
@@ -206,6 +230,7 @@ class _ConceptMapNodeWidget extends StatefulWidget {
   final Offset position;
   final bool editing;
   final bool connecting;
+  final bool selected;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
   final void Function(String id, Size size) onSizeChanged;
@@ -217,7 +242,6 @@ class _ConceptMapNodeWidget extends StatefulWidget {
 
 class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
   late final TextEditingController _controller;
-  bool _showPassageContent = false;
 
   @override
   void initState() {
@@ -263,6 +287,12 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
         onLongPress: widget.onLongPress,
         child: Card(
           color: color,
+          shape: widget.selected
+              ? RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: colors.primary, width: 2),
+                )
+              : null,
           child: Padding(
             padding: const EdgeInsets.all(10),
             child:
@@ -271,10 +301,7 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
                 ? _PassageNodeContent(
                     node: widget.node,
                     bibleService: bibleService,
-                    showContent: _showPassageContent,
-                    onToggleContent: () => setState(
-                      () => _showPassageContent = !_showPassageContent,
-                    ),
+                    showContent: widget.node.showPassage,
                   )
                 : widget.editing && !widget.connecting
                 ? TextField(
@@ -297,13 +324,11 @@ class _PassageNodeContent extends StatelessWidget {
     required this.node,
     required this.bibleService,
     required this.showContent,
-    required this.onToggleContent,
   });
 
   final ConceptMapNode node;
   final BibleService bibleService;
   final bool showContent;
-  final VoidCallback onToggleContent;
 
   @override
   Widget build(BuildContext context) {
@@ -330,12 +355,6 @@ class _PassageNodeContent extends StatelessWidget {
                     : bibleService.getRangeRefName(passage),
               ),
             ),
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              tooltip: showContent ? 'Show reference only' : 'Show passage',
-              onPressed: onToggleContent,
-              icon: Icon(showContent ? Icons.visibility_off : Icons.visibility),
-            ),
           ],
         ),
         if (showContent) ...[const Divider(), Text(content)],
@@ -357,7 +376,7 @@ class _ConceptMapEdgesPainter extends CustomPainter {
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
-    final positions = conceptMapLayout(document);
+    final positions = conceptMapLayout(document, nodeSizes: nodeSizes);
     for (final edge in document.edges) {
       final from = positions[edge.from];
       final to = positions[edge.to];

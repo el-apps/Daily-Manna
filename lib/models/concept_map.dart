@@ -8,22 +8,26 @@ class ConceptMapNode {
     required this.type,
     required this.label,
     this.passage,
+    this.showPassage = false,
   });
 
   final String id;
   final ConceptMapNodeType type;
   final String label;
   final ScriptureRangeRef? passage;
+  final bool showPassage;
 
   ConceptMapNode copyWith({
     ConceptMapNodeType? type,
     String? label,
     ScriptureRangeRef? passage,
+    bool? showPassage,
   }) => ConceptMapNode(
     id: id,
     type: type ?? this.type,
     label: label ?? this.label,
     passage: passage ?? this.passage,
+    showPassage: showPassage ?? this.showPassage,
   );
 }
 
@@ -45,11 +49,18 @@ class ConceptMapDocument {
     final nodes = <ConceptMapNode>[];
     final edges = <ConceptMapEdge>[];
     final passages = <String, ScriptureRangeRef>{};
+    final shownPassages = <String>{};
     final nodePattern = RegExp(
       r'^\s*([A-Za-z][\w-]*)\[\[(.*?)\]\]|^\s*([A-Za-z][\w-]*)\[(.*?)\]',
     );
     final edgePattern = RegExp(r'([A-Za-z][\w-]*)\s*(-+)>\s*([A-Za-z][\w-]*)');
     for (final line in source.split('\n')) {
+      final showPassageMatch = RegExp(
+        r'^\s*class\s+([A-Za-z][\w-]*)\s+showPassage\s*$',
+      ).firstMatch(line);
+      if (showPassageMatch != null) {
+        shownPassages.add(showPassageMatch.group(1)!);
+      }
       final nodeMatch = nodePattern.firstMatch(line);
       if (nodeMatch != null) {
         final id = nodeMatch.group(1) ?? nodeMatch.group(3)!;
@@ -87,9 +98,10 @@ class ConceptMapDocument {
     return ConceptMapDocument(
       nodes: [
         for (final node in nodes)
-          passages[node.id] == null
-              ? node
-              : node.copyWith(passage: passages[node.id]),
+          node.copyWith(
+            passage: passages[node.id],
+            showPassage: shownPassages.contains(node.id),
+          ),
       ],
       edges: edges,
     );
@@ -104,6 +116,7 @@ class ConceptMapDocument {
         ConceptMapNodeType.passage => 'passage',
       };
       buffer.writeln('  ${node.id}[${_escape(node.label)}]:::$className');
+      if (node.showPassage) buffer.writeln('  class ${node.id} showPassage');
       final passage = node.passage;
       if (passage != null) {
         buffer.writeln(

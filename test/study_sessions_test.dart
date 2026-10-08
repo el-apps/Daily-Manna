@@ -67,6 +67,52 @@ void main() {
 
   tearDown(() => database.close());
 
+  test('passage visibility is a per-card Mermaid setting', () {
+    final document = ConceptMapDocument.fromMermaid('''
+flowchart TD
+  a[James]:::passage
+  b[John]:::passage
+  class b showPassage
+  click a "passage://Jas/1/9/11"
+  click b "passage://John/3/16/"
+  a ---> b
+''');
+    expect(document.nodes.map((node) => node.showPassage), [false, true]);
+    expect(document.nodes[1].copyWith(label: 'Changed').showPassage, isTrue);
+    expect(document.toMermaid(), contains('class b showPassage'));
+    final hidden = document.updateNode(
+      document.nodes[1].copyWith(showPassage: false),
+    );
+    expect(hidden.toMermaid(), isNot(contains('showPassage')));
+    expect(
+      ConceptMapDocument.fromMermaid(
+        hidden.toMermaid(),
+      ).nodes.map((node) => node.showPassage),
+      [false, false],
+    );
+    expect(document.nodes[1].passage, otherPassage);
+    expect(document.edges.single.to, 'b');
+  });
+
+  test('map layout leaves room for expanded cards in each column', () {
+    const document = ConceptMapDocument(
+      nodes: [
+        ConceptMapNode(id: 'a', type: ConceptMapNodeType.passage, label: 'A'),
+        ConceptMapNode(id: 'b', type: ConceptMapNodeType.passage, label: 'B'),
+        ConceptMapNode(id: 'c', type: ConceptMapNodeType.note, label: 'C'),
+      ],
+      edges: [ConceptMapEdge(from: 'a', to: 'c')],
+    );
+    final positions = conceptMapLayout(
+      document,
+      nodeSizes: {'a': const Size(210, 278), 'b': const Size(210, 50)},
+    );
+    expect(positions['a'], const Offset(80, 80));
+    expect(positions['b'], const Offset(80, 382));
+    expect(positions['c'], const Offset(340, 80));
+    expect(conceptMapLayout(document)['b'], const Offset(80, 240));
+  });
+
   Widget host(Widget home) => MultiProvider(
     providers: [
       Provider.value(value: database),
@@ -226,7 +272,49 @@ void main() {
     await tester.tap(find.text('Concept Map'));
     await tester.pumpAndSettle();
     expect(find.text('John 3:16-16'), findsOneWidget);
-    expect(find.byTooltip('Show passage'), findsNWidgets(2));
+    expect(find.byTooltip('Show passage'), findsNothing);
+    expect(find.byIcon(Icons.visibility), findsNothing);
+    expect(find.text('Passage text'), findsNothing);
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<IconButton>(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is IconButton &&
+                  widget.tooltip == 'Select a passage card',
+            ),
+          )
+          .onPressed,
+      isNull,
+    );
+    await tester.tap(find.text('John 3:16-16'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Show passage'), findsOneWidget);
+    await tester.tap(find.byTooltip('Show passage'));
+    await tester.pumpAndSettle();
+    expect(find.text('Passage text'), findsOneWidget);
+    expect(
+      tester
+          .widget<ConceptMapEditor>(find.byType(ConceptMapEditor))
+          .document
+          .nodes
+          .map((node) => node.showPassage),
+      [false, true],
+    );
+    await tester.tap(find.text('Jas 1:9-11'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Show passage'));
+    await tester.pumpAndSettle();
+    expect(find.text('Passage text'), findsNWidgets(2));
+    await tester.tap(find.text('John 3:16-16'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Add box'), findsOneWidget);
+    expect(find.byTooltip('Save'), findsOneWidget);
+    await tester.tap(find.byTooltip('Hide passage'));
+    await tester.pumpAndSettle();
+    expect(find.text('Passage text'), findsOneWidget);
     await tester.tap(find.text('Notes'));
     await tester.pumpAndSettle();
     await tester.runAsync(() async {
@@ -239,8 +327,6 @@ void main() {
       );
       expect(await database.getAllResults(), isEmpty);
     });
-    await tester.tap(find.byTooltip('Edit'));
-    await tester.pumpAndSettle();
     expect(find.text('Add passage'), findsOneWidget);
     expect(find.byTooltip('Save'), findsOneWidget);
     await tester.enterText(find.byType(TextField), 'Keep learning');
@@ -252,12 +338,29 @@ void main() {
       };
       await tester.tap(find.byTooltip('Save'));
       await saved.future;
-      expect((await notesService.getNote(note.id))!.notes, 'Keep learning');
+      note = (await notesService.getNote(note.id))!;
+      expect(note.notes, 'Keep learning');
+      expect(
+        ConceptMapDocument.fromMermaid(
+          note.conceptMap!,
+        ).nodes.map((node) => node.showPassage),
+        [true, false],
+      );
     });
     await tester.pumpAndSettle();
     expect(find.text('Keep learning'), findsOneWidget);
     expect(find.byTooltip('Edit'), findsOneWidget);
     expect(find.text('Concept Map'), findsOneWidget);
+    await tester.pumpWidget(
+      host(StudyNotesDetailPage(key: const ValueKey('reopened'), note: note)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Concept Map'));
+    await tester.pumpAndSettle();
+    expect(find.text('Passage text'), findsOneWidget);
+    expect(find.byTooltip('Show passage'), findsNothing);
+    expect(find.byTooltip('Hide passage'), findsNothing);
+    expect(find.byTooltip('Edit'), findsOneWidget);
   });
 
   testWidgets('adding a passage preserves unsaved map nodes and connections', (
