@@ -48,7 +48,7 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
   final _nodeSizes = <String, Size>{};
 
   void addNode([ConceptMapNodeType type = ConceptMapNodeType.note]) {
-    final id = 'node${widget.document.nodes.length + 1}';
+    final id = widget.document.nextNodeId;
     widget.onChanged(
       widget.document.addNode(
         ConceptMapNode(id: id, type: type, label: _labelFor(type)),
@@ -79,7 +79,7 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
       final passage = await showPassageSelector(context);
       if (passage == null || !mounted) return;
       final bibleService = context.read<BibleService>();
-      final id = 'node${widget.document.nodes.length + 1}';
+      final id = widget.document.nextNodeId;
       widget.onChanged(
         widget.document.addNode(
           ConceptMapNode(
@@ -323,7 +323,13 @@ class _PassageNodeContent extends StatelessWidget {
           children: [
             const Icon(Icons.menu_book_outlined, size: 18),
             const SizedBox(width: 6),
-            Expanded(child: Text(node.label)),
+            Expanded(
+              child: Text(
+                passage == null
+                    ? node.label
+                    : bibleService.getRangeRefName(passage),
+              ),
+            ),
             IconButton(
               visualDensity: VisualDensity.compact,
               tooltip: showContent ? 'Show reference only' : 'Show passage',

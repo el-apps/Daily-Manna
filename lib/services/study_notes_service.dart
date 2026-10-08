@@ -1,7 +1,9 @@
 import 'dart:convert';
 
+import 'package:daily_manna/models/concept_map.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/database/database.dart';
+import 'package:drift/drift.dart';
 
 class StudyNotesService {
   StudyNotesService(this._db);
@@ -24,6 +26,9 @@ class StudyNotesService {
       StudyNotesCompanion.insert(
         title: title.trim(),
         passages: _encodePassages([passage]),
+        conceptMap: Value(
+          const ConceptMapDocument().addPassage(passage).toMermaid(),
+        ),
         createdAt: DateTime.now().toUtc(),
         updatedAt: DateTime.now().toUtc(),
       ),
@@ -42,14 +47,25 @@ class StudyNotesService {
     await onLocalChange?.call();
   }
 
-  Future<void> addPassage(int id, ScriptureRangeRef passage) async {
+  Future<void> addPassage(
+    int id,
+    ScriptureRangeRef passage, {
+    ConceptMapDocument? conceptMap,
+  }) async {
     final note = await _db.studyNoteById(id);
     if (note == null) return;
     final passages = _decodePassages(note.passages);
-    final newPassage = passage;
-    if (!passages.any((existing) => _samePassage(existing, newPassage))) {
-      passages.add(newPassage);
-      await _db.updateStudyNote(id, passages: _encodePassages(passages));
+    final added = !passages.contains(passage);
+    if (added) passages.add(passage);
+    final document =
+        conceptMap ?? ConceptMapDocument.fromMermaid(note.conceptMap ?? '');
+    final updatedMap = document.addPassage(passage).toMermaid();
+    if (added || updatedMap != note.conceptMap) {
+      await _db.updateStudyNote(
+        id,
+        passages: _encodePassages(passages),
+        conceptMap: updatedMap,
+      );
       await onLocalChange?.call();
     }
   }
@@ -97,10 +113,4 @@ class StudyNotesService {
       return [];
     }
   }
-
-  static bool _samePassage(ScriptureRangeRef a, ScriptureRangeRef b) =>
-      a.bookId == b.bookId &&
-      a.chapter == b.chapter &&
-      a.startVerse == b.startVerse &&
-      a.endVerse == b.endVerse;
 }

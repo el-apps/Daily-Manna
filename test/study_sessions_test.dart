@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:bible_parser_flutter/bible_parser_flutter.dart';
+import 'package:daily_manna/models/concept_map.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart';
@@ -6,6 +9,7 @@ import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/services/study_notes_service.dart';
 import 'package:daily_manna/ui/study/study_note_picker.dart';
+import 'package:daily_manna/ui/study/concept_map_editor.dart';
 import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +26,14 @@ class _BibleService extends BibleService {
   @override
   String getRangeRefName(ScriptureRangeRef ref) =>
       '${ref.bookId} ${ref.chapter}:${ref.startVerse}-${ref.endVerse ?? ref.startVerse}';
+
+  @override
+  String getPassageRange(
+    String bookId,
+    int chapter,
+    int startVerse, {
+    int? endVerse,
+  }) => 'Passage text';
 }
 
 class _StudyNotesService extends StudyNotesService {
@@ -148,6 +160,12 @@ void main() {
         notesService.passagesFor((await notesService.getNote(unrelated.id))!),
         [otherPassage, passage],
       );
+      expect(
+        ConceptMapDocument.fromMermaid(
+          (await notesService.getNote(unrelated.id))!.conceptMap!,
+        ).nodes.map((node) => node.passage),
+        [otherPassage, passage],
+      );
     });
   });
 
@@ -169,6 +187,10 @@ void main() {
     await tester.runAsync(() async {
       final note = (await database.getStudyNotes()).single;
       expect(note.title, 'Wisdom');
+      expect(
+        ConceptMapDocument.fromMermaid(note.conceptMap!).nodes.single.passage,
+        passage,
+      );
       expect(
         (await database.getAllResults()).single.studyNoteId,
         note.clientId,
@@ -201,12 +223,20 @@ void main() {
     });
     await tester.pumpAndSettle();
     expect(find.text('John 3:16-16'), findsOneWidget);
+    await tester.tap(find.text('Concept Map'));
+    await tester.pumpAndSettle();
+    expect(find.text('John 3:16-16'), findsOneWidget);
+    expect(find.byTooltip('Show passage'), findsNWidgets(2));
+    await tester.tap(find.text('Notes'));
+    await tester.pumpAndSettle();
     await tester.runAsync(() async {
       await notesService.addPassage(note.id, otherPassage);
-      expect(notesService.passagesFor((await notesService.getNote(note.id))!), [
-        passage,
-        otherPassage,
-      ]);
+      final updated = (await notesService.getNote(note.id))!;
+      expect(notesService.passagesFor(updated), [passage, otherPassage]);
+      expect(
+        ConceptMapDocument.fromMermaid(updated.conceptMap!).nodes,
+        hasLength(2),
+      );
       expect(await database.getAllResults(), isEmpty);
     });
     await tester.tap(find.byTooltip('Edit'));
@@ -215,16 +245,79 @@ void main() {
     expect(find.byTooltip('Save'), findsOneWidget);
     await tester.enterText(find.byType(TextField), 'Keep learning');
     await tester.runAsync(() async {
+      final saved = Completer<void>();
+      var writes = 0;
+      notesService.onLocalChange = () async {
+        if (++writes == 2) saved.complete();
+      };
       await tester.tap(find.byTooltip('Save'));
-      await database.watchStudyNotes().firstWhere(
-        (notes) =>
-            notes.single.notes == 'Keep learning' &&
-            notes.single.conceptMap != null,
-      );
+      await saved.future;
+      expect((await notesService.getNote(note.id))!.notes, 'Keep learning');
     });
     await tester.pumpAndSettle();
     expect(find.text('Keep learning'), findsOneWidget);
     expect(find.byTooltip('Edit'), findsOneWidget);
     expect(find.text('Concept Map'), findsOneWidget);
+  });
+
+  testWidgets('adding a passage preserves unsaved map nodes and connections', (
+    tester,
+  ) async {
+    late StudyNote note;
+    await tester.runAsync(() async {
+      note = await notesService.createNote(title: 'Wisdom', passage: passage);
+    });
+    await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.tap(find.text('Concept Map'));
+    await tester.pumpAndSettle();
+    final editor = tester.widget<ConceptMapEditor>(
+      find.byType(ConceptMapEditor),
+    );
+    editor.onChanged(
+      editor.document
+          .addNode(
+            const ConceptMapNode(
+              id: 'node3',
+              type: ConceptMapNodeType.keyPoint,
+              label: 'Unsaved insight',
+            ),
+          )
+          .addEdge(const ConceptMapEdge(from: 'node1', to: 'node3', length: 2)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notes'));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Add passage'));
+      Navigator.of(
+        tester.element(find.byType(StudyNotesDetailPage)),
+      ).pop(otherPassage);
+      await database.watchStudyNotes().firstWhere(
+        (notes) =>
+            notesService.passagesFor(notes.single).contains(otherPassage),
+      );
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Concept Map'));
+    await tester.pumpAndSettle();
+    final updated = tester
+        .widget<ConceptMapEditor>(find.byType(ConceptMapEditor))
+        .document;
+    expect(updated.nodes.map((node) => node.id), ['node1', 'node3', 'node4']);
+    expect(updated.nodes[1].label, 'Unsaved insight');
+    expect(updated.nodes.last.passage, otherPassage);
+    expect(updated.edges.single.from, 'node1');
+    expect(updated.edges.single.to, 'node3');
+    expect(updated.edges.single.length, 2);
+    await tester.runAsync(() async {
+      final saved = ConceptMapDocument.fromMermaid(
+        (await notesService.getNote(note.id))!.conceptMap!,
+      );
+      expect(saved.nodes.map((node) => node.id), ['node1', 'node3', 'node4']);
+      expect(saved.edges.single.to, 'node3');
+      expect(await database.getAllResults(), isEmpty);
+    });
   });
 }

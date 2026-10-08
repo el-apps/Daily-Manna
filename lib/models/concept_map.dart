@@ -119,6 +119,34 @@ class ConceptMapDocument {
     return buffer.toString().trimRight();
   }
 
+  String get nextNodeId {
+    var index = nodes.length + 1;
+    while (nodes.any((node) => node.id == 'node$index')) {
+      index++;
+    }
+    return 'node$index';
+  }
+
+  ConceptMapDocument addPassage(ScriptureRangeRef passage) {
+    if (nodes.any(
+      (node) =>
+          node.type == ConceptMapNodeType.passage && node.passage == passage,
+    )) {
+      return this;
+    }
+    final end = passage.endVerse;
+    return addNode(
+      ConceptMapNode(
+        id: nextNodeId,
+        type: ConceptMapNodeType.passage,
+        label:
+            '${passage.bookId} ${passage.chapter}:${passage.startVerse}'
+            '${end == null || end == passage.startVerse ? '' : '-$end'}',
+        passage: passage,
+      ),
+    );
+  }
+
   ConceptMapDocument addNode(ConceptMapNode node) =>
       ConceptMapDocument(nodes: [...nodes, node], edges: edges);
 
@@ -129,9 +157,7 @@ class ConceptMapDocument {
 
   ConceptMapDocument deleteNode(String id) => ConceptMapDocument(
     nodes: nodes.where((node) => node.id != id).toList(),
-    edges: edges
-        .where((edge) => edge.from != id && edge.to != id)
-        .toList(),
+    edges: edges.where((edge) => edge.from != id && edge.to != id).toList(),
   );
 
   ConceptMapDocument addEdge(ConceptMapEdge edge) =>

@@ -110,10 +110,13 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
     final service = context.read<StudyNotesService>();
     final passage = await showPassageSelector(context);
     if (!mounted || passage == null) return;
-    await service.addPassage(widget.note.id, passage);
+    await service.addPassage(widget.note.id, passage, conceptMap: _conceptMap);
     final note = await service.getNote(widget.note.id);
     if (mounted && note != null) {
-      setState(() => _passages = service.passagesFor(note));
+      setState(() {
+        _passages = service.passagesFor(note);
+        _conceptMap = ConceptMapDocument.fromMermaid(note.conceptMap ?? '');
+      });
     }
   }
 
