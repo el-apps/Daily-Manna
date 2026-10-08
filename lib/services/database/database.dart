@@ -21,6 +21,8 @@ class Results extends Table {
   RealColumn get score => real()();
   IntColumn get attempts => integer().nullable()();
   TextColumn get notes => text().nullable()();
+  // Stable sync identity, not the note's device-local integer key.
+  TextColumn get studyNoteId => text().nullable()();
   TextColumn get clientId => text().unique().clientDefault(newClientId)();
   DateTimeColumn get updatedAt => dateTime().clientDefault(DateTime.now)();
 }
@@ -65,7 +67,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -119,6 +121,9 @@ class AppDatabase extends _$AppDatabase {
         if (!columns.any((row) => row.data['name'] == 'concept_map')) {
           await m.addColumn(studyNotes, studyNotes.conceptMap);
         }
+      }
+      if (from < 7) {
+        await m.addColumn(results, results.studyNoteId);
       }
     },
   );

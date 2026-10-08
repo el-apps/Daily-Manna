@@ -1,4 +1,5 @@
 import 'package:daily_manna/models/concept_map.dart';
+import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
 import 'package:daily_manna/services/study_notes_service.dart';
@@ -6,6 +7,7 @@ import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/study/concept_map_editor.dart';
 import 'package:daily_manna/ui/edit_toolbar.dart';
+import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -28,11 +30,13 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   final _conceptMapKey = GlobalKey<ConceptMapEditorState>();
   bool _isEditing = false;
   int _activeTab = 0;
+  late List<ScriptureRangeRef> _passages;
 
   @override
   void initState() {
     super.initState();
     _notes = widget.note.notes;
+    _passages = context.read<StudyNotesService>().passagesFor(widget.note);
     _notesController = TextEditingController(text: _notes);
     _conceptMap = ConceptMapDocument.fromMermaid(widget.note.conceptMap ?? '');
     _tabController = TabController(length: 2, vsync: this)
@@ -52,9 +56,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
 
   @override
   Widget build(BuildContext context) {
-    final service = context.read<StudyNotesService>();
     final bibleService = context.read<BibleService>();
-    final passages = service.passagesFor(widget.note);
 
     return AppScaffold(
       title: widget.note.title,
@@ -82,8 +84,9 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
                   notes: _notes,
                   notesController: _notesController,
                   isEditing: _isEditing,
-                  passages: passages,
+                  passages: _passages,
                   bibleService: bibleService,
+                  onAddPassage: _addPassage,
                 ),
                 ConceptMapEditor(
                   key: _conceptMapKey,
@@ -102,6 +105,17 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   }
 
   void _enterEditMode() => setState(() => _isEditing = true);
+
+  Future<void> _addPassage() async {
+    final service = context.read<StudyNotesService>();
+    final passage = await showPassageSelector(context);
+    if (!mounted || passage == null) return;
+    await service.addPassage(widget.note.id, passage);
+    final note = await service.getNote(widget.note.id);
+    if (mounted && note != null) {
+      setState(() => _passages = service.passagesFor(note));
+    }
+  }
 
   Future<void> _save() async {
     final newNotes = _notesController.text;
@@ -201,32 +215,38 @@ class _NotesTab extends StatelessWidget {
     required this.isEditing,
     required this.passages,
     required this.bibleService,
+    required this.onAddPassage,
   });
 
   final String? notes;
   final TextEditingController notesController;
   final bool isEditing;
-  final List passages;
+  final List<ScriptureRangeRef> passages;
   final BibleService bibleService;
+  final VoidCallback onAddPassage;
 
   @override
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(16),
     children: [
-      if (passages.isNotEmpty) ...[
+      ...[
         Text('Passages', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: passages
-              .map(
-                (passage) => Chip(
-                  avatar: const Icon(Icons.menu_book, size: 18),
-                  label: Text(bibleService.getRangeRefName(passage)),
-                ),
-              )
-              .toList(),
+          children: [
+            for (final passage in passages)
+              Chip(
+                avatar: const Icon(Icons.menu_book, size: 18),
+                label: Text(bibleService.getRangeRefName(passage)),
+              ),
+            OutlinedButton.icon(
+              onPressed: onAddPassage,
+              icon: const Icon(Icons.add),
+              label: const Text('Add passage'),
+            ),
+          ],
         ),
         const SizedBox(height: 24),
       ],

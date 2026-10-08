@@ -247,6 +247,7 @@ class SyncService {
       'score': result.score,
       'attempts': result.attempts,
       'notes': result.notes,
+      'studyNoteId': result.studyNoteId,
       'updatedAt': result.updatedAt.toUtc().toIso8601String(),
     },
   };
@@ -277,6 +278,7 @@ class SyncService {
       score: (data['score'] as num).toDouble(),
       attempts: Value((data['attempts'] as num?)?.toInt()),
       notes: Value(data['notes'] as String?),
+      studyNoteId: Value(data['studyNoteId'] as String?),
       clientId: Value(id),
       updatedAt: Value(DateTime.parse(data['updatedAt'] as String).toUtc()),
     );

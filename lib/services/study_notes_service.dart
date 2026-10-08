@@ -13,6 +13,9 @@ class StudyNotesService {
 
   Future<StudyNote?> getNote(int id) => _db.studyNoteById(id);
 
+  Future<StudyNote?> getNoteByClientId(String id) =>
+      _db.studyNoteByClientId(id);
+
   Future<StudyNote> createNote({
     required String title,
     required ScriptureRangeRef passage,

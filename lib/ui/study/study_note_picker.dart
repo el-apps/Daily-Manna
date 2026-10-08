@@ -15,6 +15,8 @@ class StudyNotePicker extends StatefulWidget {
 }
 
 class _StudyNotePickerState extends State<StudyNotePicker> {
+  bool _saving = false;
+
   @override
   Widget build(BuildContext context) {
     final service = context.read<StudyNotesService>();
@@ -26,14 +28,22 @@ class _StudyNotePickerState extends State<StudyNotePicker> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Start study session',
+              'Record study session',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 4),
-            const Text('Notes related to this passage'),
+            const Text(
+              'Choose an existing note, create one, or record without a note.',
+            ),
             const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _saving ? null : () => _startSession(null),
+              icon: const Icon(Icons.check),
+              label: const Text('Record without a note'),
+            ),
+            const SizedBox(height: 8),
             FilledButton.tonalIcon(
-              onPressed: _createNote,
+              onPressed: _saving ? null : _createNote,
               icon: const Icon(Icons.add),
               label: const Text('Create new study note'),
             ),
@@ -41,7 +51,8 @@ class _StudyNotePickerState extends State<StudyNotePicker> {
             StreamBuilder<List<db.StudyNote>>(
               stream: service.watchNotes(),
               builder: (context, snapshot) {
-                final notes = (snapshot.data ?? const <db.StudyNote>[])
+                final notes = snapshot.data ?? const <db.StudyNote>[];
+                final related = notes
                     .where(
                       (note) => service
                           .passagesFor(note)
@@ -50,20 +61,35 @@ class _StudyNotePickerState extends State<StudyNotePicker> {
                           ),
                     )
                     .toList();
+                final other = notes
+                    .where((note) => !related.contains(note))
+                    .toList();
                 if (notes.isEmpty) return const SizedBox.shrink();
                 return ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 280),
                   child: ListView(
                     shrinkWrap: true,
-                    children: notes
-                        .map(
-                          (note) => ListTile(
+                    children: [
+                      for (final group in [
+                        (label: 'Related notes', notes: related),
+                        (label: 'Other notes', notes: other),
+                      ]) ...[
+                        if (group.notes.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              group.label,
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                          ),
+                        for (final note in group.notes)
+                          ListTile(
                             title: Text(note.title),
                             leading: const Icon(Icons.sticky_note_2_outlined),
-                            onTap: () => _startSession(note),
+                            onTap: _saving ? null : () => _startSession(note),
                           ),
-                        )
-                        .toList(),
+                      ],
+                    ],
                   ),
                 );
               },
@@ -74,22 +100,39 @@ class _StudyNotePickerState extends State<StudyNotePicker> {
     );
   }
 
-  Future<void> _startSession(db.StudyNote note) async {
+  Future<void> _startSession(db.StudyNote? note) async {
+    if (_saving) return;
+    setState(() => _saving = true);
     final resultsService = context.read<ResultsService>();
-    await resultsService.addStudyResult(widget.passage);
-    if (mounted) Navigator.pop(context, note);
+    final notesService = context.read<StudyNotesService>();
+    if (note != null) {
+      await notesService.addPassage(note.id, widget.passage);
+      note = await notesService.getNote(note.id);
+    }
+    await resultsService.addStudyResult(
+      widget.passage,
+      studyNoteId: note?.clientId,
+    );
+    if (mounted) {
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.pop(context, note);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Study session recorded')),
+      );
+    }
   }
 
   Future<void> _createNote() async {
+    if (_saving) return;
+    setState(() => _saving = true);
     final notesService = context.read<StudyNotesService>();
-    final resultsService = context.read<ResultsService>();
-    final controller = TextEditingController();
+    var enteredTitle = '';
     final title = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('New study note'),
         content: TextField(
-          controller: controller,
+          onChanged: (value) => enteredTitle = value,
           autofocus: true,
           decoration: const InputDecoration(labelText: 'Title'),
         ),
@@ -99,20 +142,24 @@ class _StudyNotePickerState extends State<StudyNotePicker> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text),
+            onPressed: () => Navigator.pop(context, enteredTitle),
             child: const Text('Create'),
           ),
         ],
       ),
     );
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-    controller.dispose();
-    if (!mounted || title == null || title.trim().isEmpty) return;
+    if (!mounted) return;
+    if (title == null || title.trim().isEmpty) {
+      setState(() => _saving = false);
+      return;
+    }
     final note = await notesService.createNote(
       title: title,
       passage: widget.passage,
     );
-    await resultsService.addStudyResult(widget.passage);
-    if (mounted) Navigator.pop(context, note);
+    if (mounted) {
+      setState(() => _saving = false);
+      await _startSession(note);
+    }
   }
 }

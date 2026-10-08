@@ -47,7 +47,11 @@ class ResultsService {
   }
 
   /// Add a study result through the same tracked local-write path.
-  Future<void> addStudyResult(ScriptureRangeRef ref, {String? notes}) async {
+  Future<void> addStudyResult(
+    ScriptureRangeRef ref, {
+    String? notes,
+    String? studyNoteId,
+  }) async {
     await _db.insertResult(
       ResultsCompanion.insert(
         timestamp: DateTime.now(),
@@ -58,6 +62,7 @@ class ResultsService {
         endVerse: Value(ref.endVerse),
         score: 1,
         notes: Value(notes),
+        studyNoteId: Value(studyNoteId),
       ),
     );
     await onLocalChange?.call();

@@ -118,7 +118,7 @@ class _StudyNotesPageState extends State<StudyNotesPage> {
     final title = await _askForTitle();
     if (!mounted || title == null || title.trim().isEmpty) return;
     final note = await notesService.createNote(title: title, passage: passage);
-    await resultsService.addStudyResult(passage);
+    await resultsService.addStudyResult(passage, studyNoteId: note.clientId);
     if (mounted) context.push('/study-notes/${note.id}', extra: note);
   }
 

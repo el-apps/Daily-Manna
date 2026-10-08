@@ -123,6 +123,17 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _studyNoteIdMeta = const VerificationMeta(
+    'studyNoteId',
+  );
+  @override
+  late final GeneratedColumn<String> studyNoteId = GeneratedColumn<String>(
+    'study_note_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _clientIdMeta = const VerificationMeta(
     'clientId',
   );
@@ -161,6 +172,7 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
     score,
     attempts,
     notes,
+    studyNoteId,
     clientId,
     updatedAt,
   ];
@@ -246,6 +258,15 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
       );
     }
+    if (data.containsKey('study_note_id')) {
+      context.handle(
+        _studyNoteIdMeta,
+        studyNoteId.isAcceptableOrUnknown(
+          data['study_note_id']!,
+          _studyNoteIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('client_id')) {
       context.handle(
         _clientIdMeta,
@@ -313,6 +334,10 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       ),
+      studyNoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}study_note_id'],
+      ),
       clientId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}client_id'],
@@ -345,6 +370,7 @@ class Result extends DataClass implements Insertable<Result> {
   final double score;
   final int? attempts;
   final String? notes;
+  final String? studyNoteId;
   final String clientId;
   final DateTime updatedAt;
   const Result({
@@ -359,6 +385,7 @@ class Result extends DataClass implements Insertable<Result> {
     required this.score,
     this.attempts,
     this.notes,
+    this.studyNoteId,
     required this.clientId,
     required this.updatedAt,
   });
@@ -386,6 +413,9 @@ class Result extends DataClass implements Insertable<Result> {
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
+    if (!nullToAbsent || studyNoteId != null) {
+      map['study_note_id'] = Variable<String>(studyNoteId);
+    }
     map['client_id'] = Variable<String>(clientId);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -412,6 +442,9 @@ class Result extends DataClass implements Insertable<Result> {
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
+      studyNoteId: studyNoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(studyNoteId),
       clientId: Value(clientId),
       updatedAt: Value(updatedAt),
     );
@@ -436,6 +469,7 @@ class Result extends DataClass implements Insertable<Result> {
       score: serializer.fromJson<double>(json['score']),
       attempts: serializer.fromJson<int?>(json['attempts']),
       notes: serializer.fromJson<String?>(json['notes']),
+      studyNoteId: serializer.fromJson<String?>(json['studyNoteId']),
       clientId: serializer.fromJson<String>(json['clientId']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -455,6 +489,7 @@ class Result extends DataClass implements Insertable<Result> {
       'score': serializer.toJson<double>(score),
       'attempts': serializer.toJson<int?>(attempts),
       'notes': serializer.toJson<String?>(notes),
+      'studyNoteId': serializer.toJson<String?>(studyNoteId),
       'clientId': serializer.toJson<String>(clientId),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -472,6 +507,7 @@ class Result extends DataClass implements Insertable<Result> {
     double? score,
     Value<int?> attempts = const Value.absent(),
     Value<String?> notes = const Value.absent(),
+    Value<String?> studyNoteId = const Value.absent(),
     String? clientId,
     DateTime? updatedAt,
   }) => Result(
@@ -486,6 +522,7 @@ class Result extends DataClass implements Insertable<Result> {
     score: score ?? this.score,
     attempts: attempts.present ? attempts.value : this.attempts,
     notes: notes.present ? notes.value : this.notes,
+    studyNoteId: studyNoteId.present ? studyNoteId.value : this.studyNoteId,
     clientId: clientId ?? this.clientId,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -508,6 +545,9 @@ class Result extends DataClass implements Insertable<Result> {
       score: data.score.present ? data.score.value : this.score,
       attempts: data.attempts.present ? data.attempts.value : this.attempts,
       notes: data.notes.present ? data.notes.value : this.notes,
+      studyNoteId: data.studyNoteId.present
+          ? data.studyNoteId.value
+          : this.studyNoteId,
       clientId: data.clientId.present ? data.clientId.value : this.clientId,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -527,6 +567,7 @@ class Result extends DataClass implements Insertable<Result> {
           ..write('score: $score, ')
           ..write('attempts: $attempts, ')
           ..write('notes: $notes, ')
+          ..write('studyNoteId: $studyNoteId, ')
           ..write('clientId: $clientId, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -546,6 +587,7 @@ class Result extends DataClass implements Insertable<Result> {
     score,
     attempts,
     notes,
+    studyNoteId,
     clientId,
     updatedAt,
   );
@@ -564,6 +606,7 @@ class Result extends DataClass implements Insertable<Result> {
           other.score == this.score &&
           other.attempts == this.attempts &&
           other.notes == this.notes &&
+          other.studyNoteId == this.studyNoteId &&
           other.clientId == this.clientId &&
           other.updatedAt == this.updatedAt);
 }
@@ -580,6 +623,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
   final Value<double> score;
   final Value<int?> attempts;
   final Value<String?> notes;
+  final Value<String?> studyNoteId;
   final Value<String> clientId;
   final Value<DateTime> updatedAt;
   const ResultsCompanion({
@@ -594,6 +638,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     this.score = const Value.absent(),
     this.attempts = const Value.absent(),
     this.notes = const Value.absent(),
+    this.studyNoteId = const Value.absent(),
     this.clientId = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -609,6 +654,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     required double score,
     this.attempts = const Value.absent(),
     this.notes = const Value.absent(),
+    this.studyNoteId = const Value.absent(),
     this.clientId = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : timestamp = Value(timestamp),
@@ -629,6 +675,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     Expression<double>? score,
     Expression<int>? attempts,
     Expression<String>? notes,
+    Expression<String>? studyNoteId,
     Expression<String>? clientId,
     Expression<DateTime>? updatedAt,
   }) {
@@ -644,6 +691,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
       if (score != null) 'score': score,
       if (attempts != null) 'attempts': attempts,
       if (notes != null) 'notes': notes,
+      if (studyNoteId != null) 'study_note_id': studyNoteId,
       if (clientId != null) 'client_id': clientId,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -661,6 +709,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     Value<double>? score,
     Value<int?>? attempts,
     Value<String?>? notes,
+    Value<String?>? studyNoteId,
     Value<String>? clientId,
     Value<DateTime>? updatedAt,
   }) {
@@ -676,6 +725,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
       score: score ?? this.score,
       attempts: attempts ?? this.attempts,
       notes: notes ?? this.notes,
+      studyNoteId: studyNoteId ?? this.studyNoteId,
       clientId: clientId ?? this.clientId,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -719,6 +769,9 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (studyNoteId.present) {
+      map['study_note_id'] = Variable<String>(studyNoteId.value);
+    }
     if (clientId.present) {
       map['client_id'] = Variable<String>(clientId.value);
     }
@@ -742,6 +795,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
           ..write('score: $score, ')
           ..write('attempts: $attempts, ')
           ..write('notes: $notes, ')
+          ..write('studyNoteId: $studyNoteId, ')
           ..write('clientId: $clientId, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1840,6 +1894,7 @@ typedef $$ResultsTableCreateCompanionBuilder =
       required double score,
       Value<int?> attempts,
       Value<String?> notes,
+      Value<String?> studyNoteId,
       Value<String> clientId,
       Value<DateTime> updatedAt,
     });
@@ -1856,6 +1911,7 @@ typedef $$ResultsTableUpdateCompanionBuilder =
       Value<double> score,
       Value<int?> attempts,
       Value<String?> notes,
+      Value<String?> studyNoteId,
       Value<String> clientId,
       Value<DateTime> updatedAt,
     });
@@ -1922,6 +1978,11 @@ class $$ResultsTableFilterComposer
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get studyNoteId => $composableBuilder(
+    column: $table.studyNoteId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2000,6 +2061,11 @@ class $$ResultsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get studyNoteId => $composableBuilder(
+    column: $table.studyNoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get clientId => $composableBuilder(
     column: $table.clientId,
     builder: (column) => ColumnOrderings(column),
@@ -2059,6 +2125,11 @@ class $$ResultsTableAnnotationComposer
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
 
+  GeneratedColumn<String> get studyNoteId => $composableBuilder(
+    column: $table.studyNoteId,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get clientId =>
       $composableBuilder(column: $table.clientId, builder: (column) => column);
 
@@ -2105,6 +2176,7 @@ class $$ResultsTableTableManager
                 Value<double> score = const Value.absent(),
                 Value<int?> attempts = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<String?> studyNoteId = const Value.absent(),
                 Value<String> clientId = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => ResultsCompanion(
@@ -2119,6 +2191,7 @@ class $$ResultsTableTableManager
                 score: score,
                 attempts: attempts,
                 notes: notes,
+                studyNoteId: studyNoteId,
                 clientId: clientId,
                 updatedAt: updatedAt,
               ),
@@ -2135,6 +2208,7 @@ class $$ResultsTableTableManager
                 required double score,
                 Value<int?> attempts = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<String?> studyNoteId = const Value.absent(),
                 Value<String> clientId = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => ResultsCompanion.insert(
@@ -2149,6 +2223,7 @@ class $$ResultsTableTableManager
                 score: score,
                 attempts: attempts,
                 notes: notes,
+                studyNoteId: studyNoteId,
                 clientId: clientId,
                 updatedAt: updatedAt,
               ),
