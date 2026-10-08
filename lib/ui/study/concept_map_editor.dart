@@ -132,7 +132,7 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
           ),
         ),
         child: CustomPaint(
-          painter: _ConceptMapEdgesPainter(widget.document, _nodeSizes),
+          painter: _ConceptMapEdgesPainter(widget.document, Map.of(_nodeSizes)),
           child: Stack(
             children: [
               for (final entry in positions.entries)
