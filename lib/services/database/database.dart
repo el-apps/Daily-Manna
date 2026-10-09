@@ -189,7 +189,7 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> updateStudyNote(
     int id, {
-    String? notes,
+    Value<String?> notes = const Value.absent(),
     String? conceptMap,
     String? passages,
   }) async {
@@ -199,7 +199,7 @@ class AppDatabase extends _$AppDatabase {
       final now = DateTime.now().toUtc();
       await (update(studyNotes)..where((note) => note.id.equals(id))).write(
         StudyNotesCompanion(
-          notes: notes == null ? const Value.absent() : Value(notes),
+          notes: notes,
           conceptMap: conceptMap == null
               ? const Value.absent()
               : Value(conceptMap),

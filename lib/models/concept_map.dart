@@ -51,8 +51,24 @@ class ConceptMapDocument {
     final passages = <String, ScriptureRangeRef>{};
     final shownPassages = <String>{};
     final nodePattern = RegExp(
-      r'^\s*([A-Za-z][\w-]*)\[\[(.*?)\]\]|^\s*([A-Za-z][\w-]*)\[(.*?)\]',
+      r'^\s*([A-Za-z][\w-]*)\[(?:\[(.*?)\]|(.*?))\](?::::([\w]+))?',
+      multiLine: true,
+      dotAll: true,
     );
+    for (final match in nodePattern.allMatches(source)) {
+      final type = switch (match.group(4)) {
+        'keyPoint' => ConceptMapNodeType.keyPoint,
+        'passage' => ConceptMapNodeType.passage,
+        _ => ConceptMapNodeType.note,
+      };
+      nodes.add(
+        ConceptMapNode(
+          id: match.group(1)!,
+          type: type,
+          label: _unescape(match.group(2) ?? match.group(3)!),
+        ),
+      );
+    }
     final edgePattern = RegExp(r'([A-Za-z][\w-]*)\s*(-+)>\s*([A-Za-z][\w-]*)');
     for (final line in source.split('\n')) {
       final showPassageMatch = RegExp(
@@ -60,17 +76,6 @@ class ConceptMapDocument {
       ).firstMatch(line);
       if (showPassageMatch != null) {
         shownPassages.add(showPassageMatch.group(1)!);
-      }
-      final nodeMatch = nodePattern.firstMatch(line);
-      if (nodeMatch != null) {
-        final id = nodeMatch.group(1) ?? nodeMatch.group(3)!;
-        final label = nodeMatch.group(2) ?? nodeMatch.group(4)!;
-        final type = line.contains(':::keyPoint')
-            ? ConceptMapNodeType.keyPoint
-            : line.contains(':::passage')
-            ? ConceptMapNodeType.passage
-            : ConceptMapNodeType.note;
-        nodes.add(ConceptMapNode(id: id, type: type, label: _unescape(label)));
       }
       final edgeMatch = edgePattern.firstMatch(line);
       if (edgeMatch != null) {
@@ -176,6 +181,13 @@ class ConceptMapDocument {
   ConceptMapDocument addEdge(ConceptMapEdge edge) =>
       ConceptMapDocument(nodes: nodes, edges: [...edges, edge]);
 
-  static String _escape(String value) => value.replaceAll(']', '#93;');
-  static String _unescape(String value) => value.replaceAll('#93;', ']');
+  static String _escape(String value) => value
+      .replaceAll('#', '#35;')
+      .replaceAll(']', '#93;')
+      .replaceAll('\r', '#13;')
+      .replaceAll('\n', '#10;');
+  static String _unescape(String value) => value.replaceAllMapped(
+    RegExp(r'#(35|93|13|10);'),
+    (match) => String.fromCharCode(int.parse(match.group(1)!)),
+  );
 }

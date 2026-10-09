@@ -10,14 +10,26 @@ Map<String, Offset> conceptMapLayout(
   ConceptMapDocument document, {
   Map<String, Size> nodeSizes = const {},
 }) {
-  final ranks = <String, int>{for (final node in document.nodes) node.id: 0};
-  for (var pass = 0; pass < document.nodes.length; pass++) {
-    for (final edge in document.edges) {
-      ranks[edge.to] = math.max(
-        ranks[edge.to] ?? 0,
-        (ranks[edge.from] ?? 0) + edge.length,
+  final nodeIds = document.nodes.map((node) => node.id).toSet();
+  final ranks = <String, int>{};
+  int rank(String id, Set<String> ancestors) {
+    if (ranks.containsKey(id)) return ranks[id]!;
+    var result = 0;
+    for (final edge in document.edges.where((edge) => edge.to == id)) {
+      // Back edges remain visible, but cannot increase ranks indefinitely.
+      if (!nodeIds.contains(edge.from) || ancestors.contains(edge.from)) {
+        continue;
+      }
+      result = math.max(
+        result,
+        rank(edge.from, {...ancestors, edge.from}) + edge.length,
       );
     }
+    return ranks[id] = result;
+  }
+
+  for (final node in document.nodes) {
+    rank(node.id, {node.id});
   }
   final groups = <int, List<ConceptMapNode>>{};
   for (final node in document.nodes) {
@@ -123,7 +135,13 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
       minScale: .25,
       maxScale: 4,
       child: SizedBox(
-        width: math.max(900, widget.document.nodes.length * 280.0),
+        width: positions.entries.fold<double>(
+          900,
+          (width, entry) => math.max(
+            width,
+            entry.value.dx + (_nodeSizes[entry.key]?.width ?? 210) + 80,
+          ),
+        ),
         height: positions.entries.fold<double>(
           700,
           (height, entry) => math.max(

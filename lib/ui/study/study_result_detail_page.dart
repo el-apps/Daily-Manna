@@ -83,10 +83,7 @@ class _StudyResultDetailPageState extends State<StudyResultDetailPage> {
                           title: Text(note.title),
                           subtitle: const Text('Open study note'),
                           trailing: const Icon(Icons.chevron_right),
-                          onTap: () => context.push(
-                            '/study-notes/${note.id}',
-                            extra: note,
-                          ),
+                          onTap: _openLinkedNote,
                         ),
                       );
                     },
@@ -135,6 +132,21 @@ class _StudyResultDetailPageState extends State<StudyResultDetailPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _openLinkedNote() async {
+    final service = context.read<StudyNotesService>();
+    final noteId = widget.result.studyNoteId!;
+    final note = await service.getNoteByClientId(noteId);
+    if (!mounted) return;
+    if (note != null) {
+      await context.push('/study-notes/${note.id}', extra: note);
+    }
+    if (mounted) {
+      setState(() {
+        _linkedNote = service.getNoteByClientId(noteId);
+      });
+    }
   }
 
   Future<void> _showEditDialog() async {

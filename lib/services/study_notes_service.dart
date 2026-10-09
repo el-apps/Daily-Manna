@@ -38,7 +38,7 @@ class StudyNotesService {
   }
 
   Future<void> updateNotes(int id, String? notes) async {
-    await _db.updateStudyNote(id, notes: notes);
+    await _db.updateStudyNote(id, notes: Value(notes));
     await onLocalChange?.call();
   }
 
