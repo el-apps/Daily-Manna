@@ -150,18 +150,37 @@ flowchart TD
       nodes: [
         ConceptMapNode(id: 'a', type: ConceptMapNodeType.passage, label: 'A'),
         ConceptMapNode(id: 'b', type: ConceptMapNodeType.passage, label: 'B'),
+        ConceptMapNode(id: 'd', type: ConceptMapNodeType.note, label: 'D'),
         ConceptMapNode(id: 'c', type: ConceptMapNodeType.note, label: 'C'),
       ],
-      edges: [ConceptMapEdge(from: 'a', to: 'c')],
+      edges: [
+        ConceptMapEdge(from: 'a', to: 'c'),
+        ConceptMapEdge(from: 'b', to: 'd'),
+      ],
     );
     final positions = conceptMapLayout(
       document,
-      nodeSizes: {'a': const Size(210, 278), 'b': const Size(210, 50)},
+      nodeSizes: {
+        'a': const Size(210, 278),
+        'b': const Size(210, 50),
+        'd': const Size(210, 50),
+      },
     );
     expect(positions['a'], const Offset(80, 80));
     expect(positions['b'], const Offset(80, 382));
-    expect(positions['c'], const Offset(340, 80));
+    expect(positions['c'], const Offset(340, 174));
+    expect(positions['d'], const Offset(340, 382));
     expect(conceptMapLayout(document)['b'], const Offset(80, 240));
+    final tallerTarget = conceptMapLayout(
+      document,
+      nodeSizes: {'c': const Size(210, 278)},
+    );
+    expect(tallerTarget['a']!.dy + 45, tallerTarget['c']!.dy + 139);
+    expect(tallerTarget['c']!.dy, greaterThanOrEqualTo(80));
+    expect(
+      tallerTarget['d']!.dy,
+      greaterThanOrEqualTo(tallerTarget['c']!.dy + 302),
+    );
   });
 
   Widget host(Widget home, {GoRouter? router}) => MultiProvider(

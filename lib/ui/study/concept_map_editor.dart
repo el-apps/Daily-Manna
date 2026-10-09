@@ -36,11 +36,51 @@ Map<String, Offset> conceptMapLayout(
     groups.putIfAbsent(ranks[node.id] ?? 0, () => []).add(node);
   }
   final positions = <String, Offset>{};
-  for (final group in groups.entries) {
+  double height(String id) => nodeSizes[id]?.height ?? 90;
+  final baseline =
+      80 +
+      document.nodes.fold<double>(
+            0,
+            (h, node) => math.max(h, height(node.id)),
+          ) /
+          2;
+  final columns = groups.keys.toList()..sort();
+  for (final column in columns) {
+    final preferredCenters = <String, double>{};
+    for (final node in groups[column]!) {
+      final neighbors = <String>{
+        for (final edge in document.edges)
+          if (edge.from == node.id && positions.containsKey(edge.to)) edge.to,
+        for (final edge in document.edges)
+          if (edge.to == node.id && positions.containsKey(edge.from)) edge.from,
+      };
+      if (neighbors.isNotEmpty) {
+        preferredCenters[node.id] =
+            neighbors.fold<double>(
+              0,
+              (sum, id) => sum + positions[id]!.dy + height(id) / 2,
+            ) /
+            neighbors.length;
+      }
+    }
+    final nodes = groups[column]!.toList()
+      ..sort((a, b) {
+        final comparison = (preferredCenters[a.id] ?? baseline).compareTo(
+          preferredCenters[b.id] ?? baseline,
+        );
+        return comparison != 0
+            ? comparison
+            : groups[column]!.indexOf(a).compareTo(groups[column]!.indexOf(b));
+      });
     var y = 80.0;
-    for (final node in group.value) {
-      positions[node.id] = Offset(80 + group.key * 260, y);
-      y += math.max(160, (nodeSizes[node.id]?.height ?? 90) + 24);
+    for (final node in nodes) {
+      // Match connected card centers, leaving room when branches cannot align.
+      y = math.max(
+        y,
+        (preferredCenters[node.id] ?? baseline) - height(node.id) / 2,
+      );
+      positions[node.id] = Offset(80 + column * 260, y);
+      y += math.max(160, height(node.id) + 24);
     }
   }
   return positions;
