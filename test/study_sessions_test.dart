@@ -337,6 +337,7 @@ flowchart TD
   c[James]:::passage
   class c showPassage
   click c "passage://Jas/1/9/11"
+  c ---> b
 ''');
       note = (await notesService.getNote(note.id))!;
     });
@@ -370,11 +371,11 @@ flowchart TD
       final saved = await database.watchStudyNotes().firstWhere(
         (notes) => ConceptMapDocument.fromMermaid(
           notes.single.conceptMap!,
-        ).edges.isNotEmpty,
+        ).edges.any((edge) => edge.from == 'a'),
       );
       final edge = ConceptMapDocument.fromMermaid(
         saved.single.conceptMap!,
-      ).edges.single;
+      ).edges.singleWhere((edge) => edge.from == 'a');
       expect(edge.from, 'a');
       expect(edge.to, 'b');
     });
@@ -392,12 +393,17 @@ flowchart TD
       final saved = await database.watchStudyNotes().firstWhere(
         (notes) => ConceptMapDocument.fromMermaid(
           notes.single.conceptMap!,
-        ).edges.isEmpty,
+        ).edges.every((edge) => edge.from != 'a'),
       );
       expect(
         ConceptMapDocument.fromMermaid(saved.single.conceptMap!).nodes,
         hasLength(3),
       );
+      final remaining = ConceptMapDocument.fromMermaid(
+        saved.single.conceptMap!,
+      ).edges.single;
+      expect(remaining.from, 'c');
+      expect(remaining.to, 'b');
     });
     await tester.pumpAndSettle();
   });
