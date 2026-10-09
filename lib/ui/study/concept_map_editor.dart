@@ -39,13 +39,36 @@ Map<String, Offset> conceptMapLayout(
   }
   final positions = <String, Offset>{};
   double height(String id) => nodeSizes[id]?.height ?? 90;
-  final baseline =
-      80 +
-      document.nodes.fold<double>(
-            0,
-            (h, node) => math.max(h, height(node.id)),
-          ) /
-          2;
+  final children = <String, List<String>>{
+    for (final node in document.nodes)
+      node.id: [
+        for (final candidate in document.nodes)
+          if (ranks[candidate.id]! > ranks[node.id]! &&
+              document.edges.any(
+                (edge) =>
+                    edge.from == node.id && edge.to == candidate.id ||
+                    edge.to == node.id && edge.from == candidate.id,
+              ))
+            candidate.id,
+      ],
+  };
+  final spans = <String, double>{};
+  late double Function(String) span;
+  double childrenSpan(String id) {
+    final list = children[id]!;
+    return list.isEmpty
+        ? 0
+        : list
+                  .take(list.length - 1)
+                  .fold<double>(
+                    0,
+                    (sum, child) => sum + math.max(160, span(child) + 24),
+                  ) +
+              span(list.last);
+  }
+
+  span = (id) =>
+      spans.putIfAbsent(id, () => math.max(height(id), childrenSpan(id)));
   final columns = groups.keys.toList()..sort();
   for (final column in columns) {
     final preferredCenters = <String, double>{};
@@ -58,17 +81,22 @@ Map<String, Offset> conceptMapLayout(
       };
       if (neighbors.isNotEmpty) {
         preferredCenters[node.id] =
-            neighbors.fold<double>(
-              0,
-              (sum, id) => sum + positions[id]!.dy + height(id) / 2,
-            ) /
+            neighbors.fold<double>(0, (sum, id) {
+              var center =
+                  positions[id]!.dy + height(id) / 2 - childrenSpan(id) / 2;
+              for (final child in children[id]!) {
+                if (child == node.id) return sum + center + span(child) / 2;
+                center += math.max(160, span(child) + 24);
+              }
+              return sum + positions[id]!.dy + height(id) / 2;
+            }) /
             neighbors.length;
       }
     }
     final nodes = groups[column]!.toList()
       ..sort((a, b) {
-        final comparison = (preferredCenters[a.id] ?? baseline).compareTo(
-          preferredCenters[b.id] ?? baseline,
+        final comparison = (preferredCenters[a.id] ?? 0).compareTo(
+          preferredCenters[b.id] ?? 0,
         );
         return comparison != 0
             ? comparison
@@ -76,13 +104,14 @@ Map<String, Offset> conceptMapLayout(
       });
     var y = 80.0;
     for (final node in nodes) {
-      // Match connected card centers, leaving room when branches cannot align.
-      y = math.max(
-        y,
-        (preferredCenters[node.id] ?? baseline) - height(node.id) / 2,
+      final bandHeight = span(node.id);
+      final preferred = preferredCenters[node.id];
+      if (preferred != null) y = math.max(y, preferred - bandHeight / 2);
+      positions[node.id] = Offset(
+        80 + column * (_cardWidth + 50),
+        y + (bandHeight - height(node.id)) / 2,
       );
-      positions[node.id] = Offset(80 + column * (_cardWidth + 50), y);
-      y += math.max(160, height(node.id) + 24);
+      y += math.max(160, bandHeight + 24);
     }
   }
   // A crowded destination column may have pushed a card below its source.
@@ -100,12 +129,13 @@ Map<String, Offset> conceptMapLayout(
             edge.from,
       };
       if (targets.isEmpty) continue;
-      final center =
-          targets.fold<double>(
-            0,
-            (sum, id) => sum + positions[id]!.dy + height(id) / 2,
-          ) /
-          targets.length;
+      final top = targets
+          .map((id) => positions[id]!.dy + height(id) / 2 - span(id) / 2)
+          .reduce(math.min);
+      final bottom = targets
+          .map((id) => positions[id]!.dy + height(id) / 2 + span(id) / 2)
+          .reduce(math.max);
+      final center = (top + bottom) / 2;
       final minimum = i == 0
           ? 80.0
           : positions[nodes[i - 1].id]!.dy +

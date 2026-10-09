@@ -184,6 +184,62 @@ flowchart TD
     expect(tallerTarget['b']!.dy + 45, tallerTarget['d']!.dy + 45);
   });
 
+  test('key points reserve space for their expanded scripture branches', () {
+    final document = ConceptMapDocument(
+      nodes: [
+        for (final id in ['p', 'q', 'r', 's', 't', 'u'])
+          ConceptMapNode(id: id, type: ConceptMapNodeType.passage, label: id),
+        for (final id in ['a', 'b', 'c'])
+          ConceptMapNode(id: id, type: ConceptMapNodeType.keyPoint, label: id),
+      ],
+      edges: const [
+        ConceptMapEdge(from: 'a', to: 'p'),
+        ConceptMapEdge(from: 'a', to: 'q'),
+        ConceptMapEdge(from: 'a', to: 'r'),
+        ConceptMapEdge(from: 'b', to: 's'),
+        ConceptMapEdge(from: 'c', to: 't'),
+        ConceptMapEdge(from: 't', to: 'u'),
+      ],
+    );
+    const sizes = {
+      'a': Size(300, 50),
+      'b': Size(300, 50),
+      'c': Size(300, 50),
+      'p': Size(300, 120),
+      'q': Size(300, 340),
+      'r': Size(300, 80),
+      's': Size(300, 180),
+      't': Size(300, 100),
+      'u': Size(300, 400),
+    };
+    final positions = conceptMapLayout(document, nodeSizes: sizes);
+    expect(
+      positions['a']!.dy + 25,
+      (positions['p']!.dy + positions['r']!.dy + 80) / 2,
+    );
+    expect(positions['b']!.dy + 25, positions['s']!.dy + 90);
+    expect(positions['c']!.dy + 25, positions['u']!.dy + 200);
+    expect(positions['s']!.dy, greaterThanOrEqualTo(positions['r']!.dy + 104));
+    expect(positions['u']!.dy, greaterThanOrEqualTo(positions['s']!.dy + 204));
+    final first = [
+      for (final edge in document.edges.where((edge) => edge.from == 'a'))
+        conceptMapConnector(edge, positions, sizes),
+    ];
+    final second = conceptMapConnector(document.edges[3], positions, sizes);
+    for (final route in [...first, second]) {
+      expect(route, isNotEmpty);
+    }
+    for (final route in first) {
+      for (var i = 1; i < route.length; i++) {
+        for (var j = 1; j < second.length; j++) {
+          final a = Rect.fromPoints(route[i - 1], route[i]).inflate(1.5);
+          final b = Rect.fromPoints(second[j - 1], second[j]).inflate(1.5);
+          expect(a.overlaps(b), isFalse);
+        }
+      }
+    }
+  });
+
   test('connectors route around intervening cards in either direction', () {
     for (final positions in [
       {
