@@ -324,6 +324,49 @@ flowchart TD
     }
   });
 
+  testWidgets('adding cards centers the viewport without changing zoom', (
+    tester,
+  ) async {
+    late StudyNote note;
+    await tester.runAsync(() async {
+      note = await notesService.createNote(title: 'Wisdom', passage: passage);
+      await notesService.updateConceptMap(
+        note.id,
+        ConceptMapDocument(
+          nodes: [
+            for (var i = 1; i <= 6; i++)
+              ConceptMapNode(
+                id: 'node$i',
+                type: ConceptMapNodeType.note,
+                label: 'Existing $i',
+              ),
+          ],
+        ).toMermaid(),
+      );
+      note = (await notesService.getNote(note.id))!;
+    });
+    await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+    await tester.tap(find.text('Concept Map'));
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    final viewer = find.byType(InteractiveViewer);
+    final transform = tester
+        .widget<InteractiveViewer>(viewer)
+        .transformationController!;
+    transform.value = Matrix4.diagonal3Values(1.5, 1.5, 1.5)
+      ..setTranslationRaw(-140, -70, 0);
+    await tester.pumpAndSettle();
+    for (final type in ['Note', 'Key point']) {
+      await tester.tap(find.byTooltip('Add box'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(type).last);
+      await tester.pumpAndSettle();
+      final center = tester.getRect(find.byType(Card).last).center;
+      expect((center - tester.getRect(viewer).center).distance, lessThan(1));
+      expect(transform.value.getMaxScaleOnAxis(), 1.5);
+    }
+  });
+
   testWidgets('connect uses the selected card and one destination tap', (
     tester,
   ) async {

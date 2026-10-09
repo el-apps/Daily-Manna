@@ -235,6 +235,15 @@ class ConceptMapEditor extends StatefulWidget {
 class ConceptMapEditorState extends State<ConceptMapEditor> {
   String? _connectingFrom;
   final _nodeSizes = <String, Size>{};
+  final _viewportKey = GlobalKey();
+  final _transform = TransformationController();
+  String? _pendingCenterId;
+
+  @override
+  void dispose() {
+    _transform.dispose();
+    super.dispose();
+  }
 
   void addNode([ConceptMapNodeType type = ConceptMapNodeType.note]) {
     final id = widget.document.nextNodeId;
@@ -346,12 +355,38 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
   void didUpdateWidget(covariant ConceptMapEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!widget.editing) _connectingFrom = null;
+    final previousIds = oldWidget.document.nodes.map((node) => node.id).toSet();
+    for (final node in widget.document.nodes) {
+      if (!previousIds.contains(node.id)) _pendingCenterId = node.id;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final positions = conceptMapLayout(widget.document, nodeSizes: _nodeSizes);
+    if (_pendingCenterId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final id = _pendingCenterId;
+        final cardSize = _nodeSizes[id];
+        final position = positions[id];
+        final viewport = _viewportKey.currentContext?.size;
+        if (cardSize == null || position == null || viewport == null) return;
+        final center =
+            position + Offset(cardSize.width / 2, cardSize.height / 2);
+        final scale = _transform.value.getMaxScaleOnAxis();
+        _pendingCenterId = null;
+        _transform.value = Matrix4.diagonal3Values(scale, scale, scale)
+          ..setTranslationRaw(
+            viewport.width / 2 - center.dx * scale,
+            viewport.height / 2 - center.dy * scale,
+            0,
+          );
+      });
+    }
     return InteractiveViewer(
+      key: _viewportKey,
+      transformationController: _transform,
       constrained: false,
       boundaryMargin: const EdgeInsets.all(double.infinity),
       minScale: .25,
