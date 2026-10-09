@@ -174,8 +174,23 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
             ),
             IconButton(
               tooltip: 'Connect boxes',
-              onPressed: () => _conceptMapKey.currentState?.startConnecting(),
+              onPressed:
+                  _conceptMap.nodes.any((node) => node.id == _selectedMapNodeId)
+                  ? () => _conceptMapKey.currentState?.startConnecting()
+                  : null,
               icon: const Icon(Icons.account_tree_outlined),
+            ),
+            IconButton(
+              tooltip: 'Remove connection',
+              onPressed:
+                  _conceptMap.edges.any(
+                    (edge) =>
+                        edge.from == _selectedMapNodeId ||
+                        edge.to == _selectedMapNodeId,
+                  )
+                  ? () => _conceptMapKey.currentState?.disconnectMenu()
+                  : null,
+              icon: const Icon(Icons.link_off),
             ),
           ],
     onEdit: _enterEditMode,

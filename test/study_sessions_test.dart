@@ -168,8 +168,8 @@ flowchart TD
     );
     expect(positions['a'], const Offset(80, 80));
     expect(positions['b'], const Offset(80, 382));
-    expect(positions['c'], const Offset(340, 174));
-    expect(positions['d'], const Offset(340, 382));
+    expect(positions['c'], const Offset(430, 174));
+    expect(positions['d'], const Offset(430, 382));
     expect(conceptMapLayout(document)['b'], const Offset(80, 240));
     final tallerTarget = conceptMapLayout(
       document,
@@ -181,6 +181,61 @@ flowchart TD
       tallerTarget['d']!.dy,
       greaterThanOrEqualTo(tallerTarget['c']!.dy + 302),
     );
+    expect(tallerTarget['b']!.dy + 45, tallerTarget['d']!.dy + 45);
+  });
+
+  test('connectors route around intervening cards in either direction', () {
+    for (final positions in [
+      {
+        'a': const Offset(80, 80),
+        'c': const Offset(430, 80),
+        'b': const Offset(780, 80),
+      },
+      {
+        'a': const Offset(80, 80),
+        'c': const Offset(80, 220),
+        'b': const Offset(80, 600),
+      },
+      {
+        'a': const Offset(80, 80),
+        'c': const Offset(430, 160),
+        'b': const Offset(430, 600),
+      },
+    ]) {
+      const sizes = {
+        'a': Size(300, 90),
+        'b': Size(300, 110),
+        'c': Size(300, 300),
+      };
+      final obstacle = positions['c']! & sizes['c']!;
+      for (final edge in [
+        const ConceptMapEdge(from: 'a', to: 'b'),
+        const ConceptMapEdge(from: 'b', to: 'a'),
+      ]) {
+        final route = conceptMapConnector(edge, positions, sizes);
+        expect(route, isNotEmpty);
+        for (var i = 1; i < route.length; i++) {
+          expect(
+            route[i].dx == route[i - 1].dx || route[i].dy == route[i - 1].dy,
+            isTrue,
+          );
+          // Include the visible stroke, not just its centerline.
+          expect(
+            Rect.fromPoints(
+              route[i - 1],
+              route[i],
+            ).inflate(1.5).overlaps(obstacle),
+            isFalse,
+          );
+        }
+      }
+    }
+    final straight = conceptMapConnector(
+      const ConceptMapEdge(from: 'a', to: 'b'),
+      {'a': const Offset(80, 80), 'b': const Offset(430, 80)},
+      const {'a': Size(300, 90), 'b': Size(300, 90)},
+    );
+    expect(straight.map((point) => point.dy).toSet(), {125});
   });
 
   Widget host(Widget home, {GoRouter? router}) => MultiProvider(
@@ -249,8 +304,12 @@ flowchart TD
     );
     await tester.pumpAndSettle();
     final positions = conceptMapLayout(document);
-    expect(positions['a']!.dx, lessThanOrEqualTo(340));
-    expect(positions['b']!.dx, lessThanOrEqualTo(340));
+    expect(
+      tester.getSize(find.byType(Card).first).width,
+      greaterThanOrEqualTo(290),
+    );
+    expect(positions['a']!.dx, lessThanOrEqualTo(430));
+    expect(positions['b']!.dx, lessThanOrEqualTo(430));
     final canvas = tester.widget<SizedBox>(
       find
           .descendant(
@@ -260,9 +319,87 @@ flowchart TD
           .first,
     );
     for (final position in positions.values) {
-      expect(position.dx + 210, lessThanOrEqualTo(canvas.width!));
+      expect(position.dx + 300, lessThanOrEqualTo(canvas.width!));
       expect(position.dy + 80, lessThanOrEqualTo(canvas.height!));
     }
+  });
+
+  testWidgets('connect uses the selected card and one destination tap', (
+    tester,
+  ) async {
+    late StudyNote note;
+    await tester.runAsync(() async {
+      note = await notesService.createNote(title: 'Wisdom', passage: passage);
+      await notesService.updateConceptMap(note.id, '''
+flowchart TD
+  a[Source]:::note
+  b[Destination]:::keyPoint
+  c[James]:::passage
+  class c showPassage
+  click c "passage://Jas/1/9/11"
+''');
+      note = (await notesService.getNote(note.id))!;
+    });
+    await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+    await tester.tap(find.text('Concept Map'));
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    final connect = find.byWidgetPredicate(
+      (widget) => widget is IconButton && widget.tooltip == 'Connect boxes',
+    );
+    expect(tester.widget<IconButton>(connect).onPressed, isNull);
+    await tester.tap(find.byType(TextField).first);
+    await tester.pumpAndSettle();
+    expect(tester.widget<IconButton>(connect).onPressed, isNotNull);
+    final cardBounds = [
+      for (var i = 0; i < 3; i++) tester.getRect(find.byType(Card).at(i)),
+    ];
+    await tester.tap(connect);
+    await tester.pumpAndSettle();
+    expect(find.text('Tap another card to connect it.'), findsOneWidget);
+    expect(find.text('Passage text'), findsOneWidget);
+    expect([
+      for (var i = 0; i < 3; i++) tester.getRect(find.byType(Card).at(i)),
+    ], cardBounds);
+    await tester.tap(find.text('Source'));
+    await tester.tap(find.text('Destination'));
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.byTooltip('Save'));
+      final saved = await database.watchStudyNotes().firstWhere(
+        (notes) => ConceptMapDocument.fromMermaid(
+          notes.single.conceptMap!,
+        ).edges.isNotEmpty,
+      );
+      final edge = ConceptMapDocument.fromMermaid(
+        saved.single.conceptMap!,
+      ).edges.single;
+      expect(edge.from, 'a');
+      expect(edge.to, 'b');
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(TextField).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Remove connection'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Destination').last);
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.byTooltip('Save'));
+      final saved = await database.watchStudyNotes().firstWhere(
+        (notes) => ConceptMapDocument.fromMermaid(
+          notes.single.conceptMap!,
+        ).edges.isEmpty,
+      );
+      expect(
+        ConceptMapDocument.fromMermaid(saved.single.conceptMap!).nodes,
+        hasLength(3),
+      );
+    });
+    await tester.pumpAndSettle();
   });
 
   testWidgets('linked sessions reopen current notes and can clear their text', (

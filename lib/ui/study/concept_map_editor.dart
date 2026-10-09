@@ -6,6 +6,8 @@ import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+const _cardWidth = 300.0;
+
 Map<String, Offset> conceptMapLayout(
   ConceptMapDocument document, {
   Map<String, Size> nodeSizes = const {},
@@ -79,11 +81,135 @@ Map<String, Offset> conceptMapLayout(
         y,
         (preferredCenters[node.id] ?? baseline) - height(node.id) / 2,
       );
-      positions[node.id] = Offset(80 + column * 260, y);
+      positions[node.id] = Offset(80 + column * (_cardWidth + 50), y);
       y += math.max(160, height(node.id) + 24);
     }
   }
+  // A crowded destination column may have pushed a card below its source.
+  // Move sources to match, within the free space between their neighbors.
+  for (final column in columns.reversed) {
+    final nodes = groups[column]!.toList()
+      ..sort((a, b) => positions[a.id]!.dy.compareTo(positions[b.id]!.dy));
+    for (var i = 0; i < nodes.length; i++) {
+      final node = nodes[i];
+      final targets = <String>{
+        for (final edge in document.edges)
+          if (edge.from == node.id && (ranks[edge.to] ?? -1) > column) edge.to,
+        for (final edge in document.edges)
+          if (edge.to == node.id && (ranks[edge.from] ?? -1) > column)
+            edge.from,
+      };
+      if (targets.isEmpty) continue;
+      final center =
+          targets.fold<double>(
+            0,
+            (sum, id) => sum + positions[id]!.dy + height(id) / 2,
+          ) /
+          targets.length;
+      final minimum = i == 0
+          ? 80.0
+          : positions[nodes[i - 1].id]!.dy +
+                math.max(160, height(nodes[i - 1].id) + 24);
+      final maximum = i == nodes.length - 1
+          ? double.infinity
+          : positions[nodes[i + 1].id]!.dy -
+                math.max(160, height(node.id) + 24);
+      positions[node.id] = Offset(
+        positions[node.id]!.dx,
+        (center - height(node.id) / 2).clamp(minimum, maximum),
+      );
+    }
+  }
   return positions;
+}
+
+List<Offset> conceptMapConnector(
+  ConceptMapEdge edge,
+  Map<String, Offset> positions,
+  Map<String, Size> nodeSizes,
+) {
+  final cards = {
+    for (final entry in positions.entries)
+      entry.key:
+          entry.value & (nodeSizes[entry.key] ?? const Size(_cardWidth, 90)),
+  };
+  final from = cards[edge.from];
+  final to = cards[edge.to];
+  if (from == null || to == null) return [];
+  const clearance = 8.0;
+  final horizontal = from.center.dx != to.center.dx;
+  final direction = horizontal
+      ? Offset((to.center.dx - from.center.dx).sign, 0)
+      : Offset(0, (to.center.dy - from.center.dy).sign);
+  final start =
+      from.center + direction * (horizontal ? from.width / 2 : from.height / 2);
+  final end =
+      to.center - direction * (horizontal ? to.width / 2 : to.height / 2);
+  final entry = start + direction * clearance;
+  final exit = end - direction * clearance;
+  final obstacles = cards.values
+      .map((rect) => rect.inflate(clearance))
+      .toList();
+  final xs = {
+    entry.dx,
+    exit.dx,
+    for (final rect in obstacles) ...[rect.left, rect.right],
+  }.toList()..sort();
+  final ys = {
+    entry.dy,
+    exit.dy,
+    for (final rect in obstacles) ...[rect.top, rect.bottom],
+  }.toList()..sort();
+  bool blocked(Offset a, Offset b) => obstacles.any(
+    (rect) => a.dy == b.dy
+        ? a.dy > rect.top &&
+              a.dy < rect.bottom &&
+              math.max(a.dx, b.dx) > rect.left &&
+              math.min(a.dx, b.dx) < rect.right
+        : a.dx > rect.left &&
+              a.dx < rect.right &&
+              math.max(a.dy, b.dy) > rect.top &&
+              math.min(a.dy, b.dy) < rect.bottom,
+  );
+  double distance(Offset a, Offset b) =>
+      (a.dx - b.dx).abs() + (a.dy - b.dy).abs();
+  final costs = <Offset, double>{entry: 0};
+  final previous = <Offset, Offset>{};
+  final open = [entry];
+  final visited = <Offset>{};
+  while (open.isNotEmpty) {
+    open.sort(
+      (a, b) => (costs[b]! + distance(b, exit)).compareTo(
+        costs[a]! + distance(a, exit),
+      ),
+    );
+    final current = open.removeLast();
+    if (current == exit) {
+      final route = [exit];
+      while (previous.containsKey(route.last)) {
+        route.add(previous[route.last]!);
+      }
+      return [start, ...route.reversed, end];
+    }
+    visited.add(current);
+    final x = xs.indexOf(current.dx);
+    final y = ys.indexOf(current.dy);
+    for (final next in [
+      if (x > 0) Offset(xs[x - 1], current.dy),
+      if (x + 1 < xs.length) Offset(xs[x + 1], current.dy),
+      if (y > 0) Offset(current.dx, ys[y - 1]),
+      if (y + 1 < ys.length) Offset(current.dx, ys[y + 1]),
+    ]) {
+      if (visited.contains(next) || blocked(current, next)) continue;
+      final cost = costs[current]! + distance(current, next);
+      if (cost >= (costs[next] ?? double.infinity)) continue;
+      costs[next] = cost;
+      previous[next] = current;
+      if (!open.contains(next)) open.add(next);
+    }
+  }
+  // Do not draw a connection if there is no unobstructed route.
+  return [];
 }
 
 class ConceptMapEditor extends StatefulWidget {
@@ -159,11 +285,67 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
   }
 
   void startConnecting() {
-    if (!widget.editing) return;
-    setState(() => _connectingFrom = 'pending');
+    if (!widget.editing || widget.selectedNodeId == null) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _connectingFrom = widget.selectedNodeId);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tap the first box, then the second box.')),
+      const SnackBar(content: Text('Tap another card to connect it.')),
     );
+  }
+
+  Future<void> disconnectMenu() async {
+    final selected = widget.selectedNodeId;
+    if (!widget.editing || selected == null) return;
+    setState(() => _connectingFrom = null);
+    final neighbors = <String>{
+      for (final edge in widget.document.edges)
+        if (edge.from == selected) edge.to,
+      for (final edge in widget.document.edges)
+        if (edge.to == selected) edge.from,
+    };
+    final target = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(title: Text('Remove connection')),
+            for (final node in widget.document.nodes)
+              if (neighbors.contains(node.id))
+                ListTile(
+                  leading: const Icon(Icons.link_off),
+                  title: Text(
+                    node.passage == null
+                        ? node.label
+                        : context.read<BibleService>().getRangeRefName(
+                            node.passage!,
+                          ),
+                  ),
+                  onTap: () => Navigator.pop(context, node.id),
+                ),
+          ],
+        ),
+      ),
+    );
+    if (target == null || !mounted) return;
+    widget.onChanged(
+      ConceptMapDocument(
+        nodes: widget.document.nodes,
+        edges: widget.document.edges
+            .where(
+              (edge) =>
+                  !(edge.from == selected && edge.to == target ||
+                      edge.from == target && edge.to == selected),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant ConceptMapEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.editing) _connectingFrom = null;
   }
 
   @override
@@ -179,7 +361,7 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
           900,
           (width, entry) => math.max(
             width,
-            entry.value.dx + (_nodeSizes[entry.key]?.width ?? 210) + 80,
+            entry.value.dx + (_nodeSizes[entry.key]?.width ?? _cardWidth) + 80,
           ),
         ),
         height: positions.entries.fold<double>(
@@ -228,15 +410,10 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
       widget.onNodeSelected?.call(id);
       return;
     }
-    if (_connectingFrom == 'pending') {
-      setState(() => _connectingFrom = id);
-      return;
-    }
-    if (_connectingFrom != id) {
-      widget.onChanged(
-        widget.document.addEdge(ConceptMapEdge(from: _connectingFrom!, to: id)),
-      );
-    }
+    if (_connectingFrom == id) return;
+    widget.onChanged(
+      widget.document.addEdge(ConceptMapEdge(from: _connectingFrom!, to: id)),
+    );
     setState(() => _connectingFrom = null);
   }
 
@@ -339,7 +516,7 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
     return Positioned(
       left: widget.position.dx,
       top: widget.position.dy,
-      width: 210,
+      width: _cardWidth,
       child: GestureDetector(
         onTap: widget.onTap,
         onLongPress: widget.onLongPress,
@@ -353,17 +530,17 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
               : null,
           child: Padding(
             padding: const EdgeInsets.all(10),
-            child:
-                widget.node.type == ConceptMapNodeType.passage &&
-                    !widget.connecting
+            child: widget.node.type == ConceptMapNodeType.passage
                 ? _PassageNodeContent(
                     node: widget.node,
                     bibleService: bibleService,
                     showContent: widget.node.showPassage,
                   )
-                : widget.editing && !widget.connecting
+                : widget.editing
                 ? TextField(
                     controller: _controller,
+                    onTap: widget.onTap,
+                    readOnly: widget.connecting,
                     maxLines: null,
                     onChanged: (value) =>
                         widget.onChanged(widget.node.copyWith(label: value)),
@@ -436,62 +613,14 @@ class _ConceptMapEdgesPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     final positions = conceptMapLayout(document, nodeSizes: nodeSizes);
     for (final edge in document.edges) {
-      final from = positions[edge.from];
-      final to = positions[edge.to];
-      if (from == null || to == null) continue;
-
-      final fromSize = nodeSizes[edge.from] ?? const Size(210, 90);
-      final toSize = nodeSizes[edge.to] ?? const Size(210, 90);
-      final fromCenter = from + Offset(fromSize.width / 2, fromSize.height / 2);
-      final toCenter = to + Offset(toSize.width / 2, toSize.height / 2);
-      final start = _boundaryPoint(fromCenter, toCenter, fromSize);
-      final end = _boundaryPoint(toCenter, fromCenter, toSize);
-      final horizontal =
-          (toCenter.dx - fromCenter.dx).abs() >=
-          (toCenter.dy - fromCenter.dy).abs();
-      final path = Path()..moveTo(start.dx, start.dy);
-      if (horizontal) {
-        final midpoint = (start.dx + end.dx) / 2;
-        path.cubicTo(midpoint, start.dy, midpoint, end.dy, end.dx, end.dy);
-      } else {
-        final midpoint = (start.dy + end.dy) / 2;
-        path.cubicTo(start.dx, midpoint, end.dx, midpoint, end.dx, end.dy);
+      final points = conceptMapConnector(edge, positions, nodeSizes);
+      if (points.isEmpty) continue;
+      final path = Path()..moveTo(points.first.dx, points.first.dy);
+      for (final point in points.skip(1)) {
+        path.lineTo(point.dx, point.dy);
       }
       canvas.drawPath(path, paint);
-      _drawArrowhead(canvas, end, toCenter, paint.color);
     }
-  }
-
-  static Offset _boundaryPoint(Offset center, Offset target, Size size) {
-    final delta = target - center;
-    if (delta.dx.abs() >= delta.dy.abs()) {
-      return center + Offset(delta.dx.sign * size.width / 2, 0);
-    }
-    return center + Offset(0, delta.dy.sign * size.height / 2);
-  }
-
-  static void _drawArrowhead(
-    Canvas canvas,
-    Offset tip,
-    Offset targetCenter,
-    Color color,
-  ) {
-    final direction = (targetCenter - tip);
-    if (direction.distance == 0) return;
-    final unit = direction / direction.distance;
-    final perpendicular = Offset(-unit.dy, unit.dx);
-    final base = tip - unit * 12;
-    final arrow = Path()
-      ..moveTo(tip.dx, tip.dy)
-      ..lineTo(base.dx + perpendicular.dx * 6, base.dy + perpendicular.dy * 6)
-      ..lineTo(base.dx - perpendicular.dx * 6, base.dy - perpendicular.dy * 6)
-      ..close();
-    canvas.drawPath(
-      arrow,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.fill,
-    );
   }
 
   @override
