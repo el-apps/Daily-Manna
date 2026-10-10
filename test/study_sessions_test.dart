@@ -213,6 +213,31 @@ flowchart TD
       'u': Size(300, 400),
     };
     final positions = conceptMapLayout(document, nodeSizes: sizes);
+    for (var mask = 0; mask < 1 << document.edges.length; mask++) {
+      final edges = [
+        for (var i = 0; i < document.edges.length; i++)
+          ConceptMapEdge(
+            from: mask & (1 << i) == 0
+                ? document.edges[i].from
+                : document.edges[i].to,
+            to: mask & (1 << i) == 0
+                ? document.edges[i].to
+                : document.edges[i].from,
+            length: document.edges[i].length,
+          ),
+      ];
+      for (final ordering in [edges, edges.reversed.toList()]) {
+        expect(
+          conceptMapLayout(
+            ConceptMapDocument(nodes: document.nodes, edges: ordering),
+            nodeSizes: sizes,
+          ),
+          positions,
+          reason:
+              'Tap directions $mask and connection order must not affect layout',
+        );
+      }
+    }
     expect(
       positions['a']!.dy + 25,
       (positions['p']!.dy + positions['r']!.dy + 80) / 2,
@@ -240,6 +265,68 @@ flowchart TD
     }
   });
 
+  test(
+    'undirected layout uses short paths and connected anchors through cycles',
+    () {
+      const document = ConceptMapDocument(
+        nodes: [
+          ConceptMapNode(id: 'p', type: ConceptMapNodeType.passage, label: 'P'),
+          ConceptMapNode(id: 'q', type: ConceptMapNodeType.passage, label: 'Q'),
+          ConceptMapNode(
+            id: 'leaf',
+            type: ConceptMapNodeType.note,
+            label: 'Leaf',
+          ),
+          ConceptMapNode(id: 'x', type: ConceptMapNodeType.note, label: 'X'),
+          ConceptMapNode(id: 'y', type: ConceptMapNodeType.note, label: 'Y'),
+          ConceptMapNode(
+            id: 'hub',
+            type: ConceptMapNodeType.note,
+            label: 'Hub',
+          ),
+          ConceptMapNode(
+            id: 'key',
+            type: ConceptMapNodeType.keyPoint,
+            label: 'Key',
+          ),
+        ],
+        edges: [
+          ConceptMapEdge(from: 'p', to: 'key'),
+          ConceptMapEdge(from: 'q', to: 'p'),
+          ConceptMapEdge(from: 'key', to: 'q', length: 4),
+          ConceptMapEdge(from: 'leaf', to: 'hub'),
+          ConceptMapEdge(from: 'x', to: 'hub'),
+          ConceptMapEdge(from: 'hub', to: 'y'),
+          ConceptMapEdge(from: 'y', to: 'x'),
+        ],
+      );
+      final positions = conceptMapLayout(document);
+      expect(positions['key']!.dx, 80);
+      expect(positions['p']!.dx, 430);
+      expect(positions['q']!.dx, 780);
+      expect(positions['hub']!.dx, 80);
+      for (final id in ['leaf', 'x', 'y']) {
+        expect(positions[id]!.dx, 430);
+      }
+      expect(
+        conceptMapLayout(
+          ConceptMapDocument(
+            nodes: document.nodes,
+            edges: [
+              for (final edge in document.edges.reversed)
+                ConceptMapEdge(
+                  from: edge.to,
+                  to: edge.from,
+                  length: edge.length,
+                ),
+            ],
+          ),
+        ),
+        positions,
+      );
+    },
+  );
+
   test('connectors route around intervening cards in either direction', () {
     for (final positions in [
       {
@@ -264,6 +351,19 @@ flowchart TD
         'c': Size(300, 300),
       };
       final obstacle = positions['c']! & sizes['c']!;
+      final forward = conceptMapConnector(
+        const ConceptMapEdge(from: 'a', to: 'b'),
+        positions,
+        sizes,
+      );
+      expect(
+        conceptMapConnector(
+          const ConceptMapEdge(from: 'b', to: 'a'),
+          positions,
+          sizes,
+        ),
+        forward.reversed.toList(),
+      );
       for (final edge in [
         const ConceptMapEdge(from: 'a', to: 'b'),
         const ConceptMapEdge(from: 'b', to: 'a'),
@@ -448,7 +548,7 @@ flowchart TD
       (widget) => widget is IconButton && widget.tooltip == 'Connect boxes',
     );
     expect(tester.widget<IconButton>(connect).onPressed, isNull);
-    await tester.tap(find.byType(TextField).first);
+    await tester.tap(find.widgetWithText(TextField, 'Source'));
     await tester.pumpAndSettle();
     expect(tester.widget<IconButton>(connect).onPressed, isNotNull);
     final cardBounds = [
@@ -481,11 +581,11 @@ flowchart TD
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Edit'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(TextField).first);
+    await tester.tap(find.widgetWithText(TextField, 'Source'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Remove connection'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Destination').last);
+    await tester.tap(find.widgetWithText(ListTile, 'Destination'));
     await tester.pumpAndSettle();
     await tester.runAsync(() async {
       await tester.tap(find.byTooltip('Save'));

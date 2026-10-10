@@ -13,25 +13,36 @@ Map<String, Offset> conceptMapLayout(
   Map<String, Size> nodeSizes = const {},
 }) {
   final nodeIds = document.nodes.map((node) => node.id).toSet();
-  final ranks = <String, int>{};
-  int rank(String id, Set<String> ancestors) {
-    if (ranks.containsKey(id)) return ranks[id]!;
-    var result = 0;
-    for (final edge in document.edges.where((edge) => edge.to == id)) {
-      // Back edges remain visible, but cannot increase ranks indefinitely.
-      if (!nodeIds.contains(edge.from) || ancestors.contains(edge.from)) {
-        continue;
-      }
-      result = math.max(
-        result,
-        rank(edge.from, {...ancestors, edge.from}) + edge.length,
-      );
+  final neighbors = {for (final id in nodeIds) id: <String, int>{}};
+  for (final edge in document.edges) {
+    if (!nodeIds.contains(edge.from) || !nodeIds.contains(edge.to)) continue;
+    for (final (a, b) in [(edge.from, edge.to), (edge.to, edge.from)]) {
+      neighbors[a]![b] = math.min(neighbors[a]![b] ?? edge.length, edge.length);
     }
-    return ranks[id] = result;
   }
-
-  for (final node in document.nodes) {
-    rank(node.id, {node.id});
+  final ranks = <String, int>{
+    for (final node in document.nodes)
+      if (node.type == ConceptMapNodeType.keyPoint) node.id: 0,
+  };
+  final remaining = nodeIds.toSet();
+  while (remaining.isNotEmpty) {
+    final reachable = remaining.where(ranks.containsKey).toList();
+    if (reachable.isEmpty) {
+      // Without a key point, anchor this component at its most connected card.
+      final root = remaining.reduce(
+        (a, b) => neighbors[b]!.length > neighbors[a]!.length ? b : a,
+      );
+      ranks[root] = 0;
+      reachable.add(root);
+    }
+    final current = reachable.reduce((a, b) => ranks[b]! < ranks[a]! ? b : a);
+    remaining.remove(current);
+    for (final id in remaining) {
+      final length = neighbors[current]![id];
+      if (length == null) continue;
+      final distance = ranks[current]! + length;
+      ranks[id] = math.min(ranks[id] ?? distance, distance);
+    }
   }
   final groups = <int, List<ConceptMapNode>>{};
   for (final node in document.nodes) {
@@ -44,11 +55,7 @@ Map<String, Offset> conceptMapLayout(
       node.id: [
         for (final candidate in document.nodes)
           if (ranks[candidate.id]! > ranks[node.id]! &&
-              document.edges.any(
-                (edge) =>
-                    edge.from == node.id && edge.to == candidate.id ||
-                    edge.to == node.id && edge.from == candidate.id,
-              ))
+              neighbors[node.id]!.containsKey(candidate.id))
             candidate.id,
       ],
   };
@@ -73,15 +80,14 @@ Map<String, Offset> conceptMapLayout(
   for (final column in columns) {
     final preferredCenters = <String, double>{};
     for (final node in groups[column]!) {
-      final neighbors = <String>{
-        for (final edge in document.edges)
-          if (edge.from == node.id && positions.containsKey(edge.to)) edge.to,
-        for (final edge in document.edges)
-          if (edge.to == node.id && positions.containsKey(edge.from)) edge.from,
-      };
-      if (neighbors.isNotEmpty) {
+      final placedNeighbors = [
+        for (final id in nodeIds)
+          if (neighbors[node.id]!.containsKey(id) && positions.containsKey(id))
+            id,
+      ];
+      if (placedNeighbors.isNotEmpty) {
         preferredCenters[node.id] =
-            neighbors.fold<double>(0, (sum, id) {
+            placedNeighbors.fold<double>(0, (sum, id) {
               var center =
                   positions[id]!.dy + height(id) / 2 - childrenSpan(id) / 2;
               for (final child in children[id]!) {
@@ -90,7 +96,7 @@ Map<String, Offset> conceptMapLayout(
               }
               return sum + positions[id]!.dy + height(id) / 2;
             }) /
-            neighbors.length;
+            placedNeighbors.length;
       }
     }
     final nodes = groups[column]!.toList()
@@ -121,13 +127,7 @@ Map<String, Offset> conceptMapLayout(
       ..sort((a, b) => positions[a.id]!.dy.compareTo(positions[b.id]!.dy));
     for (var i = 0; i < nodes.length; i++) {
       final node = nodes[i];
-      final targets = <String>{
-        for (final edge in document.edges)
-          if (edge.from == node.id && (ranks[edge.to] ?? -1) > column) edge.to,
-        for (final edge in document.edges)
-          if (edge.to == node.id && (ranks[edge.from] ?? -1) > column)
-            edge.from,
-      };
+      final targets = children[node.id]!;
       if (targets.isEmpty) continue;
       final top = targets
           .map((id) => positions[id]!.dy + height(id) / 2 - span(id) / 2)
@@ -163,8 +163,10 @@ List<Offset> conceptMapConnector(
       entry.key:
           entry.value & (nodeSizes[entry.key] ?? const Size(_cardWidth, 90)),
   };
-  final from = cards[edge.from];
-  final to = cards[edge.to];
+  // Route from a stable endpoint so equal-cost detours do not depend on tap order.
+  final reversed = edge.from.compareTo(edge.to) > 0;
+  final from = cards[reversed ? edge.to : edge.from];
+  final to = cards[reversed ? edge.from : edge.to];
   if (from == null || to == null) return [];
   const clearance = 8.0;
   final horizontal = from.center.dx != to.center.dx;
@@ -219,7 +221,8 @@ List<Offset> conceptMapConnector(
       while (previous.containsKey(route.last)) {
         route.add(previous[route.last]!);
       }
-      return [start, ...route.reversed, end];
+      final points = [start, ...route.reversed, end];
+      return reversed ? points.reversed.toList() : points;
     }
     visited.add(current);
     final x = xs.indexOf(current.dx);
