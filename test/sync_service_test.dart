@@ -1,6 +1,9 @@
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/sync_service.dart';
-import 'package:drift/drift.dart';
+import 'package:daily_manna/services/study_notes_service.dart';
+import 'package:daily_manna/services/results_service.dart';
+import 'package:daily_manna/models/scripture_range_ref.dart';
+import 'package:drift/drift.dart' hide isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -102,6 +105,64 @@ void main() {
     expect(transport.tokens, everyElement('saved-token'));
   });
 
+  test('study links survive sync with different device-local note IDs', () async {
+    final note = await StudyNotesService(database).createNote(
+      title: 'Wisdom',
+      passage: const ScriptureRangeRef(
+        bookId: 'Jas',
+        chapter: 1,
+        startVerse: 9,
+      ),
+    );
+    await ResultsService(database).addStudyResult(
+      const ScriptureRangeRef(bookId: 'Jas', chapter: 1, startVerse: 10),
+      studyNoteId: note.clientId,
+    );
+    final push = FakeSyncTransport()
+      ..responses.addAll(const [
+        SyncResponse(cursor: 0, changes: []),
+        SyncResponse(cursor: 2, changes: []),
+        SyncResponse(cursor: 2, changes: []),
+      ]);
+    await SyncService(database, transport: push).sync();
+    final outgoing = push.calls[1];
+    final resultChange = outgoing.singleWhere(
+      (change) => change['type'] == 'result',
+    );
+    final noteChange = outgoing.singleWhere(
+      (change) => change['type'] == 'study_note',
+    );
+    expect(resultChange['data']['studyNoteId'], note.clientId);
+
+    final otherDevice = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(otherDevice.close);
+    await StudyNotesService(otherDevice).createNote(
+      title: 'Unrelated local note',
+      passage: const ScriptureRangeRef(
+        bookId: 'Gen',
+        chapter: 2,
+        startVerse: 1,
+      ),
+    );
+    await otherDevice.acknowledgeChanges(
+      (await otherDevice.pendingChanges()).map((change) => change.id),
+    );
+    final pull = FakeSyncTransport()
+      ..responses.addAll([
+        // A session may arrive before its note; linking must not depend on order.
+        SyncResponse(cursor: 2, changes: [resultChange, noteChange]),
+        const SyncResponse(cursor: 2, changes: []),
+      ]);
+    await SyncService(otherDevice, transport: pull).sync();
+    final linked = (await otherDevice.getAllResults()).single;
+    final remoteNote = await otherDevice.studyNoteByClientId(
+      linked.studyNoteId!,
+    );
+    expect(remoteNote!.title, 'Wisdom');
+    expect(remoteNote.id, isNot(note.id));
+    expect(remoteNote.clientId, note.clientId);
+  });
+
   test('sync can merge the server echo of a pushed local result', () async {
     await database.insertResult(
       ResultsCompanion.insert(
@@ -156,7 +217,7 @@ void main() {
     final result = (await database.getAllResults()).single;
     expect(result.clientId, 'legacy-1087');
     expect(result.notes, 'copy to outline');
-    expect(result.updatedAt, DateTime.utc(2026, 9, 7, 7, 30));
+    expect(result.updatedAt.toUtc(), DateTime.utc(2026, 9, 7, 7, 30));
   });
 }
 

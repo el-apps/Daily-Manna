@@ -123,6 +123,17 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _studyNoteIdMeta = const VerificationMeta(
+    'studyNoteId',
+  );
+  @override
+  late final GeneratedColumn<String> studyNoteId = GeneratedColumn<String>(
+    'study_note_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _clientIdMeta = const VerificationMeta(
     'clientId',
   );
@@ -161,6 +172,7 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
     score,
     attempts,
     notes,
+    studyNoteId,
     clientId,
     updatedAt,
   ];
@@ -246,6 +258,15 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
       );
     }
+    if (data.containsKey('study_note_id')) {
+      context.handle(
+        _studyNoteIdMeta,
+        studyNoteId.isAcceptableOrUnknown(
+          data['study_note_id']!,
+          _studyNoteIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('client_id')) {
       context.handle(
         _clientIdMeta,
@@ -313,6 +334,10 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       ),
+      studyNoteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}study_note_id'],
+      ),
       clientId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}client_id'],
@@ -345,6 +370,7 @@ class Result extends DataClass implements Insertable<Result> {
   final double score;
   final int? attempts;
   final String? notes;
+  final String? studyNoteId;
   final String clientId;
   final DateTime updatedAt;
   const Result({
@@ -359,6 +385,7 @@ class Result extends DataClass implements Insertable<Result> {
     required this.score,
     this.attempts,
     this.notes,
+    this.studyNoteId,
     required this.clientId,
     required this.updatedAt,
   });
@@ -386,6 +413,9 @@ class Result extends DataClass implements Insertable<Result> {
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
+    if (!nullToAbsent || studyNoteId != null) {
+      map['study_note_id'] = Variable<String>(studyNoteId);
+    }
     map['client_id'] = Variable<String>(clientId);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -412,6 +442,9 @@ class Result extends DataClass implements Insertable<Result> {
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
+      studyNoteId: studyNoteId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(studyNoteId),
       clientId: Value(clientId),
       updatedAt: Value(updatedAt),
     );
@@ -436,6 +469,7 @@ class Result extends DataClass implements Insertable<Result> {
       score: serializer.fromJson<double>(json['score']),
       attempts: serializer.fromJson<int?>(json['attempts']),
       notes: serializer.fromJson<String?>(json['notes']),
+      studyNoteId: serializer.fromJson<String?>(json['studyNoteId']),
       clientId: serializer.fromJson<String>(json['clientId']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -455,6 +489,7 @@ class Result extends DataClass implements Insertable<Result> {
       'score': serializer.toJson<double>(score),
       'attempts': serializer.toJson<int?>(attempts),
       'notes': serializer.toJson<String?>(notes),
+      'studyNoteId': serializer.toJson<String?>(studyNoteId),
       'clientId': serializer.toJson<String>(clientId),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -472,6 +507,7 @@ class Result extends DataClass implements Insertable<Result> {
     double? score,
     Value<int?> attempts = const Value.absent(),
     Value<String?> notes = const Value.absent(),
+    Value<String?> studyNoteId = const Value.absent(),
     String? clientId,
     DateTime? updatedAt,
   }) => Result(
@@ -486,6 +522,7 @@ class Result extends DataClass implements Insertable<Result> {
     score: score ?? this.score,
     attempts: attempts.present ? attempts.value : this.attempts,
     notes: notes.present ? notes.value : this.notes,
+    studyNoteId: studyNoteId.present ? studyNoteId.value : this.studyNoteId,
     clientId: clientId ?? this.clientId,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -508,6 +545,9 @@ class Result extends DataClass implements Insertable<Result> {
       score: data.score.present ? data.score.value : this.score,
       attempts: data.attempts.present ? data.attempts.value : this.attempts,
       notes: data.notes.present ? data.notes.value : this.notes,
+      studyNoteId: data.studyNoteId.present
+          ? data.studyNoteId.value
+          : this.studyNoteId,
       clientId: data.clientId.present ? data.clientId.value : this.clientId,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -527,6 +567,7 @@ class Result extends DataClass implements Insertable<Result> {
           ..write('score: $score, ')
           ..write('attempts: $attempts, ')
           ..write('notes: $notes, ')
+          ..write('studyNoteId: $studyNoteId, ')
           ..write('clientId: $clientId, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -546,6 +587,7 @@ class Result extends DataClass implements Insertable<Result> {
     score,
     attempts,
     notes,
+    studyNoteId,
     clientId,
     updatedAt,
   );
@@ -564,6 +606,7 @@ class Result extends DataClass implements Insertable<Result> {
           other.score == this.score &&
           other.attempts == this.attempts &&
           other.notes == this.notes &&
+          other.studyNoteId == this.studyNoteId &&
           other.clientId == this.clientId &&
           other.updatedAt == this.updatedAt);
 }
@@ -580,6 +623,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
   final Value<double> score;
   final Value<int?> attempts;
   final Value<String?> notes;
+  final Value<String?> studyNoteId;
   final Value<String> clientId;
   final Value<DateTime> updatedAt;
   const ResultsCompanion({
@@ -594,6 +638,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     this.score = const Value.absent(),
     this.attempts = const Value.absent(),
     this.notes = const Value.absent(),
+    this.studyNoteId = const Value.absent(),
     this.clientId = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -609,6 +654,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     required double score,
     this.attempts = const Value.absent(),
     this.notes = const Value.absent(),
+    this.studyNoteId = const Value.absent(),
     this.clientId = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : timestamp = Value(timestamp),
@@ -629,6 +675,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     Expression<double>? score,
     Expression<int>? attempts,
     Expression<String>? notes,
+    Expression<String>? studyNoteId,
     Expression<String>? clientId,
     Expression<DateTime>? updatedAt,
   }) {
@@ -644,6 +691,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
       if (score != null) 'score': score,
       if (attempts != null) 'attempts': attempts,
       if (notes != null) 'notes': notes,
+      if (studyNoteId != null) 'study_note_id': studyNoteId,
       if (clientId != null) 'client_id': clientId,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -661,6 +709,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     Value<double>? score,
     Value<int?>? attempts,
     Value<String?>? notes,
+    Value<String?>? studyNoteId,
     Value<String>? clientId,
     Value<DateTime>? updatedAt,
   }) {
@@ -676,6 +725,7 @@ class ResultsCompanion extends UpdateCompanion<Result> {
       score: score ?? this.score,
       attempts: attempts ?? this.attempts,
       notes: notes ?? this.notes,
+      studyNoteId: studyNoteId ?? this.studyNoteId,
       clientId: clientId ?? this.clientId,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -719,6 +769,9 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (studyNoteId.present) {
+      map['study_note_id'] = Variable<String>(studyNoteId.value);
+    }
     if (clientId.present) {
       map['client_id'] = Variable<String>(clientId.value);
     }
@@ -742,8 +795,510 @@ class ResultsCompanion extends UpdateCompanion<Result> {
           ..write('score: $score, ')
           ..write('attempts: $attempts, ')
           ..write('notes: $notes, ')
+          ..write('studyNoteId: $studyNoteId, ')
           ..write('clientId: $clientId, ')
           ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $StudyNotesTable extends StudyNotes
+    with TableInfo<$StudyNotesTable, StudyNote> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StudyNotesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _conceptMapMeta = const VerificationMeta(
+    'conceptMap',
+  );
+  @override
+  late final GeneratedColumn<String> conceptMap = GeneratedColumn<String>(
+    'concept_map',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _passagesMeta = const VerificationMeta(
+    'passages',
+  );
+  @override
+  late final GeneratedColumn<String> passages = GeneratedColumn<String>(
+    'passages',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _clientIdMeta = const VerificationMeta(
+    'clientId',
+  );
+  @override
+  late final GeneratedColumn<String> clientId = GeneratedColumn<String>(
+    'client_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+    clientDefault: newClientId,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    notes,
+    conceptMap,
+    passages,
+    createdAt,
+    updatedAt,
+    clientId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'study_notes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<StudyNote> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('concept_map')) {
+      context.handle(
+        _conceptMapMeta,
+        conceptMap.isAcceptableOrUnknown(data['concept_map']!, _conceptMapMeta),
+      );
+    }
+    if (data.containsKey('passages')) {
+      context.handle(
+        _passagesMeta,
+        passages.isAcceptableOrUnknown(data['passages']!, _passagesMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_passagesMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('client_id')) {
+      context.handle(
+        _clientIdMeta,
+        clientId.isAcceptableOrUnknown(data['client_id']!, _clientIdMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StudyNote map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StudyNote(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      conceptMap: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}concept_map'],
+      ),
+      passages: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}passages'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      clientId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}client_id'],
+      )!,
+    );
+  }
+
+  @override
+  $StudyNotesTable createAlias(String alias) {
+    return $StudyNotesTable(attachedDatabase, alias);
+  }
+}
+
+class StudyNote extends DataClass implements Insertable<StudyNote> {
+  final int id;
+  final String title;
+  final String? notes;
+  final String? conceptMap;
+  final String passages;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final String clientId;
+  const StudyNote({
+    required this.id,
+    required this.title,
+    this.notes,
+    this.conceptMap,
+    required this.passages,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.clientId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['title'] = Variable<String>(title);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    if (!nullToAbsent || conceptMap != null) {
+      map['concept_map'] = Variable<String>(conceptMap);
+    }
+    map['passages'] = Variable<String>(passages);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['client_id'] = Variable<String>(clientId);
+    return map;
+  }
+
+  StudyNotesCompanion toCompanion(bool nullToAbsent) {
+    return StudyNotesCompanion(
+      id: Value(id),
+      title: Value(title),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      conceptMap: conceptMap == null && nullToAbsent
+          ? const Value.absent()
+          : Value(conceptMap),
+      passages: Value(passages),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      clientId: Value(clientId),
+    );
+  }
+
+  factory StudyNote.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StudyNote(
+      id: serializer.fromJson<int>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      conceptMap: serializer.fromJson<String?>(json['conceptMap']),
+      passages: serializer.fromJson<String>(json['passages']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      clientId: serializer.fromJson<String>(json['clientId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'title': serializer.toJson<String>(title),
+      'notes': serializer.toJson<String?>(notes),
+      'conceptMap': serializer.toJson<String?>(conceptMap),
+      'passages': serializer.toJson<String>(passages),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'clientId': serializer.toJson<String>(clientId),
+    };
+  }
+
+  StudyNote copyWith({
+    int? id,
+    String? title,
+    Value<String?> notes = const Value.absent(),
+    Value<String?> conceptMap = const Value.absent(),
+    String? passages,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? clientId,
+  }) => StudyNote(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    notes: notes.present ? notes.value : this.notes,
+    conceptMap: conceptMap.present ? conceptMap.value : this.conceptMap,
+    passages: passages ?? this.passages,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    clientId: clientId ?? this.clientId,
+  );
+  StudyNote copyWithCompanion(StudyNotesCompanion data) {
+    return StudyNote(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      conceptMap: data.conceptMap.present
+          ? data.conceptMap.value
+          : this.conceptMap,
+      passages: data.passages.present ? data.passages.value : this.passages,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      clientId: data.clientId.present ? data.clientId.value : this.clientId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyNote(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('notes: $notes, ')
+          ..write('conceptMap: $conceptMap, ')
+          ..write('passages: $passages, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('clientId: $clientId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    title,
+    notes,
+    conceptMap,
+    passages,
+    createdAt,
+    updatedAt,
+    clientId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StudyNote &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.notes == this.notes &&
+          other.conceptMap == this.conceptMap &&
+          other.passages == this.passages &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.clientId == this.clientId);
+}
+
+class StudyNotesCompanion extends UpdateCompanion<StudyNote> {
+  final Value<int> id;
+  final Value<String> title;
+  final Value<String?> notes;
+  final Value<String?> conceptMap;
+  final Value<String> passages;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<String> clientId;
+  const StudyNotesCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.conceptMap = const Value.absent(),
+    this.passages = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.clientId = const Value.absent(),
+  });
+  StudyNotesCompanion.insert({
+    this.id = const Value.absent(),
+    required String title,
+    this.notes = const Value.absent(),
+    this.conceptMap = const Value.absent(),
+    required String passages,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.clientId = const Value.absent(),
+  }) : title = Value(title),
+       passages = Value(passages),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<StudyNote> custom({
+    Expression<int>? id,
+    Expression<String>? title,
+    Expression<String>? notes,
+    Expression<String>? conceptMap,
+    Expression<String>? passages,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<String>? clientId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (notes != null) 'notes': notes,
+      if (conceptMap != null) 'concept_map': conceptMap,
+      if (passages != null) 'passages': passages,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (clientId != null) 'client_id': clientId,
+    });
+  }
+
+  StudyNotesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? title,
+    Value<String?>? notes,
+    Value<String?>? conceptMap,
+    Value<String>? passages,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<String>? clientId,
+  }) {
+    return StudyNotesCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      notes: notes ?? this.notes,
+      conceptMap: conceptMap ?? this.conceptMap,
+      passages: passages ?? this.passages,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      clientId: clientId ?? this.clientId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (conceptMap.present) {
+      map['concept_map'] = Variable<String>(conceptMap.value);
+    }
+    if (passages.present) {
+      map['passages'] = Variable<String>(passages.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (clientId.present) {
+      map['client_id'] = Variable<String>(clientId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StudyNotesCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('notes: $notes, ')
+          ..write('conceptMap: $conceptMap, ')
+          ..write('passages: $passages, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('clientId: $clientId')
           ..write(')'))
         .toString();
   }
@@ -1311,6 +1866,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $ResultsTable results = $ResultsTable(this);
+  late final $StudyNotesTable studyNotes = $StudyNotesTable(this);
   late final $SyncOutboxTable syncOutbox = $SyncOutboxTable(this);
   late final $SyncMetadataTable syncMetadata = $SyncMetadataTable(this);
   @override
@@ -1319,6 +1875,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     results,
+    studyNotes,
     syncOutbox,
     syncMetadata,
   ];
@@ -1337,6 +1894,7 @@ typedef $$ResultsTableCreateCompanionBuilder =
       required double score,
       Value<int?> attempts,
       Value<String?> notes,
+      Value<String?> studyNoteId,
       Value<String> clientId,
       Value<DateTime> updatedAt,
     });
@@ -1353,6 +1911,7 @@ typedef $$ResultsTableUpdateCompanionBuilder =
       Value<double> score,
       Value<int?> attempts,
       Value<String?> notes,
+      Value<String?> studyNoteId,
       Value<String> clientId,
       Value<DateTime> updatedAt,
     });
@@ -1419,6 +1978,11 @@ class $$ResultsTableFilterComposer
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get studyNoteId => $composableBuilder(
+    column: $table.studyNoteId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1497,6 +2061,11 @@ class $$ResultsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get studyNoteId => $composableBuilder(
+    column: $table.studyNoteId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get clientId => $composableBuilder(
     column: $table.clientId,
     builder: (column) => ColumnOrderings(column),
@@ -1556,6 +2125,11 @@ class $$ResultsTableAnnotationComposer
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
 
+  GeneratedColumn<String> get studyNoteId => $composableBuilder(
+    column: $table.studyNoteId,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get clientId =>
       $composableBuilder(column: $table.clientId, builder: (column) => column);
 
@@ -1602,6 +2176,7 @@ class $$ResultsTableTableManager
                 Value<double> score = const Value.absent(),
                 Value<int?> attempts = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<String?> studyNoteId = const Value.absent(),
                 Value<String> clientId = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => ResultsCompanion(
@@ -1616,6 +2191,7 @@ class $$ResultsTableTableManager
                 score: score,
                 attempts: attempts,
                 notes: notes,
+                studyNoteId: studyNoteId,
                 clientId: clientId,
                 updatedAt: updatedAt,
               ),
@@ -1632,6 +2208,7 @@ class $$ResultsTableTableManager
                 required double score,
                 Value<int?> attempts = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<String?> studyNoteId = const Value.absent(),
                 Value<String> clientId = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => ResultsCompanion.insert(
@@ -1646,6 +2223,7 @@ class $$ResultsTableTableManager
                 score: score,
                 attempts: attempts,
                 notes: notes,
+                studyNoteId: studyNoteId,
                 clientId: clientId,
                 updatedAt: updatedAt,
               ),
@@ -1669,6 +2247,256 @@ typedef $$ResultsTableProcessedTableManager =
       $$ResultsTableUpdateCompanionBuilder,
       (Result, BaseReferences<_$AppDatabase, $ResultsTable, Result>),
       Result,
+      PrefetchHooks Function()
+    >;
+typedef $$StudyNotesTableCreateCompanionBuilder =
+    StudyNotesCompanion Function({
+      Value<int> id,
+      required String title,
+      Value<String?> notes,
+      Value<String?> conceptMap,
+      required String passages,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<String> clientId,
+    });
+typedef $$StudyNotesTableUpdateCompanionBuilder =
+    StudyNotesCompanion Function({
+      Value<int> id,
+      Value<String> title,
+      Value<String?> notes,
+      Value<String?> conceptMap,
+      Value<String> passages,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<String> clientId,
+    });
+
+class $$StudyNotesTableFilterComposer
+    extends Composer<_$AppDatabase, $StudyNotesTable> {
+  $$StudyNotesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get conceptMap => $composableBuilder(
+    column: $table.conceptMap,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get passages => $composableBuilder(
+    column: $table.passages,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clientId => $composableBuilder(
+    column: $table.clientId,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$StudyNotesTableOrderingComposer
+    extends Composer<_$AppDatabase, $StudyNotesTable> {
+  $$StudyNotesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get conceptMap => $composableBuilder(
+    column: $table.conceptMap,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get passages => $composableBuilder(
+    column: $table.passages,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clientId => $composableBuilder(
+    column: $table.clientId,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$StudyNotesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StudyNotesTable> {
+  $$StudyNotesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get conceptMap => $composableBuilder(
+    column: $table.conceptMap,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get passages =>
+      $composableBuilder(column: $table.passages, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get clientId =>
+      $composableBuilder(column: $table.clientId, builder: (column) => column);
+}
+
+class $$StudyNotesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $StudyNotesTable,
+          StudyNote,
+          $$StudyNotesTableFilterComposer,
+          $$StudyNotesTableOrderingComposer,
+          $$StudyNotesTableAnnotationComposer,
+          $$StudyNotesTableCreateCompanionBuilder,
+          $$StudyNotesTableUpdateCompanionBuilder,
+          (
+            StudyNote,
+            BaseReferences<_$AppDatabase, $StudyNotesTable, StudyNote>,
+          ),
+          StudyNote,
+          PrefetchHooks Function()
+        > {
+  $$StudyNotesTableTableManager(_$AppDatabase db, $StudyNotesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StudyNotesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StudyNotesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$StudyNotesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<String?> conceptMap = const Value.absent(),
+                Value<String> passages = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<String> clientId = const Value.absent(),
+              }) => StudyNotesCompanion(
+                id: id,
+                title: title,
+                notes: notes,
+                conceptMap: conceptMap,
+                passages: passages,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                clientId: clientId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String title,
+                Value<String?> notes = const Value.absent(),
+                Value<String?> conceptMap = const Value.absent(),
+                required String passages,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<String> clientId = const Value.absent(),
+              }) => StudyNotesCompanion.insert(
+                id: id,
+                title: title,
+                notes: notes,
+                conceptMap: conceptMap,
+                passages: passages,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                clientId: clientId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$StudyNotesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $StudyNotesTable,
+      StudyNote,
+      $$StudyNotesTableFilterComposer,
+      $$StudyNotesTableOrderingComposer,
+      $$StudyNotesTableAnnotationComposer,
+      $$StudyNotesTableCreateCompanionBuilder,
+      $$StudyNotesTableUpdateCompanionBuilder,
+      (StudyNote, BaseReferences<_$AppDatabase, $StudyNotesTable, StudyNote>),
+      StudyNote,
       PrefetchHooks Function()
     >;
 typedef $$SyncOutboxTableCreateCompanionBuilder =
@@ -1998,6 +2826,8 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$ResultsTableTableManager get results =>
       $$ResultsTableTableManager(_db, _db.results);
+  $$StudyNotesTableTableManager get studyNotes =>
+      $$StudyNotesTableTableManager(_db, _db.studyNotes);
   $$SyncOutboxTableTableManager get syncOutbox =>
       $$SyncOutboxTableTableManager(_db, _db.syncOutbox);
   $$SyncMetadataTableTableManager get syncMetadata =>
