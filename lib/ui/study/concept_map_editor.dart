@@ -203,6 +203,30 @@ List<Offset> conceptMapConnector(
               math.max(a.dy, b.dy) > rect.top &&
               math.min(a.dy, b.dy) < rect.bottom,
   );
+  // Adjacent columns share one centered trunk instead of choosing opposite
+  // sides of the gap for different branches of the same card.
+  final middle = (entry + exit) / 2;
+  final trunk = [
+    entry,
+    if (horizontal) ...[
+      Offset(middle.dx, entry.dy),
+      Offset(middle.dx, exit.dy),
+    ] else ...[
+      Offset(entry.dx, middle.dy),
+      Offset(exit.dx, middle.dy),
+    ],
+    exit,
+  ];
+  final gap =
+      (exit.dx - entry.dx) * direction.dx + (exit.dy - entry.dy) * direction.dy;
+  if (gap >= 0 &&
+      List.generate(
+        trunk.length - 1,
+        (i) => !blocked(trunk[i], trunk[i + 1]),
+      ).every((clear) => clear)) {
+    final points = [start, ...trunk, end];
+    return reversed ? points.reversed.toList() : points;
+  }
   double distance(Offset a, Offset b) =>
       (a.dx - b.dx).abs() + (a.dy - b.dy).abs();
   final costs = <Offset, double>{entry: 0};

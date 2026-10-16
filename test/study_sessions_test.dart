@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:bible_parser_flutter/bible_parser_flutter.dart';
 import 'package:daily_manna/models/concept_map.dart';
@@ -392,6 +393,59 @@ flowchart TD
       const {'a': Size(300, 90), 'b': Size(300, 90)},
     );
     expect(straight.map((point) => point.dy).toSet(), {125});
+  });
+
+  test('branches from one card share a trunk without crossing each other', () {
+    const positions = {
+      'node13': Offset(80, 300),
+      'node2': Offset(430, 80),
+      'node3': Offset(430, 260),
+      'node9': Offset(430, 520),
+      'node10': Offset(430, 800),
+    };
+    const sizes = {
+      'node13': Size(300, 50),
+      'node2': Size(300, 120),
+      'node3': Size(300, 80),
+      'node9': Size(300, 220),
+      'node10': Size(300, 60),
+    };
+    final routes = [
+      for (final id in ['node2', 'node3', 'node9', 'node10'])
+        conceptMapConnector(
+          ConceptMapEdge(from: 'node13', to: id),
+          positions,
+          sizes,
+        ),
+    ];
+    final trunks = <double>{};
+    final horizontal = <(Offset, Offset)>[];
+    final vertical = <(Offset, Offset)>[];
+    for (final route in routes) {
+      expect(route, isNotEmpty);
+      for (var i = 1; i < route.length; i++) {
+        final a = route[i - 1];
+        final b = route[i];
+        if (a == b) continue;
+        if (a.dx == b.dx) {
+          trunks.add(a.dx);
+          vertical.add((a, b));
+        } else {
+          horizontal.add((a, b));
+        }
+      }
+    }
+    expect(trunks, hasLength(1));
+    for (final (a, b) in horizontal) {
+      for (final (c, d) in vertical) {
+        final crosses =
+            c.dx > math.min(a.dx, b.dx) &&
+            c.dx < math.max(a.dx, b.dx) &&
+            a.dy > math.min(c.dy, d.dy) &&
+            a.dy < math.max(c.dy, d.dy);
+        expect(crosses, isFalse);
+      }
+    }
   });
 
   Widget host(Widget home, {GoRouter? router}) => MultiProvider(
