@@ -32,6 +32,7 @@ class StudyNotes extends Table {
   TextColumn get title => text()();
   TextColumn get notes => text().nullable()();
   TextColumn get conceptMap => text().nullable()();
+  BoolColumn get archived => boolean().withDefault(const Constant(false))();
   TextColumn get passages => text()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
@@ -67,7 +68,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -124,6 +125,14 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 7) {
         await m.addColumn(results, results.studyNoteId);
+      }
+      if (from < 8) {
+        final columns = await customSelect(
+          'PRAGMA table_info(study_notes)',
+        ).get();
+        if (!columns.any((row) => row.data['name'] == 'archived')) {
+          await m.addColumn(studyNotes, studyNotes.archived);
+        }
       }
     },
   );
@@ -192,6 +201,7 @@ class AppDatabase extends _$AppDatabase {
     Value<String?> notes = const Value.absent(),
     String? conceptMap,
     String? passages,
+    bool? archived,
   }) async {
     await transaction(() async {
       final row = await studyNoteById(id);
@@ -204,6 +214,7 @@ class AppDatabase extends _$AppDatabase {
               ? const Value.absent()
               : Value(conceptMap),
           passages: passages == null ? const Value.absent() : Value(passages),
+          archived: archived == null ? const Value.absent() : Value(archived),
           updatedAt: Value(now),
         ),
       );

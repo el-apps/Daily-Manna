@@ -20,6 +20,7 @@ class StudyNotesPage extends StatefulWidget {
 class _StudyNotesPageState extends State<StudyNotesPage> {
   final _searchController = TextEditingController();
   ScriptureRangeRef? _passageFilter;
+  bool _archived = false;
 
   @override
   void dispose() {
@@ -35,6 +36,18 @@ class _StudyNotesPageState extends State<StudyNotesPage> {
       showShareButton: false,
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: false, label: Text('Active')),
+                ButtonSegment(value: true, label: Text('Archived')),
+              ],
+              selected: {_archived},
+              onSelectionChanged: (selection) =>
+                  setState(() => _archived = selection.single),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
@@ -81,7 +94,7 @@ class _StudyNotesPageState extends State<StudyNotesPage> {
             ),
           Expanded(
             child: StreamBuilder<List<db.StudyNote>>(
-              stream: service.watchNotes(),
+              stream: service.watchNotes(archived: _archived),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());

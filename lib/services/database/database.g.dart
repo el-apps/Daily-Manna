@@ -851,6 +851,21 @@ class $StudyNotesTable extends StudyNotes
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _archivedMeta = const VerificationMeta(
+    'archived',
+  );
+  @override
+  late final GeneratedColumn<bool> archived = GeneratedColumn<bool>(
+    'archived',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("archived" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _passagesMeta = const VerificationMeta(
     'passages',
   );
@@ -903,6 +918,7 @@ class $StudyNotesTable extends StudyNotes
     title,
     notes,
     conceptMap,
+    archived,
     passages,
     createdAt,
     updatedAt,
@@ -941,6 +957,12 @@ class $StudyNotesTable extends StudyNotes
       context.handle(
         _conceptMapMeta,
         conceptMap.isAcceptableOrUnknown(data['concept_map']!, _conceptMapMeta),
+      );
+    }
+    if (data.containsKey('archived')) {
+      context.handle(
+        _archivedMeta,
+        archived.isAcceptableOrUnknown(data['archived']!, _archivedMeta),
       );
     }
     if (data.containsKey('passages')) {
@@ -998,6 +1020,10 @@ class $StudyNotesTable extends StudyNotes
         DriftSqlType.string,
         data['${effectivePrefix}concept_map'],
       ),
+      archived: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}archived'],
+      )!,
       passages: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}passages'],
@@ -1028,6 +1054,7 @@ class StudyNote extends DataClass implements Insertable<StudyNote> {
   final String title;
   final String? notes;
   final String? conceptMap;
+  final bool archived;
   final String passages;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -1037,6 +1064,7 @@ class StudyNote extends DataClass implements Insertable<StudyNote> {
     required this.title,
     this.notes,
     this.conceptMap,
+    required this.archived,
     required this.passages,
     required this.createdAt,
     required this.updatedAt,
@@ -1053,6 +1081,7 @@ class StudyNote extends DataClass implements Insertable<StudyNote> {
     if (!nullToAbsent || conceptMap != null) {
       map['concept_map'] = Variable<String>(conceptMap);
     }
+    map['archived'] = Variable<bool>(archived);
     map['passages'] = Variable<String>(passages);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -1070,6 +1099,7 @@ class StudyNote extends DataClass implements Insertable<StudyNote> {
       conceptMap: conceptMap == null && nullToAbsent
           ? const Value.absent()
           : Value(conceptMap),
+      archived: Value(archived),
       passages: Value(passages),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -1087,6 +1117,7 @@ class StudyNote extends DataClass implements Insertable<StudyNote> {
       title: serializer.fromJson<String>(json['title']),
       notes: serializer.fromJson<String?>(json['notes']),
       conceptMap: serializer.fromJson<String?>(json['conceptMap']),
+      archived: serializer.fromJson<bool>(json['archived']),
       passages: serializer.fromJson<String>(json['passages']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -1101,6 +1132,7 @@ class StudyNote extends DataClass implements Insertable<StudyNote> {
       'title': serializer.toJson<String>(title),
       'notes': serializer.toJson<String?>(notes),
       'conceptMap': serializer.toJson<String?>(conceptMap),
+      'archived': serializer.toJson<bool>(archived),
       'passages': serializer.toJson<String>(passages),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -1113,6 +1145,7 @@ class StudyNote extends DataClass implements Insertable<StudyNote> {
     String? title,
     Value<String?> notes = const Value.absent(),
     Value<String?> conceptMap = const Value.absent(),
+    bool? archived,
     String? passages,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -1122,6 +1155,7 @@ class StudyNote extends DataClass implements Insertable<StudyNote> {
     title: title ?? this.title,
     notes: notes.present ? notes.value : this.notes,
     conceptMap: conceptMap.present ? conceptMap.value : this.conceptMap,
+    archived: archived ?? this.archived,
     passages: passages ?? this.passages,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -1135,6 +1169,7 @@ class StudyNote extends DataClass implements Insertable<StudyNote> {
       conceptMap: data.conceptMap.present
           ? data.conceptMap.value
           : this.conceptMap,
+      archived: data.archived.present ? data.archived.value : this.archived,
       passages: data.passages.present ? data.passages.value : this.passages,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -1149,6 +1184,7 @@ class StudyNote extends DataClass implements Insertable<StudyNote> {
           ..write('title: $title, ')
           ..write('notes: $notes, ')
           ..write('conceptMap: $conceptMap, ')
+          ..write('archived: $archived, ')
           ..write('passages: $passages, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -1163,6 +1199,7 @@ class StudyNote extends DataClass implements Insertable<StudyNote> {
     title,
     notes,
     conceptMap,
+    archived,
     passages,
     createdAt,
     updatedAt,
@@ -1176,6 +1213,7 @@ class StudyNote extends DataClass implements Insertable<StudyNote> {
           other.title == this.title &&
           other.notes == this.notes &&
           other.conceptMap == this.conceptMap &&
+          other.archived == this.archived &&
           other.passages == this.passages &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -1187,6 +1225,7 @@ class StudyNotesCompanion extends UpdateCompanion<StudyNote> {
   final Value<String> title;
   final Value<String?> notes;
   final Value<String?> conceptMap;
+  final Value<bool> archived;
   final Value<String> passages;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -1196,6 +1235,7 @@ class StudyNotesCompanion extends UpdateCompanion<StudyNote> {
     this.title = const Value.absent(),
     this.notes = const Value.absent(),
     this.conceptMap = const Value.absent(),
+    this.archived = const Value.absent(),
     this.passages = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1206,6 +1246,7 @@ class StudyNotesCompanion extends UpdateCompanion<StudyNote> {
     required String title,
     this.notes = const Value.absent(),
     this.conceptMap = const Value.absent(),
+    this.archived = const Value.absent(),
     required String passages,
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -1219,6 +1260,7 @@ class StudyNotesCompanion extends UpdateCompanion<StudyNote> {
     Expression<String>? title,
     Expression<String>? notes,
     Expression<String>? conceptMap,
+    Expression<bool>? archived,
     Expression<String>? passages,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -1229,6 +1271,7 @@ class StudyNotesCompanion extends UpdateCompanion<StudyNote> {
       if (title != null) 'title': title,
       if (notes != null) 'notes': notes,
       if (conceptMap != null) 'concept_map': conceptMap,
+      if (archived != null) 'archived': archived,
       if (passages != null) 'passages': passages,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -1241,6 +1284,7 @@ class StudyNotesCompanion extends UpdateCompanion<StudyNote> {
     Value<String>? title,
     Value<String?>? notes,
     Value<String?>? conceptMap,
+    Value<bool>? archived,
     Value<String>? passages,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -1251,6 +1295,7 @@ class StudyNotesCompanion extends UpdateCompanion<StudyNote> {
       title: title ?? this.title,
       notes: notes ?? this.notes,
       conceptMap: conceptMap ?? this.conceptMap,
+      archived: archived ?? this.archived,
       passages: passages ?? this.passages,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -1272,6 +1317,9 @@ class StudyNotesCompanion extends UpdateCompanion<StudyNote> {
     }
     if (conceptMap.present) {
       map['concept_map'] = Variable<String>(conceptMap.value);
+    }
+    if (archived.present) {
+      map['archived'] = Variable<bool>(archived.value);
     }
     if (passages.present) {
       map['passages'] = Variable<String>(passages.value);
@@ -1295,6 +1343,7 @@ class StudyNotesCompanion extends UpdateCompanion<StudyNote> {
           ..write('title: $title, ')
           ..write('notes: $notes, ')
           ..write('conceptMap: $conceptMap, ')
+          ..write('archived: $archived, ')
           ..write('passages: $passages, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -2255,6 +2304,7 @@ typedef $$StudyNotesTableCreateCompanionBuilder =
       required String title,
       Value<String?> notes,
       Value<String?> conceptMap,
+      Value<bool> archived,
       required String passages,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -2266,6 +2316,7 @@ typedef $$StudyNotesTableUpdateCompanionBuilder =
       Value<String> title,
       Value<String?> notes,
       Value<String?> conceptMap,
+      Value<bool> archived,
       Value<String> passages,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -2298,6 +2349,11 @@ class $$StudyNotesTableFilterComposer
 
   ColumnFilters<String> get conceptMap => $composableBuilder(
     column: $table.conceptMap,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get archived => $composableBuilder(
+    column: $table.archived,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2351,6 +2407,11 @@ class $$StudyNotesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get archived => $composableBuilder(
+    column: $table.archived,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get passages => $composableBuilder(
     column: $table.passages,
     builder: (column) => ColumnOrderings(column),
@@ -2394,6 +2455,9 @@ class $$StudyNotesTableAnnotationComposer
     column: $table.conceptMap,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get archived =>
+      $composableBuilder(column: $table.archived, builder: (column) => column);
 
   GeneratedColumn<String> get passages =>
       $composableBuilder(column: $table.passages, builder: (column) => column);
@@ -2443,6 +2507,7 @@ class $$StudyNotesTableTableManager
                 Value<String> title = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<String?> conceptMap = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
                 Value<String> passages = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -2452,6 +2517,7 @@ class $$StudyNotesTableTableManager
                 title: title,
                 notes: notes,
                 conceptMap: conceptMap,
+                archived: archived,
                 passages: passages,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -2463,6 +2529,7 @@ class $$StudyNotesTableTableManager
                 required String title,
                 Value<String?> notes = const Value.absent(),
                 Value<String?> conceptMap = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
                 required String passages,
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -2472,6 +2539,7 @@ class $$StudyNotesTableTableManager
                 title: title,
                 notes: notes,
                 conceptMap: conceptMap,
+                archived: archived,
                 passages: passages,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

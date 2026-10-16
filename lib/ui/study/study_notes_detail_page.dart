@@ -29,6 +29,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   late final TabController _tabController;
   final _conceptMapKey = GlobalKey<ConceptMapEditorState>();
   bool _isEditing = false;
+  late bool _archived;
   String? _selectedMapNodeId;
   int _activeTab = 0;
   late List<ScriptureRangeRef> _passages;
@@ -37,6 +38,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   void initState() {
     super.initState();
     _notes = widget.note.notes;
+    _archived = widget.note.archived;
     _passages = context.read<StudyNotesService>().passagesFor(widget.note);
     _notesController = TextEditingController(text: _notes);
     _conceptMap = ConceptMapDocument.fromMermaid(widget.note.conceptMap ?? '');
@@ -62,11 +64,32 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
     return AppScaffold(
       title: widget.note.title,
       showShareButton: false,
+      appBarActions: [
+        if (!_isEditing)
+          PopupMenuButton<bool>(
+            tooltip: 'Note actions',
+            onSelected: _setArchived,
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: !_archived,
+                child: Text(_archived ? 'Restore note' : 'Archive note'),
+              ),
+            ],
+          ),
+      ],
       floatingActionButton: _isEditing
           ? null
           : _buildEditToolbar(editing: false),
       body: Column(
         children: [
+          if (_archived)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Chip(
+                avatar: Icon(Icons.archive_outlined),
+                label: Text('Archived'),
+              ),
+            ),
           TabBar(
             controller: _tabController,
             tabs: [
@@ -109,6 +132,28 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   }
 
   void _enterEditMode() => setState(() => _isEditing = true);
+
+  Future<void> _setArchived(bool archived) async {
+    await context.read<StudyNotesService>().setArchived(
+      widget.note.id,
+      archived,
+    );
+    if (!mounted) return;
+    setState(() => _archived = archived);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            archived ? 'Study note archived' : 'Study note restored',
+          ),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () => _setArchived(!archived),
+          ),
+        ),
+      );
+  }
 
   Future<void> _addPassage() async {
     final service = context.read<StudyNotesService>();

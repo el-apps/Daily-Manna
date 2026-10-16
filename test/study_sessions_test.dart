@@ -45,7 +45,9 @@ class _StudyNotesService extends StudyNotesService {
   final visibleNotes = <StudyNote>[];
 
   @override
-  Stream<List<StudyNote>> watchNotes() => Stream.value(visibleNotes);
+  Stream<List<StudyNote>> watchNotes({bool archived = false}) => Stream.value(
+    visibleNotes.where((note) => note.archived == archived).toList(),
+  );
 }
 
 void main() {
@@ -69,6 +71,86 @@ void main() {
   });
 
   tearDown(() => database.close());
+
+  Widget host(Widget home, {GoRouter? router}) => MultiProvider(
+    providers: [
+      Provider.value(value: database),
+      Provider<StudyNotesService>.value(value: notesService),
+      Provider(create: (_) => ResultsService(database)),
+      Provider<BibleService>(create: (_) => _BibleService()),
+      Provider(create: (_) => SpacedRepetitionService(database)),
+    ],
+    child: router == null
+        ? MaterialApp(home: home)
+        : MaterialApp.router(routerConfig: router),
+  );
+
+  test(
+    'archiving hides notes without breaking session links or note content',
+    () async {
+      final service = StudyNotesService(database);
+      final note = await service.createNote(title: 'Wisdom', passage: passage);
+      await service.updateNotes(note.id, 'Keep this text');
+      await ResultsService(
+        database,
+      ).addStudyResult(passage, studyNoteId: note.clientId);
+      await service.setArchived(note.id, true);
+      expect(await service.watchNotes().first, isEmpty);
+      expect(
+        (await service.watchNotes(archived: true).first).single.clientId,
+        note.clientId,
+      );
+      final linked = await service.getNoteByClientId(
+        (await database.getAllResults()).single.studyNoteId!,
+      );
+      expect(linked!.archived, isTrue);
+      expect(linked.notes, 'Keep this text');
+      expect(linked.conceptMap, note.conceptMap);
+      expect(service.passagesFor(linked), [passage]);
+      await service.setArchived(note.id, false);
+      expect((await service.watchNotes().first).single.clientId, note.clientId);
+      expect(await service.watchNotes(archived: true).first, isEmpty);
+    },
+  );
+
+  testWidgets(
+    'note menu archives, undoes and restores only outside edit mode',
+    (tester) async {
+      Future<void> choose(String label, bool archived) async {
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+        await tester.runAsync(() async {
+          await database
+              .watchStudyNotes()
+              .firstWhere((notes) => notes.single.archived == archived)
+              .timeout(const Duration(seconds: 5));
+        });
+        await tester.pumpAndSettle();
+      }
+
+      late StudyNote note;
+      await tester.runAsync(() async {
+        note = await notesService.createNote(title: 'Wisdom', passage: passage);
+      });
+      await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+      await tester.tap(find.byTooltip('Note actions'));
+      await tester.pumpAndSettle();
+      await choose('Archive note', true);
+      expect(find.text('Archived'), findsOneWidget);
+      await choose('Undo', false);
+      expect(find.text('Archived'), findsNothing);
+      await tester.tap(find.byTooltip('Note actions'));
+      await tester.pumpAndSettle();
+      await choose('Archive note', true);
+      await tester.tap(find.byTooltip('Note actions'));
+      await tester.pumpAndSettle();
+      await choose('Restore note', false);
+      expect(find.text('Archived'), findsNothing);
+      await tester.tap(find.byTooltip('Edit'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Note actions'), findsNothing);
+    },
+  );
 
   test('multiline card labels survive Mermaid saves, including old maps', () {
     final legacy = ConceptMapDocument.fromMermaid('''
@@ -447,19 +529,6 @@ flowchart TD
       }
     }
   });
-
-  Widget host(Widget home, {GoRouter? router}) => MultiProvider(
-    providers: [
-      Provider.value(value: database),
-      Provider<StudyNotesService>.value(value: notesService),
-      Provider(create: (_) => ResultsService(database)),
-      Provider<BibleService>(create: (_) => _BibleService()),
-      Provider(create: (_) => SpacedRepetitionService(database)),
-    ],
-    child: router == null
-        ? MaterialApp(home: home)
-        : MaterialApp.router(routerConfig: router),
-  );
 
   Future<void> openPicker(WidgetTester tester) async {
     await tester.pumpWidget(

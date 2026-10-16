@@ -47,16 +47,17 @@ void main() {
     await directory.delete(recursive: true);
   });
 
-  test(
-    'v6 migration preserves workspaces and leaves old sessions unlinked',
-    () async {
-      final directory = await Directory.systemTemp.createTemp(
-        'manna-workspace-migration',
-      );
-      addTearDown(() => directory.delete(recursive: true));
-      final file = File('${directory.path}/database.sqlite');
-      final old = sqlite.sqlite3.open(file.path);
-      old.execute('''
+  for (final version in [6, 7]) {
+    test(
+      'v$version migration preserves workspaces and defaults notes to active',
+      () async {
+        final directory = await Directory.systemTemp.createTemp(
+          'manna-workspace-migration',
+        );
+        addTearDown(() => directory.delete(recursive: true));
+        final file = File('${directory.path}/database.sqlite');
+        final old = sqlite.sqlite3.open(file.path);
+        old.execute('''
       CREATE TABLE results (
         id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         timestamp INTEGER NOT NULL, type INTEGER NOT NULL,
@@ -78,20 +79,25 @@ void main() {
       INSERT INTO study_notes (
         title, notes, concept_map, passages, created_at, updated_at, client_id
       ) VALUES ('Wisdom', 'Workspace text', 'flowchart TD', '[]', 1704067200, 1704067200, 'note-1');
-      PRAGMA user_version = 6;
     ''');
-      old.dispose();
-      final database = AppDatabase.forTesting(NativeDatabase(file));
-      addTearDown(database.close);
-      final result = (await database.getAllResults()).single;
-      expect(result.studyNoteId, isNull);
-      expect(result.notes, 'Session text');
-      expect(result.clientId, 'session-1');
-      final note = (await database.getStudyNotes()).single;
-      expect(note.title, 'Wisdom');
-      expect(note.notes, 'Workspace text');
-      expect(note.conceptMap, 'flowchart TD');
-      expect(note.clientId, 'note-1');
-    },
-  );
+        if (version == 7) {
+          old.execute('ALTER TABLE results ADD COLUMN study_note_id TEXT');
+        }
+        old.execute('PRAGMA user_version = $version');
+        old.dispose();
+        final database = AppDatabase.forTesting(NativeDatabase(file));
+        addTearDown(database.close);
+        final result = (await database.getAllResults()).single;
+        expect(result.studyNoteId, isNull);
+        expect(result.notes, 'Session text');
+        expect(result.clientId, 'session-1');
+        final note = (await database.getStudyNotes()).single;
+        expect(note.title, 'Wisdom');
+        expect(note.notes, 'Workspace text');
+        expect(note.conceptMap, 'flowchart TD');
+        expect(note.clientId, 'note-1');
+        expect(note.archived, isFalse);
+      },
+    );
+  }
 }

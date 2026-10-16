@@ -11,7 +11,15 @@ class StudyNotesService {
   final AppDatabase _db;
   Future<void> Function()? onLocalChange;
 
-  Stream<List<StudyNote>> watchNotes() => _db.watchStudyNotes();
+  Stream<List<StudyNote>> watchNotes({bool archived = false}) =>
+      _db.watchStudyNotes().map(
+        (notes) => notes.where((note) => note.archived == archived).toList(),
+      );
+
+  Future<void> setArchived(int id, bool archived) async {
+    await _db.updateStudyNote(id, archived: archived);
+    await onLocalChange?.call();
+  }
 
   Future<StudyNote?> getNote(int id) => _db.studyNoteById(id);
 
