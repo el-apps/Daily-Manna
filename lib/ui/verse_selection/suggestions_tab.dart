@@ -58,10 +58,11 @@ class SuggestionsTab extends StatelessWidget {
     final seen = <String>{};
 
     for (final result in results) {
+      if (result.bookId == null) continue;
       final ref = ScriptureRangeRef(
-        bookId: result.bookId,
-        chapter: result.startChapter,
-        startVerse: result.startVerse,
+        bookId: result.bookId!,
+        chapter: result.startChapter!,
+        startVerse: result.startVerse!,
         endVerse: result.endVerse,
       );
       final key = _key(ref);

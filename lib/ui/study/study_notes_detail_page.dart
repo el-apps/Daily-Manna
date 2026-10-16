@@ -361,7 +361,9 @@ class _NotesTab extends StatelessWidget {
       else
         const EmptyState(
           icon: Icons.edit_note,
-          message: 'No notes recorded yet',
+          message:
+              'Start writing or add cards to your concept map.\n'
+              'Saved changes record one study session per day.',
         ),
     ],
   );

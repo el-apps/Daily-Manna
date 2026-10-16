@@ -1,7 +1,6 @@
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
-import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/study_notes_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/study/study_notes_list.dart';
@@ -125,13 +124,9 @@ class _StudyNotesPageState extends State<StudyNotesPage> {
 
   Future<void> _createNote() async {
     final notesService = context.read<StudyNotesService>();
-    final resultsService = context.read<ResultsService>();
-    final passage = await showPassageSelector(context);
-    if (!mounted || passage == null) return;
     final title = await _askForTitle();
     if (!mounted || title == null || title.trim().isEmpty) return;
-    final note = await notesService.createNote(title: title, passage: passage);
-    await resultsService.addStudyResult(passage, studyNoteId: note.clientId);
+    final note = await notesService.createNote(title: title);
     if (mounted) context.push('/study-notes/${note.id}', extra: note);
   }
 

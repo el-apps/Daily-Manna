@@ -1,6 +1,14 @@
 # Daily Manna 🤗📖
 An app for building strong daily habits in interacting with the Word of God.
 
+## Recording study sessions
+
+- Create a study note with a title; passages are optional and can be added later.
+- Saving changes to note text, concept-map cards, or passages automatically records one study session per note per local calendar day.
+- Repeated edits that day count as the same session; opening an unchanged note or archiving/restoring it does not record activity.
+- History and shared results identify note-based sessions by the note title, without requiring a main passage.
+- To record reading without notes, use **Study → Record without a note** on a passage.
+
 ## Archiving study notes
 
 - Open a study note in view mode, then select **⋮ → Archive note**.

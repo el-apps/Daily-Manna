@@ -4,6 +4,7 @@ import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
 import 'package:daily_manna/services/results_service.dart';
+import 'package:daily_manna/services/study_notes_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/history/result_card.dart';
@@ -186,19 +187,28 @@ class _DateGroup extends StatelessWidget {
         ),
       ),
       ...results.map((result) {
-        final card = ResultCard(
+        Widget buildCard(String reference) => ResultCard(
           result: result,
-          reference: _getReference(result),
+          reference: reference,
           score: ScoreData(value: result.score, attempts: result.attempts ?? 1),
-          onInteract: () => _showInteractionDialog(context, result),
+          onInteract: result.bookId == null
+              ? null
+              : () => _showInteractionDialog(context, result),
         );
+        final Widget card = result.studyNoteId == null
+            ? buildCard(_getReference(result))
+            : StreamBuilder<db.StudyNote?>(
+                stream: context.read<StudyNotesService>().watchNoteByClientId(
+                  result.studyNoteId!,
+                ),
+                builder: (context, snapshot) =>
+                    buildCard(snapshot.data?.title ?? 'Study note'),
+              );
 
         if (result.type == db.ResultType.study) {
           return GestureDetector(
-            onTap: () => context.push(
-              '/history/study/${result.id}',
-              extra: result,
-            ),
+            onTap: () =>
+                context.push('/history/study/${result.id}', extra: result),
             child: card,
           );
         }
@@ -211,9 +221,9 @@ class _DateGroup extends StatelessWidget {
     showPassageInteractionSheet(
       context,
       ScriptureRangeRef(
-        bookId: result.bookId,
-        chapter: result.startChapter,
-        startVerse: result.startVerse,
+        bookId: result.bookId!,
+        chapter: result.startChapter!,
+        startVerse: result.startVerse!,
         endVerse: result.endVerse,
       ),
     );

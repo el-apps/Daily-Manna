@@ -26,16 +26,23 @@ class StudyNotesService {
   Future<StudyNote?> getNoteByClientId(String id) =>
       _db.studyNoteByClientId(id);
 
+  Stream<StudyNote?> watchNoteByClientId(String id) => (_db.select(
+    _db.studyNotes,
+  )..where((note) => note.clientId.equals(id))).watchSingleOrNull();
+
   Future<StudyNote> createNote({
     required String title,
-    required ScriptureRangeRef passage,
+    ScriptureRangeRef? passage,
   }) async {
     final id = await _db.insertStudyNote(
       StudyNotesCompanion.insert(
         title: title.trim(),
-        passages: _encodePassages([passage]),
+        passages: _encodePassages([if (passage != null) passage]),
         conceptMap: Value(
-          const ConceptMapDocument().addPassage(passage).toMermaid(),
+          (passage == null
+                  ? const ConceptMapDocument()
+                  : const ConceptMapDocument().addPassage(passage))
+              .toMermaid(),
         ),
         createdAt: DateTime.now().toUtc(),
         updatedAt: DateTime.now().toUtc(),

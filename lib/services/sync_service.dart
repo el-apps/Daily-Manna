@@ -271,9 +271,9 @@ class SyncService {
     return ResultsCompanion.insert(
       timestamp: DateTime.parse(data['timestamp'] as String).toUtc(),
       type: ResultType.values.byName(data['resultType'] as String),
-      bookId: data['bookId'] as String,
-      startChapter: (data['startChapter'] as num).toInt(),
-      startVerse: (data['startVerse'] as num).toInt(),
+      bookId: Value(data['bookId'] as String?),
+      startChapter: Value((data['startChapter'] as num?)?.toInt()),
+      startVerse: Value((data['startVerse'] as num?)?.toInt()),
       endChapter: Value((data['endChapter'] as num?)?.toInt()),
       endVerse: Value((data['endVerse'] as num?)?.toInt()),
       score: (data['score'] as num).toDouble(),

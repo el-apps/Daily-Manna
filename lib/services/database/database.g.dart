@@ -46,9 +46,9 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
   late final GeneratedColumn<String> bookId = GeneratedColumn<String>(
     'book_id',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _startChapterMeta = const VerificationMeta(
     'startChapter',
@@ -57,9 +57,9 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
   late final GeneratedColumn<int> startChapter = GeneratedColumn<int>(
     'start_chapter',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _startVerseMeta = const VerificationMeta(
     'startVerse',
@@ -68,9 +68,9 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
   late final GeneratedColumn<int> startVerse = GeneratedColumn<int>(
     'start_verse',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _endChapterMeta = const VerificationMeta(
     'endChapter',
@@ -204,8 +204,6 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
         _bookIdMeta,
         bookId.isAcceptableOrUnknown(data['book_id']!, _bookIdMeta),
       );
-    } else if (isInserting) {
-      context.missing(_bookIdMeta);
     }
     if (data.containsKey('start_chapter')) {
       context.handle(
@@ -215,16 +213,12 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
           _startChapterMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_startChapterMeta);
     }
     if (data.containsKey('start_verse')) {
       context.handle(
         _startVerseMeta,
         startVerse.isAcceptableOrUnknown(data['start_verse']!, _startVerseMeta),
       );
-    } else if (isInserting) {
-      context.missing(_startVerseMeta);
     }
     if (data.containsKey('end_chapter')) {
       context.handle(
@@ -305,15 +299,15 @@ class $ResultsTable extends Results with TableInfo<$ResultsTable, Result> {
       bookId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}book_id'],
-      )!,
+      ),
       startChapter: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}start_chapter'],
-      )!,
+      ),
       startVerse: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}start_verse'],
-      )!,
+      ),
       endChapter: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}end_chapter'],
@@ -362,9 +356,9 @@ class Result extends DataClass implements Insertable<Result> {
   final int id;
   final DateTime timestamp;
   final ResultType type;
-  final String bookId;
-  final int startChapter;
-  final int startVerse;
+  final String? bookId;
+  final int? startChapter;
+  final int? startVerse;
   final int? endChapter;
   final int? endVerse;
   final double score;
@@ -377,9 +371,9 @@ class Result extends DataClass implements Insertable<Result> {
     required this.id,
     required this.timestamp,
     required this.type,
-    required this.bookId,
-    required this.startChapter,
-    required this.startVerse,
+    this.bookId,
+    this.startChapter,
+    this.startVerse,
     this.endChapter,
     this.endVerse,
     required this.score,
@@ -397,9 +391,15 @@ class Result extends DataClass implements Insertable<Result> {
     {
       map['type'] = Variable<int>($ResultsTable.$convertertype.toSql(type));
     }
-    map['book_id'] = Variable<String>(bookId);
-    map['start_chapter'] = Variable<int>(startChapter);
-    map['start_verse'] = Variable<int>(startVerse);
+    if (!nullToAbsent || bookId != null) {
+      map['book_id'] = Variable<String>(bookId);
+    }
+    if (!nullToAbsent || startChapter != null) {
+      map['start_chapter'] = Variable<int>(startChapter);
+    }
+    if (!nullToAbsent || startVerse != null) {
+      map['start_verse'] = Variable<int>(startVerse);
+    }
     if (!nullToAbsent || endChapter != null) {
       map['end_chapter'] = Variable<int>(endChapter);
     }
@@ -426,9 +426,15 @@ class Result extends DataClass implements Insertable<Result> {
       id: Value(id),
       timestamp: Value(timestamp),
       type: Value(type),
-      bookId: Value(bookId),
-      startChapter: Value(startChapter),
-      startVerse: Value(startVerse),
+      bookId: bookId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bookId),
+      startChapter: startChapter == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startChapter),
+      startVerse: startVerse == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startVerse),
       endChapter: endChapter == null && nullToAbsent
           ? const Value.absent()
           : Value(endChapter),
@@ -461,9 +467,9 @@ class Result extends DataClass implements Insertable<Result> {
       type: $ResultsTable.$convertertype.fromJson(
         serializer.fromJson<int>(json['type']),
       ),
-      bookId: serializer.fromJson<String>(json['bookId']),
-      startChapter: serializer.fromJson<int>(json['startChapter']),
-      startVerse: serializer.fromJson<int>(json['startVerse']),
+      bookId: serializer.fromJson<String?>(json['bookId']),
+      startChapter: serializer.fromJson<int?>(json['startChapter']),
+      startVerse: serializer.fromJson<int?>(json['startVerse']),
       endChapter: serializer.fromJson<int?>(json['endChapter']),
       endVerse: serializer.fromJson<int?>(json['endVerse']),
       score: serializer.fromJson<double>(json['score']),
@@ -481,9 +487,9 @@ class Result extends DataClass implements Insertable<Result> {
       'id': serializer.toJson<int>(id),
       'timestamp': serializer.toJson<DateTime>(timestamp),
       'type': serializer.toJson<int>($ResultsTable.$convertertype.toJson(type)),
-      'bookId': serializer.toJson<String>(bookId),
-      'startChapter': serializer.toJson<int>(startChapter),
-      'startVerse': serializer.toJson<int>(startVerse),
+      'bookId': serializer.toJson<String?>(bookId),
+      'startChapter': serializer.toJson<int?>(startChapter),
+      'startVerse': serializer.toJson<int?>(startVerse),
       'endChapter': serializer.toJson<int?>(endChapter),
       'endVerse': serializer.toJson<int?>(endVerse),
       'score': serializer.toJson<double>(score),
@@ -499,9 +505,9 @@ class Result extends DataClass implements Insertable<Result> {
     int? id,
     DateTime? timestamp,
     ResultType? type,
-    String? bookId,
-    int? startChapter,
-    int? startVerse,
+    Value<String?> bookId = const Value.absent(),
+    Value<int?> startChapter = const Value.absent(),
+    Value<int?> startVerse = const Value.absent(),
     Value<int?> endChapter = const Value.absent(),
     Value<int?> endVerse = const Value.absent(),
     double? score,
@@ -514,9 +520,9 @@ class Result extends DataClass implements Insertable<Result> {
     id: id ?? this.id,
     timestamp: timestamp ?? this.timestamp,
     type: type ?? this.type,
-    bookId: bookId ?? this.bookId,
-    startChapter: startChapter ?? this.startChapter,
-    startVerse: startVerse ?? this.startVerse,
+    bookId: bookId.present ? bookId.value : this.bookId,
+    startChapter: startChapter.present ? startChapter.value : this.startChapter,
+    startVerse: startVerse.present ? startVerse.value : this.startVerse,
     endChapter: endChapter.present ? endChapter.value : this.endChapter,
     endVerse: endVerse.present ? endVerse.value : this.endVerse,
     score: score ?? this.score,
@@ -615,9 +621,9 @@ class ResultsCompanion extends UpdateCompanion<Result> {
   final Value<int> id;
   final Value<DateTime> timestamp;
   final Value<ResultType> type;
-  final Value<String> bookId;
-  final Value<int> startChapter;
-  final Value<int> startVerse;
+  final Value<String?> bookId;
+  final Value<int?> startChapter;
+  final Value<int?> startVerse;
   final Value<int?> endChapter;
   final Value<int?> endVerse;
   final Value<double> score;
@@ -646,9 +652,9 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     this.id = const Value.absent(),
     required DateTime timestamp,
     required ResultType type,
-    required String bookId,
-    required int startChapter,
-    required int startVerse,
+    this.bookId = const Value.absent(),
+    this.startChapter = const Value.absent(),
+    this.startVerse = const Value.absent(),
     this.endChapter = const Value.absent(),
     this.endVerse = const Value.absent(),
     required double score,
@@ -659,9 +665,6 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     this.updatedAt = const Value.absent(),
   }) : timestamp = Value(timestamp),
        type = Value(type),
-       bookId = Value(bookId),
-       startChapter = Value(startChapter),
-       startVerse = Value(startVerse),
        score = Value(score);
   static Insertable<Result> custom({
     Expression<int>? id,
@@ -701,9 +704,9 @@ class ResultsCompanion extends UpdateCompanion<Result> {
     Value<int>? id,
     Value<DateTime>? timestamp,
     Value<ResultType>? type,
-    Value<String>? bookId,
-    Value<int>? startChapter,
-    Value<int>? startVerse,
+    Value<String?>? bookId,
+    Value<int?>? startChapter,
+    Value<int?>? startVerse,
     Value<int?>? endChapter,
     Value<int?>? endVerse,
     Value<double>? score,
@@ -1935,9 +1938,9 @@ typedef $$ResultsTableCreateCompanionBuilder =
       Value<int> id,
       required DateTime timestamp,
       required ResultType type,
-      required String bookId,
-      required int startChapter,
-      required int startVerse,
+      Value<String?> bookId,
+      Value<int?> startChapter,
+      Value<int?> startVerse,
       Value<int?> endChapter,
       Value<int?> endVerse,
       required double score,
@@ -1952,9 +1955,9 @@ typedef $$ResultsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<DateTime> timestamp,
       Value<ResultType> type,
-      Value<String> bookId,
-      Value<int> startChapter,
-      Value<int> startVerse,
+      Value<String?> bookId,
+      Value<int?> startChapter,
+      Value<int?> startVerse,
       Value<int?> endChapter,
       Value<int?> endVerse,
       Value<double> score,
@@ -2217,9 +2220,9 @@ class $$ResultsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<DateTime> timestamp = const Value.absent(),
                 Value<ResultType> type = const Value.absent(),
-                Value<String> bookId = const Value.absent(),
-                Value<int> startChapter = const Value.absent(),
-                Value<int> startVerse = const Value.absent(),
+                Value<String?> bookId = const Value.absent(),
+                Value<int?> startChapter = const Value.absent(),
+                Value<int?> startVerse = const Value.absent(),
                 Value<int?> endChapter = const Value.absent(),
                 Value<int?> endVerse = const Value.absent(),
                 Value<double> score = const Value.absent(),
@@ -2249,9 +2252,9 @@ class $$ResultsTableTableManager
                 Value<int> id = const Value.absent(),
                 required DateTime timestamp,
                 required ResultType type,
-                required String bookId,
-                required int startChapter,
-                required int startVerse,
+                Value<String?> bookId = const Value.absent(),
+                Value<int?> startChapter = const Value.absent(),
+                Value<int?> startVerse = const Value.absent(),
                 Value<int?> endChapter = const Value.absent(),
                 Value<int?> endVerse = const Value.absent(),
                 required double score,

@@ -86,6 +86,83 @@ void main() {
   );
 
   test(
+    'note edits automatically record one note-anchored session per day',
+    () async {
+      final service = StudyNotesService(database);
+      final note = await service.createNote(title: 'Stewardship');
+      expect(service.passagesFor(note), isEmpty);
+      await service.getNote(note.id);
+      await service.updateNotes(note.id, null);
+      await service.updateConceptMap(note.id, note.conceptMap!);
+      await service.setArchived(note.id, true);
+      await service.setArchived(note.id, false);
+      expect(await database.getAllResults(), isEmpty);
+
+      await service.updateNotes(note.id, 'Everything belongs to God');
+      final first = (await database.getAllResults()).single;
+      expect(first.studyNoteId, note.clientId);
+      expect(first.bookId, isNull);
+      expect(first.startChapter, isNull);
+      expect(first.startVerse, isNull);
+      await service.updateNotes(note.id, 'Use resources faithfully');
+      await service.updateConceptMap(note.id, 'flowchart TD\n a[Stewardship]');
+      await service.addPassage(note.id, passage);
+      expect((await database.getAllResults()).single.clientId, first.clientId);
+      expect(await database.getUniqueVersesInteracted(), isEmpty);
+      expect(
+        await SpacedRepetitionService(database).getVersesByReviewDate(),
+        isEmpty,
+      );
+      final sections = await ResultsService(
+        database,
+      ).getTodaySections(_BibleService());
+      expect(sections.single.items.single.reference, 'Stewardship');
+
+      final other = await service.createNote(title: 'Wisdom');
+      await service.updateNotes(other.id, 'Ask God for wisdom');
+      expect(await database.getAllResults(), hasLength(2));
+      final results = ResultsService(database);
+      await results.addStudyResult(passage);
+      await results.addStudyResult(passage);
+      final sessions = await database.getAllResults();
+      expect(sessions, hasLength(4));
+      expect(
+        sessions.where((r) => r.studyNoteId == null).map((r) => r.bookId),
+        ['Jas', 'Jas'],
+      );
+      expect(
+        (await database.pendingChanges()).where(
+          (c) => c.entityType == 'result',
+        ),
+        hasLength(4),
+      );
+    },
+  );
+
+  test(
+    'note sessions separate calendar days rather than rolling 24 hours',
+    () async {
+      final note = await notesService.createNote(title: 'Wisdom');
+      await database.recordStudyNoteSession(
+        note.clientId,
+        timestamp: DateTime(2026, 3, 8, 23, 59),
+      );
+      await database.recordStudyNoteSession(
+        note.clientId,
+        timestamp: DateTime(2026, 3, 9),
+      );
+      await database.recordStudyNoteSession(
+        note.clientId,
+        timestamp: DateTime(2026, 3, 9, 23, 59),
+      );
+      final sessions = await database.getAllResults();
+      expect(sessions, hasLength(2));
+      expect(sessions.map((r) => r.timestamp.toLocal().day), [9, 8]);
+      expect(sessions.map((r) => r.clientId).toSet(), hasLength(2));
+    },
+  );
+
+  test(
     'archiving hides notes without breaking session links or note content',
     () async {
       final service = StudyNotesService(database);
@@ -821,7 +898,10 @@ flowchart TD
         isTrue,
       );
     });
-    expect(find.text('No notes recorded yet'), findsOneWidget);
+    expect(
+      find.textContaining('Saved changes record one study session per day.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('records a session without creating a note', (tester) async {
@@ -919,124 +999,127 @@ flowchart TD
     });
   });
 
-  testWidgets('add passage persists without a session and keeps the edit FAB', (
-    tester,
-  ) async {
-    late StudyNote note;
-    await tester.runAsync(() async {
-      note = await notesService.createNote(title: 'Wisdom', passage: passage);
-    });
-    await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
-    await tester.pumpAndSettle();
-    expect(find.byType(FloatingActionButton), findsOneWidget);
-    expect(find.byTooltip('Edit'), findsOneWidget);
-    // Exercise the passage-selector return contract independently of its
-    // range-selection controls, which have their own regression tests.
-    await tester.runAsync(() async {
-      await tester.tap(find.text('Add passage'));
-      Navigator.of(
-        tester.element(find.byType(StudyNotesDetailPage)),
-      ).pop(otherPassage);
-      await database.watchStudyNotes().firstWhere(
-        (notes) =>
-            notesService.passagesFor(notes.single).contains(otherPassage),
-      );
-    });
-    await tester.pumpAndSettle();
-    expect(find.text('John 3:16-16'), findsOneWidget);
-    await tester.tap(find.text('Concept Map'));
-    await tester.pumpAndSettle();
-    expect(find.text('John 3:16-16'), findsOneWidget);
-    expect(find.byTooltip('Show passage'), findsNothing);
-    expect(find.byIcon(Icons.visibility), findsNothing);
-    expect(find.text('Passage text'), findsNothing);
-    await tester.tap(find.byTooltip('Edit'));
-    await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<IconButton>(
-            find.byWidgetPredicate(
-              (widget) =>
-                  widget is IconButton &&
-                  widget.tooltip == 'Select a passage card',
-            ),
-          )
-          .onPressed,
-      isNull,
-    );
-    await tester.tap(find.text('John 3:16-16'));
-    await tester.pumpAndSettle();
-    expect(find.byTooltip('Show passage'), findsOneWidget);
-    await tester.tap(find.byTooltip('Show passage'));
-    await tester.pumpAndSettle();
-    expect(find.text('Passage text'), findsOneWidget);
-    expect(
-      tester
-          .widget<ConceptMapEditor>(find.byType(ConceptMapEditor))
-          .document
-          .nodes
-          .map((node) => node.showPassage),
-      [false, true],
-    );
-    await tester.tap(find.text('Jas 1:9-11'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Show passage'));
-    await tester.pumpAndSettle();
-    expect(find.text('Passage text'), findsNWidgets(2));
-    await tester.tap(find.text('John 3:16-16'));
-    await tester.pumpAndSettle();
-    expect(find.byTooltip('Add box'), findsOneWidget);
-    expect(find.byTooltip('Save'), findsOneWidget);
-    await tester.tap(find.byTooltip('Hide passage'));
-    await tester.pumpAndSettle();
-    expect(find.text('Passage text'), findsOneWidget);
-    await tester.tap(find.text('Notes'));
-    await tester.pumpAndSettle();
-    await tester.runAsync(() async {
-      await notesService.addPassage(note.id, otherPassage);
-      final updated = (await notesService.getNote(note.id))!;
-      expect(notesService.passagesFor(updated), [passage, otherPassage]);
+  testWidgets(
+    'add passage records a daily note session and keeps the edit FAB',
+    (tester) async {
+      late StudyNote note;
+      await tester.runAsync(() async {
+        note = await notesService.createNote(title: 'Wisdom', passage: passage);
+      });
+      await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+      await tester.pumpAndSettle();
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.byTooltip('Edit'), findsOneWidget);
+      // Exercise the passage-selector return contract independently of its
+      // range-selection controls, which have their own regression tests.
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Add passage'));
+        Navigator.of(
+          tester.element(find.byType(StudyNotesDetailPage)),
+        ).pop(otherPassage);
+        await database.watchStudyNotes().firstWhere(
+          (notes) =>
+              notesService.passagesFor(notes.single).contains(otherPassage),
+        );
+      });
+      await tester.pumpAndSettle();
+      expect(find.text('John 3:16-16'), findsOneWidget);
+      await tester.tap(find.text('Concept Map'));
+      await tester.pumpAndSettle();
+      expect(find.text('John 3:16-16'), findsOneWidget);
+      expect(find.byTooltip('Show passage'), findsNothing);
+      expect(find.byIcon(Icons.visibility), findsNothing);
+      expect(find.text('Passage text'), findsNothing);
+      await tester.tap(find.byTooltip('Edit'));
+      await tester.pumpAndSettle();
       expect(
-        ConceptMapDocument.fromMermaid(updated.conceptMap!).nodes,
-        hasLength(2),
+        tester
+            .widget<IconButton>(
+              find.byWidgetPredicate(
+                (widget) =>
+                    widget is IconButton &&
+                    widget.tooltip == 'Select a passage card',
+              ),
+            )
+            .onPressed,
+        isNull,
       );
-      expect(await database.getAllResults(), isEmpty);
-    });
-    expect(find.text('Add passage'), findsOneWidget);
-    expect(find.byTooltip('Save'), findsOneWidget);
-    await tester.enterText(find.byType(TextField), 'Keep learning');
-    await tester.runAsync(() async {
-      final saved = Completer<void>();
-      var writes = 0;
-      notesService.onLocalChange = () async {
-        if (++writes == 2) saved.complete();
-      };
-      await tester.tap(find.byTooltip('Save'));
-      await saved.future;
-      note = (await notesService.getNote(note.id))!;
-      expect(note.notes, 'Keep learning');
+      await tester.tap(find.text('John 3:16-16'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Show passage'), findsOneWidget);
+      await tester.tap(find.byTooltip('Show passage'));
+      await tester.pumpAndSettle();
+      expect(find.text('Passage text'), findsOneWidget);
       expect(
-        ConceptMapDocument.fromMermaid(
-          note.conceptMap!,
-        ).nodes.map((node) => node.showPassage),
-        [true, false],
+        tester
+            .widget<ConceptMapEditor>(find.byType(ConceptMapEditor))
+            .document
+            .nodes
+            .map((node) => node.showPassage),
+        [false, true],
       );
-    });
-    await tester.pumpAndSettle();
-    expect(find.text('Keep learning'), findsOneWidget);
-    expect(find.byTooltip('Edit'), findsOneWidget);
-    expect(find.text('Concept Map'), findsOneWidget);
-    await tester.pumpWidget(
-      host(StudyNotesDetailPage(key: const ValueKey('reopened'), note: note)),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Concept Map'));
-    await tester.pumpAndSettle();
-    expect(find.text('Passage text'), findsOneWidget);
-    expect(find.byTooltip('Show passage'), findsNothing);
-    expect(find.byTooltip('Hide passage'), findsNothing);
-    expect(find.byTooltip('Edit'), findsOneWidget);
-  });
+      await tester.tap(find.text('Jas 1:9-11'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Show passage'));
+      await tester.pumpAndSettle();
+      expect(find.text('Passage text'), findsNWidgets(2));
+      await tester.tap(find.text('John 3:16-16'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Add box'), findsOneWidget);
+      expect(find.byTooltip('Save'), findsOneWidget);
+      await tester.tap(find.byTooltip('Hide passage'));
+      await tester.pumpAndSettle();
+      expect(find.text('Passage text'), findsOneWidget);
+      await tester.tap(find.text('Notes'));
+      await tester.pumpAndSettle();
+      await tester.runAsync(() async {
+        await notesService.addPassage(note.id, otherPassage);
+        final updated = (await notesService.getNote(note.id))!;
+        expect(notesService.passagesFor(updated), [passage, otherPassage]);
+        expect(
+          ConceptMapDocument.fromMermaid(updated.conceptMap!).nodes,
+          hasLength(2),
+        );
+        final session = (await database.getAllResults()).single;
+        expect(session.studyNoteId, note.clientId);
+        expect(session.bookId, isNull);
+      });
+      expect(find.text('Add passage'), findsOneWidget);
+      expect(find.byTooltip('Save'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'Keep learning');
+      await tester.runAsync(() async {
+        final saved = Completer<void>();
+        var writes = 0;
+        notesService.onLocalChange = () async {
+          if (++writes == 2) saved.complete();
+        };
+        await tester.tap(find.byTooltip('Save'));
+        await saved.future;
+        note = (await notesService.getNote(note.id))!;
+        expect(note.notes, 'Keep learning');
+        expect(
+          ConceptMapDocument.fromMermaid(
+            note.conceptMap!,
+          ).nodes.map((node) => node.showPassage),
+          [true, false],
+        );
+      });
+      await tester.pumpAndSettle();
+      expect(find.text('Keep learning'), findsOneWidget);
+      expect(find.byTooltip('Edit'), findsOneWidget);
+      expect(find.text('Concept Map'), findsOneWidget);
+      await tester.pumpWidget(
+        host(StudyNotesDetailPage(key: const ValueKey('reopened'), note: note)),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Concept Map'));
+      await tester.pumpAndSettle();
+      expect(find.text('Passage text'), findsOneWidget);
+      expect(find.byTooltip('Show passage'), findsNothing);
+      expect(find.byTooltip('Hide passage'), findsNothing);
+      expect(find.byTooltip('Edit'), findsOneWidget);
+    },
+  );
 
   testWidgets('adding a passage preserves unsaved map nodes and connections', (
     tester,
@@ -1096,7 +1179,10 @@ flowchart TD
       expect(saved.nodes.map((node) => node.id), ['node1', 'node3', 'node4']);
       expect(saved.nodes[1].label, 'Unsaved insight\nSecond line');
       expect(saved.edges.single.to, 'node3');
-      expect(await database.getAllResults(), isEmpty);
+      expect(
+        (await database.getAllResults()).single.studyNoteId,
+        note.clientId,
+      );
     });
   });
 }

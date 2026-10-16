@@ -3,7 +3,7 @@ import 'package:daily_manna/services/sync_service.dart';
 import 'package:daily_manna/services/study_notes_service.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
-import 'package:drift/drift.dart' hide isNotNull;
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -42,9 +42,9 @@ void main() {
       ResultsCompanion.insert(
         timestamp: DateTime(2026),
         type: ResultType.study,
-        bookId: 'Gen',
-        startChapter: 1,
-        startVerse: 1,
+        bookId: const Value('Gen'),
+        startChapter: const Value(1),
+        startVerse: const Value(1),
         score: 1,
       ),
     );
@@ -61,9 +61,9 @@ void main() {
       ResultsCompanion.insert(
         timestamp: DateTime.utc(2026),
         type: ResultType.study,
-        bookId: 'Gen',
-        startChapter: 1,
-        startVerse: 1,
+        bookId: const Value('Gen'),
+        startChapter: const Value(1),
+        startVerse: const Value(1),
         score: 1,
       ),
     );
@@ -153,6 +153,8 @@ void main() {
             startVerse: 1,
           ),
         );
+        // Offline edits on both devices must converge to one session for the day.
+        await otherDevice.recordStudyNoteSession(note.clientId);
         await otherDevice.acknowledgeChanges(
           (await otherDevice.pendingChanges()).map((change) => change.id),
         );
@@ -171,6 +173,16 @@ void main() {
         expect(remoteNote.id, isNot(note.id));
         expect(remoteNote.clientId, note.clientId);
         expect(remoteNote.archived, archived);
+        expect(linked.bookId, isNull);
+        expect(linked.startChapter, isNull);
+        expect(linked.startVerse, isNull);
+        await StudyNotesService(
+          otherDevice,
+        ).updateNotes(remoteNote.id, 'More study');
+        expect(
+          (await otherDevice.getAllResults()).single.clientId,
+          linked.clientId,
+        );
       },
     );
   }
@@ -180,9 +192,9 @@ void main() {
       ResultsCompanion.insert(
         timestamp: DateTime.utc(2026),
         type: ResultType.study,
-        bookId: 'Jas',
-        startChapter: 1,
-        startVerse: 9,
+        bookId: const Value('Jas'),
+        startChapter: const Value(1),
+        startVerse: const Value(9),
         score: 1,
         notes: const Value('copy to outline'),
         clientId: const Value('legacy-1087'),

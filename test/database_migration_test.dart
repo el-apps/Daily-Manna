@@ -47,7 +47,7 @@ void main() {
     await directory.delete(recursive: true);
   });
 
-  for (final version in [6, 7]) {
+  for (final version in [6, 7, 8]) {
     test(
       'v$version migration preserves workspaces and defaults notes to active',
       () async {
@@ -79,9 +79,20 @@ void main() {
       INSERT INTO study_notes (
         title, notes, concept_map, passages, created_at, updated_at, client_id
       ) VALUES ('Wisdom', 'Workspace text', 'flowchart TD', '[]', 1704067200, 1704067200, 'note-1');
+      CREATE TABLE sync_outbox (
+        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        entity_type TEXT NOT NULL, entity_id TEXT NOT NULL,
+        operation TEXT NOT NULL, created_at INTEGER NOT NULL,
+        UNIQUE(entity_type, entity_id)
+      );
     ''');
-        if (version == 7) {
+        if (version >= 7) {
           old.execute('ALTER TABLE results ADD COLUMN study_note_id TEXT');
+        }
+        if (version >= 8) {
+          old.execute(
+            'ALTER TABLE study_notes ADD COLUMN archived INTEGER NOT NULL DEFAULT 0',
+          );
         }
         old.execute('PRAGMA user_version = $version');
         old.dispose();
@@ -97,6 +108,11 @@ void main() {
         expect(note.conceptMap, 'flowchart TD');
         expect(note.clientId, 'note-1');
         expect(note.archived, isFalse);
+        await database.recordStudyNoteSession(note.clientId);
+        final sessions = await database.getAllResults();
+        expect(sessions, hasLength(2));
+        expect(sessions.first.bookId, isNull);
+        expect(sessions.first.studyNoteId, note.clientId);
       },
     );
   }

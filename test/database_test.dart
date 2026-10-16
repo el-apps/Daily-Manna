@@ -15,13 +15,41 @@ void main() {
   });
 
   group('Results table', () {
+    test('only study sessions linked to a note can omit a passage', () async {
+      for (final type in ResultType.values) {
+        await expectLater(
+          database.insertResult(
+            ResultsCompanion.insert(
+              timestamp: DateTime.now(),
+              type: type,
+              score: 1,
+            ),
+          ),
+          throwsA(isA<Exception>()),
+        );
+      }
+      await expectLater(
+        database.insertResult(
+          ResultsCompanion.insert(
+            timestamp: DateTime.now(),
+            type: ResultType.memorization,
+            score: 1,
+            studyNoteId: const Value('note'),
+          ),
+        ),
+        throwsA(isA<Exception>()),
+      );
+      await database.recordStudyNoteSession('note');
+      expect((await database.getAllResults()).single.studyNoteId, 'note');
+    });
+
     test('inserts and retrieves a memorization result', () async {
       final result = ResultsCompanion.insert(
         timestamp: DateTime(2024, 1, 15, 10, 30),
         type: ResultType.memorization,
-        bookId: 'Gen',
-        startChapter: 1,
-        startVerse: 1,
+        bookId: const Value('Gen'),
+        startChapter: const Value(1),
+        startVerse: const Value(1),
         score: 0.95,
         attempts: const Value(1),
       );
@@ -40,9 +68,9 @@ void main() {
       final result = ResultsCompanion.insert(
         timestamp: DateTime(2024, 1, 15, 10, 30),
         type: ResultType.recitation,
-        bookId: 'Psa',
-        startChapter: 23,
-        startVerse: 1,
+        bookId: const Value('Psa'),
+        startChapter: const Value(23),
+        startVerse: const Value(1),
         endChapter: const Value(23),
         endVerse: const Value(6),
         score: 0.85,
@@ -64,9 +92,9 @@ void main() {
         ResultsCompanion.insert(
           timestamp: DateTime(2024, 1, 15),
           type: ResultType.memorization,
-          bookId: 'Gen',
-          startChapter: 1,
-          startVerse: 1,
+          bookId: const Value('Gen'),
+          startChapter: const Value(1),
+          startVerse: const Value(1),
           score: 0.9,
         ),
       );
@@ -74,9 +102,9 @@ void main() {
         ResultsCompanion.insert(
           timestamp: DateTime(2024, 1, 16),
           type: ResultType.memorization,
-          bookId: 'Gen',
-          startChapter: 1,
-          startVerse: 2,
+          bookId: const Value('Gen'),
+          startChapter: const Value(1),
+          startVerse: const Value(2),
           score: 0.8,
         ),
       );
@@ -84,9 +112,9 @@ void main() {
         ResultsCompanion.insert(
           timestamp: DateTime(2024, 1, 17),
           type: ResultType.memorization,
-          bookId: 'Gen',
-          startChapter: 1,
-          startVerse: 1,
+          bookId: const Value('Gen'),
+          startChapter: const Value(1),
+          startVerse: const Value(1),
           score: 0.95,
         ),
       );
@@ -101,9 +129,9 @@ void main() {
         ResultsCompanion.insert(
           timestamp: DateTime(2024, 1, 15),
           type: ResultType.memorization,
-          bookId: 'Gen',
-          startChapter: 1,
-          startVerse: 1,
+          bookId: const Value('Gen'),
+          startChapter: const Value(1),
+          startVerse: const Value(1),
           score: 0.9,
         ),
       );
@@ -111,9 +139,9 @@ void main() {
         ResultsCompanion.insert(
           timestamp: DateTime(2024, 1, 17),
           type: ResultType.memorization,
-          bookId: 'Gen',
-          startChapter: 1,
-          startVerse: 2,
+          bookId: const Value('Gen'),
+          startChapter: const Value(1),
+          startVerse: const Value(2),
           score: 0.8,
         ),
       );
@@ -121,9 +149,9 @@ void main() {
         ResultsCompanion.insert(
           timestamp: DateTime(2024, 1, 16),
           type: ResultType.memorization,
-          bookId: 'Gen',
-          startChapter: 1,
-          startVerse: 3,
+          bookId: const Value('Gen'),
+          startChapter: const Value(1),
+          startVerse: const Value(3),
           score: 0.7,
         ),
       );
@@ -140,9 +168,9 @@ void main() {
         ResultsCompanion.insert(
           timestamp: DateTime(2024, 1, 15),
           type: ResultType.memorization,
-          bookId: 'Gen',
-          startChapter: 1,
-          startVerse: 1,
+          bookId: const Value('Gen'),
+          startChapter: const Value(1),
+          startVerse: const Value(1),
           score: 0.9,
         ),
       );
@@ -150,9 +178,9 @@ void main() {
         ResultsCompanion.insert(
           timestamp: DateTime(2024, 1, 16),
           type: ResultType.memorization,
-          bookId: 'Gen',
-          startChapter: 1,
-          startVerse: 1,
+          bookId: const Value('Gen'),
+          startChapter: const Value(1),
+          startVerse: const Value(1),
           score: 0.95,
         ),
       );
@@ -161,9 +189,9 @@ void main() {
         ResultsCompanion.insert(
           timestamp: DateTime(2024, 1, 17),
           type: ResultType.memorization,
-          bookId: 'Psa',
-          startChapter: 23,
-          startVerse: 1,
+          bookId: const Value('Psa'),
+          startChapter: const Value(23),
+          startVerse: const Value(1),
           score: 0.8,
         ),
       );

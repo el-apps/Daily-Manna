@@ -49,7 +49,8 @@ class ResultCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              ScoreEmoji(score: score, fontSize: 20),
+              if (result.type != ResultType.study)
+                ScoreEmoji(score: score, fontSize: 20),
               if (onInteract != null) ...[
                 const SizedBox(height: 8),
                 OutlinedButton(

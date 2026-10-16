@@ -18,9 +18,7 @@ class DatabaseExportService {
     );
     final payload = jsonEncode({
       'exportedAt': DateTime.now().toIso8601String(),
-      'tables': {
-        'results': results.map(_resultToJson).toList(),
-      },
+      'tables': {'results': results.map(_resultToJson).toList()},
     });
 
     return DatabaseExportFile(
@@ -45,5 +43,6 @@ class DatabaseExportService {
     'score': result.score,
     'attempts': result.attempts,
     'notes': result.notes,
+    'studyNoteId': result.studyNoteId,
   };
 }

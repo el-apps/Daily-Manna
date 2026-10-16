@@ -1,5 +1,4 @@
 import 'package:daily_manna/models/scripture_range_ref.dart';
-import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
 import 'package:daily_manna/services/results_service.dart';
@@ -39,12 +38,14 @@ class _StudyResultDetailPageState extends State<StudyResultDetailPage> {
   @override
   Widget build(BuildContext context) {
     final bibleService = context.read<BibleService>();
-    final ref = ScriptureRangeRef(
-      bookId: widget.result.bookId,
-      chapter: widget.result.startChapter,
-      startVerse: widget.result.startVerse,
-      endVerse: widget.result.endVerse,
-    );
+    final ref = widget.result.bookId == null
+        ? null
+        : ScriptureRangeRef(
+            bookId: widget.result.bookId!,
+            chapter: widget.result.startChapter!,
+            startVerse: widget.result.startVerse!,
+            endVerse: widget.result.endVerse,
+          );
     final hasNotes = _notes?.isNotEmpty == true;
     return AppScaffold(
       title: 'Study Session',
@@ -55,10 +56,11 @@ class _StudyResultDetailPageState extends State<StudyResultDetailPage> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Text(
-                  bibleService.getRangeRefName(ref),
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
+                if (ref != null)
+                  Text(
+                    bibleService.getRangeRefName(ref),
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
                 const SizedBox(height: 8),
                 Text(
                   DateFormat.yMMMd().add_jm().format(widget.result.timestamp),
@@ -112,19 +114,14 @@ class _StudyResultDetailPageState extends State<StudyResultDetailPage> {
                     ),
                     const SizedBox(width: 16),
                   ],
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () => showInteractionSheet(
-                        context,
-                        ScriptureRef(
-                          bookId: widget.result.bookId,
-                          chapterNumber: widget.result.startChapter,
-                          verseNumber: widget.result.startVerse,
-                        ),
+                  if (ref != null)
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () =>
+                            showPassageInteractionSheet(context, ref),
+                        child: const Text('Interact'),
                       ),
-                      child: const Text('Interact'),
                     ),
-                  ),
                 ],
               ),
             ),

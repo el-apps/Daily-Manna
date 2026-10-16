@@ -13,9 +13,9 @@ class Results extends Table {
   IntColumn get id => integer().autoIncrement()();
   DateTimeColumn get timestamp => dateTime()();
   IntColumn get type => intEnum<ResultType>()();
-  TextColumn get bookId => text()();
-  IntColumn get startChapter => integer()();
-  IntColumn get startVerse => integer()();
+  TextColumn get bookId => text().nullable()();
+  IntColumn get startChapter => integer().nullable()();
+  IntColumn get startVerse => integer().nullable()();
   IntColumn get endChapter => integer().nullable()();
   IntColumn get endVerse => integer().nullable()();
   RealColumn get score => real()();
@@ -25,6 +25,15 @@ class Results extends Table {
   TextColumn get studyNoteId => text().nullable()();
   TextColumn get clientId => text().unique().clientDefault(newClientId)();
   DateTimeColumn get updatedAt => dateTime().clientDefault(DateTime.now)();
+
+  @override
+  // ResultType.study is stored as 2; other activities always need a passage.
+  List<String> get customConstraints => const [
+    'CHECK ((book_id IS NOT NULL AND start_chapter IS NOT NULL AND '
+        'start_verse IS NOT NULL) OR (type = 2 AND '
+        'study_note_id IS NOT NULL AND book_id IS NULL AND '
+        'start_chapter IS NULL AND start_verse IS NULL))',
+  ];
 }
 
 class StudyNotes extends Table {
@@ -68,7 +77,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -133,6 +142,9 @@ class AppDatabase extends _$AppDatabase {
         if (!columns.any((row) => row.data['name'] == 'archived')) {
           await m.addColumn(studyNotes, studyNotes.archived);
         }
+      }
+      if (from < 9) {
+        await m.alterTable(TableMigration(results));
       }
     },
   );
@@ -219,8 +231,48 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
       await _enqueueStudyNote(row.clientId, now);
+      final contentChanged =
+          (notes.present && notes.value != row.notes) ||
+          (conceptMap != null && conceptMap != row.conceptMap) ||
+          (passages != null && passages != row.passages);
+      if (contentChanged) {
+        await recordStudyNoteSession(row.clientId, timestamp: now);
+      }
     });
   }
+
+  /// Local calendar days define study sessions, not rolling 24-hour windows.
+  /// A deterministic sync identity also coalesces offline edits on two devices.
+  Future<void> recordStudyNoteSession(String noteId, {DateTime? timestamp}) =>
+      transaction(() async {
+        final now = (timestamp ?? DateTime.now()).toLocal();
+        final start = DateTime(now.year, now.month, now.day);
+        final end = DateTime(now.year, now.month, now.day + 1);
+        final day =
+            '${now.year}-${now.month.toString().padLeft(2, '0')}-'
+            '${now.day.toString().padLeft(2, '0')}';
+        final clientId = 'study-$noteId-$day';
+        final existing =
+            await (select(results)..where(
+                  (r) =>
+                      r.type.equals(ResultType.study.index) &
+                      r.studyNoteId.equals(noteId) &
+                      (r.clientId.equals(clientId) |
+                          (r.timestamp.isBiggerOrEqualValue(start) &
+                              r.timestamp.isSmallerThanValue(end))),
+                ))
+                .get();
+        if (existing.isNotEmpty) return;
+        await insertResult(
+          ResultsCompanion.insert(
+            timestamp: now,
+            type: ResultType.study,
+            studyNoteId: Value(noteId),
+            clientId: Value(clientId),
+            score: 1,
+          ),
+        );
+      });
 
   Future<StudyNote?> studyNoteById(int id) => (select(
     studyNotes,
@@ -361,7 +413,12 @@ class AppDatabase extends _$AppDatabase {
   Future<List<({String bookId, int chapter, int verse})>>
   getUniqueVersesInteracted() async {
     final query = selectOnly(results, distinct: true)
-      ..addColumns([results.bookId, results.startChapter, results.startVerse]);
+      ..addColumns([results.bookId, results.startChapter, results.startVerse])
+      ..where(
+        results.bookId.isNotNull() &
+            results.startChapter.isNotNull() &
+            results.startVerse.isNotNull(),
+      );
     final rows = await query.get();
     return rows
         .map(
