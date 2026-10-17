@@ -47,7 +47,7 @@ void main() {
     await directory.delete(recursive: true);
   });
 
-  for (final version in [6, 7, 8]) {
+  for (final version in [6, 7, 8, 9]) {
     test(
       'v$version migration preserves workspaces and defaults notes to active',
       () async {
@@ -61,8 +61,8 @@ void main() {
       CREATE TABLE results (
         id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         timestamp INTEGER NOT NULL, type INTEGER NOT NULL,
-        book_id TEXT NOT NULL, start_chapter INTEGER NOT NULL,
-        start_verse INTEGER NOT NULL, end_chapter INTEGER, end_verse INTEGER,
+        book_id TEXT${version >= 9 ? '' : ' NOT NULL'}, start_chapter INTEGER${version >= 9 ? '' : ' NOT NULL'},
+        start_verse INTEGER${version >= 9 ? '' : ' NOT NULL'}, end_chapter INTEGER, end_verse INTEGER,
         score REAL NOT NULL, attempts INTEGER, notes TEXT,
         client_id TEXT NOT NULL UNIQUE, updated_at INTEGER NOT NULL
       );
@@ -94,11 +94,20 @@ void main() {
             'ALTER TABLE study_notes ADD COLUMN archived INTEGER NOT NULL DEFAULT 0',
           );
         }
+        if (version == 9) {
+          old.execute('''
+            INSERT INTO results (
+              timestamp, type, score, study_note_id, client_id, updated_at
+            ) VALUES (1704067200, 2, 1.0, 'note-1', 'legacy-note-session', 1704067200)
+          ''');
+        }
         old.execute('PRAGMA user_version = $version');
         old.dispose();
         final database = AppDatabase.forTesting(NativeDatabase(file));
         addTearDown(database.close);
-        final result = (await database.getAllResults()).single;
+        final result = (await database.getAllResults()).singleWhere(
+          (r) => r.clientId == 'session-1',
+        );
         expect(result.studyNoteId, isNull);
         expect(result.notes, 'Session text');
         expect(result.clientId, 'session-1');
@@ -108,9 +117,24 @@ void main() {
         expect(note.conceptMap, 'flowchart TD');
         expect(note.clientId, 'note-1');
         expect(note.archived, isFalse);
+        if (version == 9) {
+          final pending = await database.pendingChanges();
+          expect(pending.map((c) => '${c.entityType}:${c.operation}').toSet(), {
+            'result:delete',
+            'study_session:upsert',
+          });
+          expect(
+            pending.every((c) => c.entityId == 'legacy-note-session'),
+            isTrue,
+          );
+          expect(
+            await database.hasPendingChange('legacy-note-session'),
+            isTrue,
+          );
+        }
         await database.recordStudyNoteSession(note.clientId);
         final sessions = await database.getAllResults();
-        expect(sessions, hasLength(2));
+        expect(sessions, hasLength(version == 9 ? 3 : 2));
         expect(sessions.first.bookId, isNull);
         expect(sessions.first.studyNoteId, note.clientId);
       },

@@ -77,7 +77,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -146,6 +146,7 @@ class AppDatabase extends _$AppDatabase {
       if (from < 9) {
         await m.alterTable(TableMigration(results));
       }
+      if (from < 10) await requeueLegacyStudySessions();
     },
   );
 
@@ -170,7 +171,12 @@ class AppDatabase extends _$AppDatabase {
           updatedAt: result.updatedAt.present ? result.updatedAt : Value(now),
         ),
       );
-      await _enqueueResult(clientId, 'upsert', now);
+      await _enqueueResult(
+        clientId,
+        'upsert',
+        now,
+        entityType: result.bookId.value == null ? 'study_session' : 'result',
+      );
       return id;
     });
     return id;
@@ -186,7 +192,12 @@ class AppDatabase extends _$AppDatabase {
       await (update(results)..where((r) => r.id.equals(id))).write(
         ResultsCompanion(notes: Value(notes), updatedAt: Value(now)),
       );
-      await _enqueueResult(row.clientId, 'upsert', now);
+      await _enqueueResult(
+        row.clientId,
+        'upsert',
+        now,
+        entityType: row.bookId == null ? 'study_session' : 'result',
+      );
     });
   }
 
@@ -320,16 +331,36 @@ class AppDatabase extends _$AppDatabase {
   Future<void> _enqueueResult(
     String clientId,
     String operation,
-    DateTime now,
-  ) => into(syncOutbox).insert(
+    DateTime now, {
+    String entityType = 'result',
+  }) => into(syncOutbox).insert(
     SyncOutboxCompanion.insert(
-      entityType: 'result',
+      entityType: entityType,
       entityId: clientId,
       operation: operation,
       createdAt: now,
     ),
     mode: InsertMode.insertOrReplace,
   );
+
+  /// Earlier previews sent passage-free sessions as ordinary results. Replace
+  /// that wire identity with a tombstone so pre-study-note clients can sync.
+  Future<void> requeueLegacyStudySessions({String? clientId}) =>
+      transaction(() async {
+        final query = select(results)..where((r) => r.bookId.isNull());
+        if (clientId != null) query.where((r) => r.clientId.equals(clientId));
+        final rows = await query.get();
+        final now = DateTime.now().toUtc();
+        for (final row in rows) {
+          await _enqueueResult(row.clientId, 'delete', now);
+          await _enqueueResult(
+            row.clientId,
+            'upsert',
+            now,
+            entityType: 'study_session',
+          );
+        }
+      });
 
   Future<List<SyncOutboxData>> pendingChanges() => select(syncOutbox).get();
 
@@ -343,9 +374,10 @@ class AppDatabase extends _$AppDatabase {
   )..where((row) => row.clientId.equals(clientId))).getSingleOrNull();
 
   Future<bool> hasPendingChange(String clientId) async =>
-      await (select(
-        syncOutbox,
-      )..where((row) => row.entityId.equals(clientId))).getSingleOrNull() !=
+      await (select(syncOutbox)
+            ..where((row) => row.entityId.equals(clientId))
+            ..limit(1))
+          .getSingleOrNull() !=
       null;
 
   /// Applies a server value without feeding it back into the outbox.

@@ -133,7 +133,7 @@ void main() {
         await SyncService(database, transport: push).sync();
         final outgoing = push.calls[1];
         final resultChange = outgoing.singleWhere(
-          (change) => change['type'] == 'result',
+          (change) => change['type'] == 'study_session',
         );
         final noteChange = outgoing.singleWhere(
           (change) => change['type'] == 'study_note',
@@ -186,6 +186,52 @@ void main() {
       },
     );
   }
+
+  test(
+    'sync retires legacy passage-free results without deleting their note sessions',
+    () async {
+      final legacy = _remoteChange('legacy-note-session');
+      final data = legacy['data'] as Map;
+      data['resultType'] = 'study';
+      data['studyNoteId'] = 'note-1';
+      data['bookId'] = null;
+      data['startChapter'] = null;
+      data['startVerse'] = null;
+      final replacement = {...legacy, 'type': 'study_session'};
+      final tombstone = <String, dynamic>{
+        'type': 'result',
+        'id': legacy['id'],
+        'deleted': true,
+      };
+      final ordinary = _remoteChange('ordinary-result');
+      final transport = FakeSyncTransport()
+        ..responses.addAll([
+          SyncResponse(cursor: 1, changes: [legacy]),
+          SyncResponse(cursor: 3, changes: [tombstone, replacement]),
+          // Test the reverse echo order too: a legacy tombstone cannot erase its replacement.
+          SyncResponse(cursor: 4, changes: [replacement, tombstone, ordinary]),
+        ]);
+      await SyncService(database, transport: transport).sync();
+      final outgoing = transport.calls[1];
+      expect(outgoing, hasLength(2));
+      expect(outgoing.singleWhere((c) => c['deleted'] == true), tombstone);
+      expect(
+        outgoing.singleWhere((c) => c['type'] == 'study_session')['data'],
+        data,
+      );
+      expect(
+        (await database.resultByClientId('legacy-note-session'))!.studyNoteId,
+        'note-1',
+      );
+      expect(
+        (await database.resultByClientId('ordinary-result'))!.bookId,
+        'Psa',
+      );
+      expect(await database.getAllResults(), hasLength(2));
+      expect(await database.pendingChanges(), isEmpty);
+      expect(await database.getSyncCursor(), '4');
+    },
+  );
 
   test('sync can merge the server echo of a pushed local result', () async {
     await database.insertResult(

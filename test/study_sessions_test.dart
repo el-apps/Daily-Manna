@@ -133,7 +133,7 @@ void main() {
       );
       expect(
         (await database.pendingChanges()).where(
-          (c) => c.entityType == 'result',
+          (c) => c.entityType == 'result' || c.entityType == 'study_session',
         ),
         hasLength(4),
       );
@@ -828,8 +828,9 @@ flowchart TD
         await tester.pumpAndSettle();
         await tester.tap(find.byTooltip('Edit'));
         await tester.pumpAndSettle();
-        if (editText)
+        if (editText) {
           await tester.enterText(find.byType(TextField), 'Local text edit');
+        }
         late StudyNote remote;
         await tester.runAsync(() async {
           remote = note.copyWith(

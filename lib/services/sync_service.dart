@@ -173,7 +173,14 @@ class SyncService {
       final outbox = await _db.pendingChanges();
       final outgoing = <Map<String, dynamic>>[];
       for (final change in outbox) {
-        if (change.entityType == 'result') {
+        if (change.operation == 'delete') {
+          outgoing.add({
+            'type': change.entityType,
+            'id': change.entityId,
+            'deleted': true,
+          });
+        } else if (change.entityType == 'result' ||
+            change.entityType == 'study_session') {
           final result = await _db.resultByClientId(change.entityId);
           if (result != null) outgoing.add(_encodeResult(result));
         } else if (change.entityType == 'study_note') {
@@ -217,12 +224,20 @@ class SyncService {
       final id = change['id'] as String;
       if (await _db.hasPendingChange(id)) continue;
       if (change['deleted'] == true) {
-        if (change['type'] == 'result') {
+        if (change['type'] == 'study_session') {
           await _db.deleteRemoteResult(id);
+        } else if (change['type'] == 'result') {
+          final local = await _db.resultByClientId(id);
+          // Retiring the old wire identity must not delete the note session.
+          if (local?.bookId != null) await _db.deleteRemoteResult(id);
         }
       } else {
-        if (change['type'] == 'result') {
+        if (change['type'] == 'result' || change['type'] == 'study_session') {
           await _db.mergeRemoteResult(_decodeResult(id, change['data'] as Map));
+          if (change['type'] == 'result' &&
+              (change['data'] as Map)['bookId'] == null) {
+            await _db.requeueLegacyStudySessions(clientId: id);
+          }
         } else if (change['type'] == 'study_note') {
           await _db.mergeRemoteStudyNote(
             _decodeStudyNote(id, change['data'] as Map),
@@ -234,7 +249,7 @@ class SyncService {
   });
 
   Map<String, dynamic> _encodeResult(Result result) => {
-    'type': 'result',
+    'type': result.bookId == null ? 'study_session' : 'result',
     'id': result.clientId,
     'data': {
       'timestamp': result.timestamp.toUtc().toIso8601String(),
