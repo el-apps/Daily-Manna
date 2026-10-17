@@ -208,38 +208,39 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  Future<void> updateStudyNote(
+  Future<bool> updateStudyNote(
     int id, {
     Value<String?> notes = const Value.absent(),
     String? conceptMap,
     String? passages,
     bool? archived,
-  }) async {
-    await transaction(() async {
-      final row = await studyNoteById(id);
-      if (row == null) return;
-      final now = DateTime.now().toUtc();
-      await (update(studyNotes)..where((note) => note.id.equals(id))).write(
-        StudyNotesCompanion(
-          notes: notes,
-          conceptMap: conceptMap == null
-              ? const Value.absent()
-              : Value(conceptMap),
-          passages: passages == null ? const Value.absent() : Value(passages),
-          archived: archived == null ? const Value.absent() : Value(archived),
-          updatedAt: Value(now),
-        ),
-      );
-      await _enqueueStudyNote(row.clientId, now);
-      final contentChanged =
-          (notes.present && notes.value != row.notes) ||
-          (conceptMap != null && conceptMap != row.conceptMap) ||
-          (passages != null && passages != row.passages);
-      if (contentChanged) {
-        await recordStudyNoteSession(row.clientId, timestamp: now);
-      }
-    });
-  }
+  }) => transaction(() async {
+    final row = await studyNoteById(id);
+    if (row == null) return false;
+    final contentChanged =
+        (notes.present && notes.value != row.notes) ||
+        (conceptMap != null && conceptMap != row.conceptMap) ||
+        (passages != null && passages != row.passages);
+    final archiveChanged = archived != null && archived != row.archived;
+    if (!contentChanged && !archiveChanged) return false;
+    final now = DateTime.now().toUtc();
+    await (update(studyNotes)..where((note) => note.id.equals(id))).write(
+      StudyNotesCompanion(
+        notes: notes,
+        conceptMap: conceptMap == null
+            ? const Value.absent()
+            : Value(conceptMap),
+        passages: passages == null ? const Value.absent() : Value(passages),
+        archived: archived == null ? const Value.absent() : Value(archived),
+        updatedAt: Value(now),
+      ),
+    );
+    await _enqueueStudyNote(row.clientId, now);
+    if (contentChanged) {
+      await recordStudyNoteSession(row.clientId, timestamp: now);
+    }
+    return true;
+  });
 
   /// Local calendar days define study sessions, not rolling 24-hour windows.
   /// A deterministic sync identity also coalesces offline edits on two devices.

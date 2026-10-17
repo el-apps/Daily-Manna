@@ -14,6 +14,7 @@ import 'package:daily_manna/ui/study/concept_map_editor.dart';
 import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
 import 'package:daily_manna/ui/study/study_result_detail_page.dart';
 import 'package:drift/native.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -807,6 +808,65 @@ flowchart TD
     await tester.pumpAndSettle();
   });
 
+  testWidgets(
+    'stale editors preserve synced fields and unchanged saves stay clean',
+    (tester) async {
+      late StudyNote note;
+      await tester.runAsync(() async {
+        note = await notesService.createNote(title: 'Wisdom');
+        await notesService.updateNotes(note.id, 'Original');
+        note = (await notesService.getNote(note.id))!;
+        await database.acknowledgeChanges(
+          (await database.pendingChanges()).map((c) => c.id),
+        );
+      });
+      const remoteMap = 'flowchart TD\n  remote[Remote insight]';
+      for (final editText in [false, true]) {
+        await tester.pumpWidget(
+          host(StudyNotesDetailPage(key: ValueKey(editText), note: note)),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Edit'));
+        await tester.pumpAndSettle();
+        if (editText)
+          await tester.enterText(find.byType(TextField), 'Local text edit');
+        late StudyNote remote;
+        await tester.runAsync(() async {
+          remote = note.copyWith(
+            notes: const Value('Remote text'),
+            conceptMap: const Value(remoteMap),
+            updatedAt: note.updatedAt.add(const Duration(minutes: 1)),
+          );
+          await database.mergeRemoteStudyNote(remote.toCompanion(false));
+          await tester.tap(find.byTooltip('Save'));
+        });
+        // Native SQLite runs outside the widget-test fake clock.
+        for (
+          var attempt = 0;
+          attempt < 50 && find.byTooltip('Save').evaluate().isNotEmpty;
+          attempt++
+        ) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 10)),
+          );
+          await tester.pump();
+        }
+        await tester.pumpAndSettle();
+        expect(find.byTooltip('Edit'), findsOneWidget);
+        await tester.runAsync(() async {
+          final saved = (await notesService.getNote(note.id))!;
+          expect(saved.notes, editText ? 'Local text edit' : 'Remote text');
+          expect(saved.conceptMap, remoteMap);
+          if (!editText) {
+            expect(saved.updatedAt, remote.updatedAt);
+            expect(await database.pendingChanges(), isEmpty);
+          }
+          expect(await database.getAllResults(), hasLength(1));
+        });
+      }
+    },
+  );
+
   testWidgets('linked sessions reopen current notes and can clear their text', (
     tester,
   ) async {
@@ -848,9 +908,8 @@ flowchart TD
     Future<void> save() async {
       await tester.runAsync(() async {
         final saved = Completer<void>();
-        var writes = 0;
         notesService.onLocalChange = () async {
-          if (++writes == 2) saved.complete();
+          saved.complete();
         };
         await tester.tap(find.byTooltip('Save'));
         await saved.future;
@@ -1089,9 +1148,8 @@ flowchart TD
       await tester.enterText(find.byType(TextField), 'Keep learning');
       await tester.runAsync(() async {
         final saved = Completer<void>();
-        var writes = 0;
         notesService.onLocalChange = () async {
-          if (++writes == 2) saved.complete();
+          saved.complete();
         };
         await tester.tap(find.byTooltip('Save'));
         await saved.future;

@@ -10,6 +10,7 @@ import 'package:daily_manna/ui/edit_toolbar.dart';
 import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:drift/drift.dart' show Value;
 
 /// Persistent workspace for a titled study note.
 class StudyNotesDetailPage extends StatefulWidget {
@@ -26,6 +27,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   late String? _notes;
   late final TextEditingController _notesController;
   late ConceptMapDocument _conceptMap;
+  late String _savedConceptMap;
   late final TabController _tabController;
   final _conceptMapKey = GlobalKey<ConceptMapEditorState>();
   bool _isEditing = false;
@@ -42,6 +44,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
     _passages = context.read<StudyNotesService>().passagesFor(widget.note);
     _notesController = TextEditingController(text: _notes);
     _conceptMap = ConceptMapDocument.fromMermaid(widget.note.conceptMap ?? '');
+    _savedConceptMap = _conceptMap.toMermaid();
     _tabController = TabController(length: 2, vsync: this)
       ..addListener(() {
         if (!_tabController.indexIsChanging && mounted) {
@@ -165,21 +168,34 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
       setState(() {
         _passages = service.passagesFor(note);
         _conceptMap = ConceptMapDocument.fromMermaid(note.conceptMap ?? '');
+        _savedConceptMap = _conceptMap.toMermaid();
       });
     }
   }
 
   Future<void> _save() async {
     final newNotes = _notesController.text;
+    final newMap = _conceptMap.toMermaid();
+    // Compare with the loaded editor baseline, not a newer row from sync.
+    final notes = newNotes == (_notes ?? '')
+        ? const Value<String?>.absent()
+        : Value<String?>(newNotes.isEmpty ? null : newNotes);
+    final conceptMap = newMap == _savedConceptMap ? null : newMap;
     final service = context.read<StudyNotesService>();
-    await service.updateNotes(
+    await service.saveNote(
       widget.note.id,
-      newNotes.isEmpty ? null : newNotes,
+      notes: notes,
+      conceptMap: conceptMap,
     );
-    await service.updateConceptMap(widget.note.id, _conceptMap.toMermaid());
-    if (mounted) {
+    final saved = await service.getNote(widget.note.id);
+    if (mounted && saved != null) {
       setState(() {
-        _notes = newNotes;
+        _notes = saved.notes;
+        _notesController.text = saved.notes ?? '';
+        _passages = service.passagesFor(saved);
+        _archived = saved.archived;
+        _conceptMap = ConceptMapDocument.fromMermaid(saved.conceptMap ?? '');
+        _savedConceptMap = _conceptMap.toMermaid();
         _isEditing = false;
       });
     }

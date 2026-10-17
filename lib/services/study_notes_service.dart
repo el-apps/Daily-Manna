@@ -52,14 +52,23 @@ class StudyNotesService {
     return (await _db.studyNoteById(id))!;
   }
 
-  Future<void> updateNotes(int id, String? notes) async {
-    await _db.updateStudyNote(id, notes: Value(notes));
-    await onLocalChange?.call();
-  }
+  Future<void> updateNotes(int id, String? notes) =>
+      saveNote(id, notes: Value(notes));
 
-  Future<void> updateConceptMap(int id, String conceptMap) async {
-    await _db.updateStudyNote(id, conceptMap: conceptMap);
-    await onLocalChange?.call();
+  Future<void> updateConceptMap(int id, String conceptMap) =>
+      saveNote(id, conceptMap: conceptMap);
+
+  Future<void> saveNote(
+    int id, {
+    Value<String?> notes = const Value.absent(),
+    String? conceptMap,
+  }) async {
+    final changed = await _db.updateStudyNote(
+      id,
+      notes: notes,
+      conceptMap: conceptMap,
+    );
+    if (changed) await onLocalChange?.call();
   }
 
   Future<void> addPassage(
