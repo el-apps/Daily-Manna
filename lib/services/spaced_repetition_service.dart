@@ -135,9 +135,10 @@ class SpacedRepetitionService {
 
   /// Expand a result's passage range into individual verse references.
   List<ScriptureRef> _expandRange(Result result) {
-    final endVerse = result.endVerse ?? result.startVerse;
+    if (result.bookId == null) return [];
+    final endVerse = result.endVerse ?? result.startVerse!;
     return [
-      for (int v = result.startVerse; v <= endVerse; v++)
+      for (int v = result.startVerse!; v <= endVerse; v++)
         ScriptureRef(
           bookId: result.bookId,
           chapterNumber: result.startChapter,

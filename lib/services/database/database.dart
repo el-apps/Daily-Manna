@@ -13,16 +13,39 @@ class Results extends Table {
   IntColumn get id => integer().autoIncrement()();
   DateTimeColumn get timestamp => dateTime()();
   IntColumn get type => intEnum<ResultType>()();
-  TextColumn get bookId => text()();
-  IntColumn get startChapter => integer()();
-  IntColumn get startVerse => integer()();
+  TextColumn get bookId => text().nullable()();
+  IntColumn get startChapter => integer().nullable()();
+  IntColumn get startVerse => integer().nullable()();
   IntColumn get endChapter => integer().nullable()();
   IntColumn get endVerse => integer().nullable()();
   RealColumn get score => real()();
   IntColumn get attempts => integer().nullable()();
   TextColumn get notes => text().nullable()();
+  // Stable sync identity, not the note's device-local integer key.
+  TextColumn get studyNoteId => text().nullable()();
   TextColumn get clientId => text().unique().clientDefault(newClientId)();
   DateTimeColumn get updatedAt => dateTime().clientDefault(DateTime.now)();
+
+  @override
+  // ResultType.study is stored as 2; other activities always need a passage.
+  List<String> get customConstraints => const [
+    'CHECK ((book_id IS NOT NULL AND start_chapter IS NOT NULL AND '
+        'start_verse IS NOT NULL) OR (type = 2 AND '
+        'study_note_id IS NOT NULL AND book_id IS NULL AND '
+        'start_chapter IS NULL AND start_verse IS NULL))',
+  ];
+}
+
+class StudyNotes extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get title => text()();
+  TextColumn get notes => text().nullable()();
+  TextColumn get conceptMap => text().nullable()();
+  BoolColumn get archived => boolean().withDefault(const Constant(false))();
+  TextColumn get passages => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  TextColumn get clientId => text().unique().clientDefault(newClientId)();
 }
 
 class SyncOutbox extends Table {
@@ -46,7 +69,7 @@ class SyncMetadata extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Results, SyncOutbox, SyncMetadata])
+@DriftDatabase(tables: [Results, StudyNotes, SyncOutbox, SyncMetadata])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -54,7 +77,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -95,6 +118,35 @@ class AppDatabase extends _$AppDatabase {
           FROM results
         ''');
       }
+      if (from < 5) {
+        await m.createTable(studyNotes);
+      }
+      if (from < 6) {
+        // Creating the table during a v2-v5 upgrade uses the current table
+        // definition, which already includes this column. Avoid trying to
+        // add it a second time while still supporting existing v5 databases.
+        final columns = await customSelect(
+          'PRAGMA table_info(study_notes)',
+        ).get();
+        if (!columns.any((row) => row.data['name'] == 'concept_map')) {
+          await m.addColumn(studyNotes, studyNotes.conceptMap);
+        }
+      }
+      if (from < 7) {
+        await m.addColumn(results, results.studyNoteId);
+      }
+      if (from < 8) {
+        final columns = await customSelect(
+          'PRAGMA table_info(study_notes)',
+        ).get();
+        if (!columns.any((row) => row.data['name'] == 'archived')) {
+          await m.addColumn(studyNotes, studyNotes.archived);
+        }
+      }
+      if (from < 9) {
+        await m.alterTable(TableMigration(results));
+      }
+      if (from < 10) await requeueLegacyStudySessions();
     },
   );
 
@@ -119,7 +171,12 @@ class AppDatabase extends _$AppDatabase {
           updatedAt: result.updatedAt.present ? result.updatedAt : Value(now),
         ),
       );
-      await _enqueueResult(clientId, 'upsert', now);
+      await _enqueueResult(
+        clientId,
+        'upsert',
+        now,
+        entityType: result.bookId.value == null ? 'study_session' : 'result',
+      );
       return id;
     });
     return id;
@@ -135,23 +192,175 @@ class AppDatabase extends _$AppDatabase {
       await (update(results)..where((r) => r.id.equals(id))).write(
         ResultsCompanion(notes: Value(notes), updatedAt: Value(now)),
       );
-      await _enqueueResult(row.clientId, 'upsert', now);
+      await _enqueueResult(
+        row.clientId,
+        'upsert',
+        now,
+        entityType: row.bookId == null ? 'study_session' : 'result',
+      );
     });
+  }
+
+  Future<int> insertStudyNote(StudyNotesCompanion note) async {
+    final now = DateTime.now().toUtc();
+    return transaction(() async {
+      final clientId = note.clientId.present
+          ? note.clientId.value
+          : newClientId();
+      final id = await into(studyNotes).insert(
+        note.copyWith(
+          clientId: Value(clientId),
+          createdAt: note.createdAt.present ? note.createdAt : Value(now),
+          updatedAt: note.updatedAt.present ? note.updatedAt : Value(now),
+        ),
+      );
+      await _enqueueStudyNote(clientId, now);
+      return id;
+    });
+  }
+
+  Future<bool> updateStudyNote(
+    int id, {
+    Value<String?> notes = const Value.absent(),
+    String? conceptMap,
+    String? passages,
+    bool? archived,
+  }) => transaction(() async {
+    final row = await studyNoteById(id);
+    if (row == null) return false;
+    final contentChanged =
+        (notes.present && notes.value != row.notes) ||
+        (conceptMap != null && conceptMap != row.conceptMap) ||
+        (passages != null && passages != row.passages);
+    final archiveChanged = archived != null && archived != row.archived;
+    if (!contentChanged && !archiveChanged) return false;
+    final now = DateTime.now().toUtc();
+    await (update(studyNotes)..where((note) => note.id.equals(id))).write(
+      StudyNotesCompanion(
+        notes: notes,
+        conceptMap: conceptMap == null
+            ? const Value.absent()
+            : Value(conceptMap),
+        passages: passages == null ? const Value.absent() : Value(passages),
+        archived: archived == null ? const Value.absent() : Value(archived),
+        updatedAt: Value(now),
+      ),
+    );
+    await _enqueueStudyNote(row.clientId, now);
+    if (contentChanged) {
+      await recordStudyNoteSession(row.clientId, timestamp: now);
+    }
+    return true;
+  });
+
+  /// Local calendar days define study sessions, not rolling 24-hour windows.
+  /// A deterministic sync identity also coalesces offline edits on two devices.
+  Future<void> recordStudyNoteSession(String noteId, {DateTime? timestamp}) =>
+      transaction(() async {
+        final now = (timestamp ?? DateTime.now()).toLocal();
+        final start = DateTime(now.year, now.month, now.day);
+        final end = DateTime(now.year, now.month, now.day + 1);
+        final day =
+            '${now.year}-${now.month.toString().padLeft(2, '0')}-'
+            '${now.day.toString().padLeft(2, '0')}';
+        final clientId = 'study-$noteId-$day';
+        final existing =
+            await (select(results)..where(
+                  (r) =>
+                      r.type.equals(ResultType.study.index) &
+                      r.studyNoteId.equals(noteId) &
+                      (r.clientId.equals(clientId) |
+                          (r.timestamp.isBiggerOrEqualValue(start) &
+                              r.timestamp.isSmallerThanValue(end))),
+                ))
+                .get();
+        if (existing.isNotEmpty) return;
+        await insertResult(
+          ResultsCompanion.insert(
+            timestamp: now,
+            type: ResultType.study,
+            studyNoteId: Value(noteId),
+            clientId: Value(clientId),
+            score: 1,
+          ),
+        );
+      });
+
+  Future<StudyNote?> studyNoteById(int id) => (select(
+    studyNotes,
+  )..where((note) => note.id.equals(id))).getSingleOrNull();
+
+  Future<StudyNote?> studyNoteByClientId(String clientId) => (select(
+    studyNotes,
+  )..where((note) => note.clientId.equals(clientId))).getSingleOrNull();
+
+  Stream<List<StudyNote>> watchStudyNotes() => (select(
+    studyNotes,
+  )..orderBy([(note) => OrderingTerm.desc(note.updatedAt)])).watch();
+
+  Future<List<StudyNote>> getStudyNotes() => (select(
+    studyNotes,
+  )..orderBy([(note) => OrderingTerm.desc(note.updatedAt)])).get();
+
+  Future<void> _enqueueStudyNote(String clientId, DateTime now) =>
+      into(syncOutbox).insert(
+        SyncOutboxCompanion.insert(
+          entityType: 'study_note',
+          entityId: clientId,
+          operation: 'upsert',
+          createdAt: now,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+
+  Future<void> mergeRemoteStudyNote(StudyNotesCompanion remote) async {
+    final existing = await studyNoteByClientId(remote.clientId.value);
+    if (existing != null &&
+        !remote.updatedAt.value.isAfter(existing.updatedAt)) {
+      return;
+    }
+    if (existing != null) {
+      await (update(
+        studyNotes,
+      )..where((note) => note.id.equals(existing.id))).write(remote);
+      return;
+    }
+    await into(studyNotes).insert(remote);
   }
 
   Future<void> _enqueueResult(
     String clientId,
     String operation,
-    DateTime now,
-  ) => into(syncOutbox).insert(
+    DateTime now, {
+    String entityType = 'result',
+  }) => into(syncOutbox).insert(
     SyncOutboxCompanion.insert(
-      entityType: 'result',
+      entityType: entityType,
       entityId: clientId,
       operation: operation,
       createdAt: now,
     ),
     mode: InsertMode.insertOrReplace,
   );
+
+  /// Earlier previews sent passage-free sessions as ordinary results. Replace
+  /// that wire identity with a tombstone so pre-study-note clients can sync.
+  Future<void> requeueLegacyStudySessions({String? clientId}) =>
+      transaction(() async {
+        final query = select(results)..where((r) => r.bookId.isNull());
+        if (clientId != null) query.where((r) => r.clientId.equals(clientId));
+        final rows = await query.get();
+        final now = DateTime.now().toUtc();
+        for (final row in rows) {
+          await _enqueueResult(row.clientId, 'delete', now);
+          await _enqueueResult(
+            row.clientId,
+            'upsert',
+            now,
+            entityType: 'study_session',
+          );
+        }
+      });
 
   Future<List<SyncOutboxData>> pendingChanges() => select(syncOutbox).get();
 
@@ -165,9 +374,10 @@ class AppDatabase extends _$AppDatabase {
   )..where((row) => row.clientId.equals(clientId))).getSingleOrNull();
 
   Future<bool> hasPendingChange(String clientId) async =>
-      await (select(
-        syncOutbox,
-      )..where((row) => row.entityId.equals(clientId))).getSingleOrNull() !=
+      await (select(syncOutbox)
+            ..where((row) => row.entityId.equals(clientId))
+            ..limit(1))
+          .getSingleOrNull() !=
       null;
 
   /// Applies a server value without feeding it back into the outbox.
@@ -182,9 +392,9 @@ class AppDatabase extends _$AppDatabase {
       // An insertOnConflictUpdate cannot resolve a client_id collision when
       // the incoming companion does not contain the local auto-increment id.
       // Update the row we found by client_id instead.
-      await (update(results)..where((row) => row.id.equals(existing.id))).write(
-        remote,
-      );
+      await (update(
+        results,
+      )..where((row) => row.id.equals(existing.id))).write(remote);
       return;
     }
     await into(results).insert(remote);
@@ -236,7 +446,12 @@ class AppDatabase extends _$AppDatabase {
   Future<List<({String bookId, int chapter, int verse})>>
   getUniqueVersesInteracted() async {
     final query = selectOnly(results, distinct: true)
-      ..addColumns([results.bookId, results.startChapter, results.startVerse]);
+      ..addColumns([results.bookId, results.startChapter, results.startVerse])
+      ..where(
+        results.bookId.isNotNull() &
+            results.startChapter.isNotNull() &
+            results.startVerse.isNotNull(),
+      );
     final rows = await query.get();
     return rows
         .map(

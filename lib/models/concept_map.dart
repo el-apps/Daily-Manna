@@ -1,0 +1,193 @@
+import 'package:daily_manna/models/scripture_range_ref.dart';
+
+enum ConceptMapNodeType { keyPoint, note, passage }
+
+class ConceptMapNode {
+  const ConceptMapNode({
+    required this.id,
+    required this.type,
+    required this.label,
+    this.passage,
+    this.showPassage = false,
+  });
+
+  final String id;
+  final ConceptMapNodeType type;
+  final String label;
+  final ScriptureRangeRef? passage;
+  final bool showPassage;
+
+  ConceptMapNode copyWith({
+    ConceptMapNodeType? type,
+    String? label,
+    ScriptureRangeRef? passage,
+    bool? showPassage,
+  }) => ConceptMapNode(
+    id: id,
+    type: type ?? this.type,
+    label: label ?? this.label,
+    passage: passage ?? this.passage,
+    showPassage: showPassage ?? this.showPassage,
+  );
+}
+
+class ConceptMapEdge {
+  const ConceptMapEdge({required this.from, required this.to, this.length = 1});
+
+  final String from;
+  final String to;
+  final int length;
+}
+
+class ConceptMapDocument {
+  const ConceptMapDocument({this.nodes = const [], this.edges = const []});
+
+  final List<ConceptMapNode> nodes;
+  final List<ConceptMapEdge> edges;
+
+  factory ConceptMapDocument.fromMermaid(String source) {
+    final nodes = <ConceptMapNode>[];
+    final edges = <ConceptMapEdge>[];
+    final passages = <String, ScriptureRangeRef>{};
+    final shownPassages = <String>{};
+    final nodePattern = RegExp(
+      r'^\s*([A-Za-z][\w-]*)\[(?:\[(.*?)\]|(.*?))\](?::::([\w]+))?',
+      multiLine: true,
+      dotAll: true,
+    );
+    for (final match in nodePattern.allMatches(source)) {
+      final type = switch (match.group(4)) {
+        'keyPoint' => ConceptMapNodeType.keyPoint,
+        'passage' => ConceptMapNodeType.passage,
+        _ => ConceptMapNodeType.note,
+      };
+      nodes.add(
+        ConceptMapNode(
+          id: match.group(1)!,
+          type: type,
+          label: _unescape(match.group(2) ?? match.group(3)!),
+        ),
+      );
+    }
+    final edgePattern = RegExp(r'([A-Za-z][\w-]*)\s*(-+)>\s*([A-Za-z][\w-]*)');
+    for (final line in source.split('\n')) {
+      final showPassageMatch = RegExp(
+        r'^\s*class\s+([A-Za-z][\w-]*)\s+showPassage\s*$',
+      ).firstMatch(line);
+      if (showPassageMatch != null) {
+        shownPassages.add(showPassageMatch.group(1)!);
+      }
+      final edgeMatch = edgePattern.firstMatch(line);
+      if (edgeMatch != null) {
+        edges.add(
+          ConceptMapEdge(
+            from: edgeMatch.group(1)!,
+            to: edgeMatch.group(3)!,
+            length: (edgeMatch.group(2)!.length - 2).clamp(1, 4),
+          ),
+        );
+      }
+      final passageMatch = RegExp(
+        r'^\s*click\s+([A-Za-z][\w-]*)\s+"passage://([^/]+)/([^/]+)/([^/]+)/([^" ]*)"',
+      ).firstMatch(line);
+      if (passageMatch != null) {
+        final end = passageMatch.group(5)!;
+        passages[passageMatch.group(1)!] = ScriptureRangeRef(
+          bookId: passageMatch.group(2)!,
+          chapter: int.parse(passageMatch.group(3)!),
+          startVerse: int.parse(passageMatch.group(4)!),
+          endVerse: end.isEmpty ? null : int.parse(end),
+        );
+      }
+    }
+    return ConceptMapDocument(
+      nodes: [
+        for (final node in nodes)
+          node.copyWith(
+            passage: passages[node.id],
+            showPassage: shownPassages.contains(node.id),
+          ),
+      ],
+      edges: edges,
+    );
+  }
+
+  String toMermaid() {
+    final buffer = StringBuffer('flowchart TD\n');
+    for (final node in nodes) {
+      final className = switch (node.type) {
+        ConceptMapNodeType.keyPoint => 'keyPoint',
+        ConceptMapNodeType.note => 'note',
+        ConceptMapNodeType.passage => 'passage',
+      };
+      buffer.writeln('  ${node.id}[${_escape(node.label)}]:::$className');
+      if (node.showPassage) buffer.writeln('  class ${node.id} showPassage');
+      final passage = node.passage;
+      if (passage != null) {
+        buffer.writeln(
+          '  click ${node.id} "passage://${passage.bookId}/'
+          '${passage.chapter}/${passage.startVerse}/'
+          '${passage.endVerse ?? ''}"',
+        );
+      }
+    }
+    for (final edge in edges) {
+      buffer.writeln('  ${edge.from} ${'-' * (edge.length + 2)}> ${edge.to}');
+    }
+    return buffer.toString().trimRight();
+  }
+
+  String get nextNodeId {
+    var index = nodes.length + 1;
+    while (nodes.any((node) => node.id == 'node$index')) {
+      index++;
+    }
+    return 'node$index';
+  }
+
+  ConceptMapDocument addPassage(ScriptureRangeRef passage) {
+    if (nodes.any(
+      (node) =>
+          node.type == ConceptMapNodeType.passage && node.passage == passage,
+    )) {
+      return this;
+    }
+    final end = passage.endVerse;
+    return addNode(
+      ConceptMapNode(
+        id: nextNodeId,
+        type: ConceptMapNodeType.passage,
+        label:
+            '${passage.bookId} ${passage.chapter}:${passage.startVerse}'
+            '${end == null || end == passage.startVerse ? '' : '-$end'}',
+        passage: passage,
+      ),
+    );
+  }
+
+  ConceptMapDocument addNode(ConceptMapNode node) =>
+      ConceptMapDocument(nodes: [...nodes, node], edges: edges);
+
+  ConceptMapDocument updateNode(ConceptMapNode node) => ConceptMapDocument(
+    nodes: [for (final item in nodes) item.id == node.id ? node : item],
+    edges: edges,
+  );
+
+  ConceptMapDocument deleteNode(String id) => ConceptMapDocument(
+    nodes: nodes.where((node) => node.id != id).toList(),
+    edges: edges.where((edge) => edge.from != id && edge.to != id).toList(),
+  );
+
+  ConceptMapDocument addEdge(ConceptMapEdge edge) =>
+      ConceptMapDocument(nodes: nodes, edges: [...edges, edge]);
+
+  static String _escape(String value) => value
+      .replaceAll('#', '#35;')
+      .replaceAll(']', '#93;')
+      .replaceAll('\r', '#13;')
+      .replaceAll('\n', '#10;');
+  static String _unescape(String value) => value.replaceAllMapped(
+    RegExp(r'#(35|93|13|10);'),
+    (match) => String.fromCharCode(int.parse(match.group(1)!)),
+  );
+}

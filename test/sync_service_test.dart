@@ -1,6 +1,9 @@
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/sync_service.dart';
-import 'package:drift/drift.dart';
+import 'package:daily_manna/services/study_notes_service.dart';
+import 'package:daily_manna/services/results_service.dart';
+import 'package:daily_manna/models/scripture_range_ref.dart';
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -39,9 +42,9 @@ void main() {
       ResultsCompanion.insert(
         timestamp: DateTime(2026),
         type: ResultType.study,
-        bookId: 'Gen',
-        startChapter: 1,
-        startVerse: 1,
+        bookId: const Value('Gen'),
+        startChapter: const Value(1),
+        startVerse: const Value(1),
         score: 1,
       ),
     );
@@ -58,9 +61,9 @@ void main() {
       ResultsCompanion.insert(
         timestamp: DateTime.utc(2026),
         type: ResultType.study,
-        bookId: 'Gen',
-        startChapter: 1,
-        startVerse: 1,
+        bookId: const Value('Gen'),
+        startChapter: const Value(1),
+        startVerse: const Value(1),
         score: 1,
       ),
     );
@@ -102,14 +105,142 @@ void main() {
     expect(transport.tokens, everyElement('saved-token'));
   });
 
+  for (final archived in [false, true]) {
+    test(
+      'study links and archive state ($archived) survive sync across devices',
+      () async {
+        final note = await StudyNotesService(database).createNote(
+          title: 'Wisdom',
+          passage: const ScriptureRangeRef(
+            bookId: 'Jas',
+            chapter: 1,
+            startVerse: 9,
+          ),
+        );
+        await ResultsService(database).addStudyResult(
+          const ScriptureRangeRef(bookId: 'Jas', chapter: 1, startVerse: 10),
+          studyNoteId: note.clientId,
+        );
+        if (archived) {
+          await StudyNotesService(database).setArchived(note.id, true);
+        }
+        final push = FakeSyncTransport()
+          ..responses.addAll(const [
+            SyncResponse(cursor: 0, changes: []),
+            SyncResponse(cursor: 2, changes: []),
+            SyncResponse(cursor: 2, changes: []),
+          ]);
+        await SyncService(database, transport: push).sync();
+        final outgoing = push.calls[1];
+        final resultChange = outgoing.singleWhere(
+          (change) => change['type'] == 'study_session',
+        );
+        final noteChange = outgoing.singleWhere(
+          (change) => change['type'] == 'study_note',
+        );
+        expect(resultChange['data']['studyNoteId'], note.clientId);
+        expect(noteChange['data']['archived'], archived);
+        // Old clients omit this field; those notes must stay active.
+        if (!archived) (noteChange['data'] as Map).remove('archived');
+
+        final otherDevice = AppDatabase.forTesting(NativeDatabase.memory());
+        addTearDown(otherDevice.close);
+        await StudyNotesService(otherDevice).createNote(
+          title: 'Unrelated local note',
+          passage: const ScriptureRangeRef(
+            bookId: 'Gen',
+            chapter: 2,
+            startVerse: 1,
+          ),
+        );
+        // Offline edits on both devices must converge to one session for the day.
+        await otherDevice.recordStudyNoteSession(note.clientId);
+        await otherDevice.acknowledgeChanges(
+          (await otherDevice.pendingChanges()).map((change) => change.id),
+        );
+        final pull = FakeSyncTransport()
+          ..responses.addAll([
+            // A session may arrive before its note; linking must not depend on order.
+            SyncResponse(cursor: 2, changes: [resultChange, noteChange]),
+            const SyncResponse(cursor: 2, changes: []),
+          ]);
+        await SyncService(otherDevice, transport: pull).sync();
+        final linked = (await otherDevice.getAllResults()).single;
+        final remoteNote = await otherDevice.studyNoteByClientId(
+          linked.studyNoteId!,
+        );
+        expect(remoteNote!.title, 'Wisdom');
+        expect(remoteNote.id, isNot(note.id));
+        expect(remoteNote.clientId, note.clientId);
+        expect(remoteNote.archived, archived);
+        expect(linked.bookId, isNull);
+        expect(linked.startChapter, isNull);
+        expect(linked.startVerse, isNull);
+        await StudyNotesService(
+          otherDevice,
+        ).updateNotes(remoteNote.id, 'More study');
+        expect(
+          (await otherDevice.getAllResults()).single.clientId,
+          linked.clientId,
+        );
+      },
+    );
+  }
+
+  test(
+    'sync retires legacy passage-free results without deleting their note sessions',
+    () async {
+      final legacy = _remoteChange('legacy-note-session');
+      final data = legacy['data'] as Map;
+      data['resultType'] = 'study';
+      data['studyNoteId'] = 'note-1';
+      data['bookId'] = null;
+      data['startChapter'] = null;
+      data['startVerse'] = null;
+      final replacement = {...legacy, 'type': 'study_session'};
+      final tombstone = <String, dynamic>{
+        'type': 'result',
+        'id': legacy['id'],
+        'deleted': true,
+      };
+      final ordinary = _remoteChange('ordinary-result');
+      final transport = FakeSyncTransport()
+        ..responses.addAll([
+          SyncResponse(cursor: 1, changes: [legacy]),
+          SyncResponse(cursor: 3, changes: [tombstone, replacement]),
+          // Test the reverse echo order too: a legacy tombstone cannot erase its replacement.
+          SyncResponse(cursor: 4, changes: [replacement, tombstone, ordinary]),
+        ]);
+      await SyncService(database, transport: transport).sync();
+      final outgoing = transport.calls[1];
+      expect(outgoing, hasLength(2));
+      expect(outgoing.singleWhere((c) => c['deleted'] == true), tombstone);
+      expect(
+        outgoing.singleWhere((c) => c['type'] == 'study_session')['data'],
+        data,
+      );
+      expect(
+        (await database.resultByClientId('legacy-note-session'))!.studyNoteId,
+        'note-1',
+      );
+      expect(
+        (await database.resultByClientId('ordinary-result'))!.bookId,
+        'Psa',
+      );
+      expect(await database.getAllResults(), hasLength(2));
+      expect(await database.pendingChanges(), isEmpty);
+      expect(await database.getSyncCursor(), '4');
+    },
+  );
+
   test('sync can merge the server echo of a pushed local result', () async {
     await database.insertResult(
       ResultsCompanion.insert(
         timestamp: DateTime.utc(2026),
         type: ResultType.study,
-        bookId: 'Jas',
-        startChapter: 1,
-        startVerse: 9,
+        bookId: const Value('Jas'),
+        startChapter: const Value(1),
+        startVerse: const Value(9),
         score: 1,
         notes: const Value('copy to outline'),
         clientId: const Value('legacy-1087'),
@@ -156,7 +287,7 @@ void main() {
     final result = (await database.getAllResults()).single;
     expect(result.clientId, 'legacy-1087');
     expect(result.notes, 'copy to outline');
-    expect(result.updatedAt, DateTime.utc(2026, 9, 7, 7, 30));
+    expect(result.updatedAt.toUtc(), DateTime.utc(2026, 9, 7, 7, 30));
   });
 }
 

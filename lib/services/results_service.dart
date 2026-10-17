@@ -20,9 +20,9 @@ class ResultsService {
       ResultsCompanion.insert(
         timestamp: DateTime.now(),
         type: ResultType.memorization,
-        bookId: result.ref.bookId!,
-        startChapter: result.ref.chapterNumber!,
-        startVerse: result.ref.verseNumber!,
+        bookId: Value(result.ref.bookId!),
+        startChapter: Value(result.ref.chapterNumber!),
+        startVerse: Value(result.ref.verseNumber!),
         score: result.score,
         attempts: Value(result.attempts),
       ),
@@ -36,9 +36,9 @@ class ResultsService {
       ResultsCompanion.insert(
         timestamp: DateTime.now(),
         type: ResultType.recitation,
-        bookId: result.ref.bookId,
-        startChapter: result.ref.chapter,
-        startVerse: result.ref.startVerse,
+        bookId: Value(result.ref.bookId),
+        startChapter: Value(result.ref.chapter),
+        startVerse: Value(result.ref.startVerse),
         endVerse: Value(result.ref.endVerse),
         score: result.score,
       ),
@@ -47,17 +47,27 @@ class ResultsService {
   }
 
   /// Add a study result through the same tracked local-write path.
-  Future<void> addStudyResult(ScriptureRangeRef ref, {String? notes}) async {
+  Future<void> addStudyResult(
+    ScriptureRangeRef ref, {
+    String? notes,
+    String? studyNoteId,
+  }) async {
+    if (studyNoteId != null) {
+      await _db.recordStudyNoteSession(studyNoteId);
+      await onLocalChange?.call();
+      return;
+    }
     await _db.insertResult(
       ResultsCompanion.insert(
         timestamp: DateTime.now(),
         type: ResultType.study,
-        bookId: ref.bookId,
-        startChapter: ref.chapter,
-        startVerse: ref.startVerse,
+        bookId: Value(ref.bookId),
+        startChapter: Value(ref.chapter),
+        startVerse: Value(ref.startVerse),
         endVerse: Value(ref.endVerse),
         score: 1,
         notes: Value(notes),
+        studyNoteId: Value(studyNoteId),
       ),
     );
     await onLocalChange?.call();
@@ -101,7 +111,10 @@ class ResultsService {
         currentItems = [];
       }
 
-      currentItems.add(_resultToItem(r, bibleService));
+      final note = r.studyNoteId == null
+          ? null
+          : await _db.studyNoteByClientId(r.studyNoteId!);
+      currentItems.add(_resultToItem(r, bibleService, note?.title));
     }
 
     // Add final section
@@ -120,8 +133,10 @@ class ResultsService {
     ResultType.study => 'Study',
   };
 
-  ResultItem _resultToItem(Result r, BibleService bibleService) {
-    final reference = r.type == ResultType.memorization
+  ResultItem _resultToItem(Result r, BibleService bibleService, String? title) {
+    final reference = r.studyNoteId != null
+        ? title ?? 'Study note'
+        : r.type == ResultType.memorization
         ? bibleService.getRefName(
             ScriptureRef(
               bookId: r.bookId,
@@ -140,9 +155,9 @@ class ResultsService {
   }
 
   ScriptureRangeRef _toRangeRef(Result r) => ScriptureRangeRef(
-    bookId: r.bookId,
-    chapter: r.startChapter,
-    startVerse: r.startVerse,
+    bookId: r.bookId!,
+    chapter: r.startChapter!,
+    startVerse: r.startVerse!,
     endVerse: r.endVerse,
   );
 

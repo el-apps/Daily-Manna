@@ -1,5 +1,6 @@
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/streak_service.dart';
+import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -21,9 +22,9 @@ void main() {
       ResultsCompanion.insert(
         timestamp: date,
         type: ResultType.study,
-        bookId: 'Gen',
-        startChapter: 1,
-        startVerse: 1,
+        bookId: const Value('Gen'),
+        startChapter: const Value(1),
+        startVerse: const Value(1),
         score: 1.0,
       ),
     );

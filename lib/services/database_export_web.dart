@@ -11,16 +11,20 @@ class DatabaseExportService {
   DatabaseExportService(this._db);
 
   Future<DatabaseExportFile> exportDatabase() async {
-    final results = await _db.getAllResults();
     final fileName = buildDatabaseExportFileName(
       DateTime.now(),
       extension: 'json',
     );
-    final payload = jsonEncode({
-      'exportedAt': DateTime.now().toIso8601String(),
-      'tables': {
-        'results': results.map(_resultToJson).toList(),
-      },
+    final payload = await _db.transaction(() async {
+      final results = await _db.getAllResults();
+      final notes = await _db.getStudyNotes();
+      return jsonEncode({
+        'exportedAt': DateTime.now().toIso8601String(),
+        'tables': {
+          'results': results.map(_resultToJson).toList(),
+          'study_notes': notes.map(_studyNoteToJson).toList(),
+        },
+      });
     });
 
     return DatabaseExportFile(
@@ -45,5 +49,20 @@ class DatabaseExportService {
     'score': result.score,
     'attempts': result.attempts,
     'notes': result.notes,
+    'studyNoteId': result.studyNoteId,
+    'clientId': result.clientId,
+    'updatedAt': result.updatedAt.toIso8601String(),
+  };
+
+  Map<String, dynamic> _studyNoteToJson(StudyNote note) => {
+    'id': note.id,
+    'clientId': note.clientId,
+    'title': note.title,
+    'notes': note.notes,
+    'conceptMap': note.conceptMap,
+    'passages': note.passages,
+    'archived': note.archived,
+    'createdAt': note.createdAt.toIso8601String(),
+    'updatedAt': note.updatedAt.toIso8601String(),
   };
 }

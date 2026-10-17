@@ -35,6 +35,11 @@ class HomePage extends StatelessWidget {
           onTap: () => context.push('/history'),
         ),
         ModeCard(
+          title: 'Study Notes',
+          icon: Icons.sticky_note_2_outlined,
+          onTap: () => context.push('/study-notes'),
+        ),
+        ModeCard(
           title: 'Settings',
           icon: Icons.settings,
           onTap: () => context.push('/settings'),
