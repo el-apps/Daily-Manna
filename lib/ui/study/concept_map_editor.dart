@@ -634,6 +634,9 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
       }
     });
     final colors = Theme.of(context).colorScheme;
+    final labelStyle = Theme.of(
+      context,
+    ).textTheme.bodyMedium!.copyWith(inherit: false);
     final bibleService = context.read<BibleService>();
     final color = switch (widget.node.type) {
       ConceptMapNodeType.keyPoint => colors.primaryContainer,
@@ -669,7 +672,8 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
                     // selection gesture or the canvas's drag gesture.
                     onPointerDown: (event) {
                       _longPress?.cancel();
-                      if (widget.connecting || event.buttons != kPrimaryButton) {
+                      if (widget.connecting ||
+                          event.buttons != kPrimaryButton) {
                         return;
                       }
                       _pressOrigin = event.position;
@@ -686,18 +690,18 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
                     onPointerCancel: (_) => _longPress?.cancel(),
                     child: TextField(
                       controller: _controller,
+                      style: labelStyle,
+                      strutStyle: StrutStyle.disabled,
                       onTap: widget.onTap,
                       readOnly: widget.connecting,
                       maxLines: null,
                       contextMenuBuilder: (_, _) => const SizedBox.shrink(),
                       onChanged: (value) =>
                           widget.onChanged(widget.node.copyWith(label: value)),
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                      ),
+                      decoration: null,
                     ),
                   )
-                : Text(widget.node.label),
+                : Text(widget.node.label, style: labelStyle),
           ),
         ),
       ),

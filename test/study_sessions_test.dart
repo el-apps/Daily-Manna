@@ -761,6 +761,50 @@ flowchart TD
     }
   });
 
+  testWidgets('unchanged cards keep their bounds when toggling edit mode', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final document = ConceptMapDocument.fromMermaid('''
+flowchart TD
+  key[A short key point]:::keyPoint
+  verse[James 1:9]:::passage
+  note[A longer note that wraps onto multiple lines with enough words to fill the card]:::note
+  empty[]:::note
+  key ---> verse
+  verse ---> note
+''');
+    Future<void> render(bool editing) async {
+      await tester.pumpWidget(
+        host(
+          Scaffold(
+            body: ConceptMapEditor(
+              document: document,
+              editing: editing,
+              onChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    List<Rect> bounds() => [
+      for (final card in find.byType(Card).evaluate())
+        tester.getRect(find.byWidget(card.widget)),
+    ];
+    await render(false);
+    final original = bounds();
+    await render(true);
+    expect(bounds(), original);
+    await tester.tap(find.widgetWithText(TextField, 'A short key point'));
+    await tester.pumpAndSettle();
+    expect(bounds(), original);
+    await render(false);
+    expect(bounds(), original);
+  });
+
   testWidgets('adding cards centers the viewport without changing zoom', (
     tester,
   ) async {
