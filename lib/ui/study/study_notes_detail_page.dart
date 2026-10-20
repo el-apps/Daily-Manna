@@ -227,63 +227,27 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
             ),
           ]
         : [
-            _passageVisibilityButton(),
-            IconButton(
-              tooltip: 'Add box',
-              onPressed: () => _conceptMapKey.currentState?.addNodeMenu(),
-              icon: const Icon(Icons.add_box_outlined),
+            TextButton.icon(
+              onPressed: () => _conceptMapKey.currentState?.addNode(
+                ConceptMapNodeType.keyPoint,
+              ),
+              icon: const Icon(Icons.add),
+              label: const Text('Key point'),
             ),
-            IconButton(
-              tooltip: 'Connect boxes',
-              onPressed:
-                  _conceptMap.nodes.any((node) => node.id == _selectedMapNodeId)
-                  ? () => _conceptMapKey.currentState?.startConnecting()
-                  : null,
-              icon: const Icon(Icons.account_tree_outlined),
+            TextButton.icon(
+              onPressed: () => _conceptMapKey.currentState?.addNode(),
+              icon: const Icon(Icons.add),
+              label: const Text('Note'),
             ),
-            IconButton(
-              tooltip: 'Remove connection',
-              onPressed:
-                  _conceptMap.edges.any(
-                    (edge) =>
-                        edge.from == _selectedMapNodeId ||
-                        edge.to == _selectedMapNodeId,
-                  )
-                  ? () => _conceptMapKey.currentState?.disconnectMenu()
-                  : null,
-              icon: const Icon(Icons.link_off),
+            TextButton.icon(
+              onPressed: () => _conceptMapKey.currentState?.addPassage(),
+              icon: const Icon(Icons.add),
+              label: const Text('Passage'),
             ),
           ],
     onEdit: _enterEditMode,
     onSave: _save,
   );
-
-  Widget _passageVisibilityButton() {
-    final selected = _conceptMap.nodes
-        .where(
-          (node) =>
-              node.id == _selectedMapNodeId &&
-              node.type == ConceptMapNodeType.passage,
-        )
-        .firstOrNull;
-    return IconButton(
-      tooltip: selected == null
-          ? 'Select a passage card'
-          : selected.showPassage
-          ? 'Hide passage'
-          : 'Show passage',
-      isSelected: selected?.showPassage ?? false,
-      onPressed: selected == null
-          ? null
-          : () => setState(() {
-              _conceptMap = _conceptMap.updateNode(
-                selected.copyWith(showPassage: !selected.showPassage),
-              );
-            }),
-      icon: const Icon(Icons.article_outlined),
-      selectedIcon: const Icon(Icons.article),
-    );
-  }
 
   void _adjustLine(String Function(String) update) {
     final value = _notesController.value;
