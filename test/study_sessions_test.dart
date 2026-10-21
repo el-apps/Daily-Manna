@@ -285,6 +285,65 @@ And another]]:::note
     },
   );
 
+  test(
+    'map passages appear in legacy notes, search, and subsequent saves',
+    () async {
+      const isaiah = ScriptureRangeRef(
+        bookId: 'Isa',
+        chapter: 40,
+        startVerse: 6,
+        endVerse: 8,
+      );
+      final note = await notesService.createNote(
+        title: 'Glory',
+        passage: passage,
+      );
+      // Simulate an older/synced note whose map was saved without its passage list.
+      const map = '''
+flowchart TD
+  james[James 1:10]:::passage
+  click james "passage://Jas/1/10/"
+  isaiah[Isaiah 40:6-8]:::passage
+  click isaiah "passage://Isa/40/6/8"
+  duplicate[Isaiah again]:::passage
+  click duplicate "passage://Isa/40/6/8"
+''';
+      await database.updateStudyNote(note.id, conceptMap: map);
+      final legacy = (await notesService.getNote(note.id))!;
+      expect(notesService.passagesFor(legacy), [passage, isaiah]);
+      expect(
+        (await notesService.findByPassage(
+          isaiah.copyWith(startVerse: 7, endVerse: 7),
+        )).single.id,
+        note.id,
+      );
+      expect(
+        await notesService.findByPassage(
+          isaiah.copyWith(startVerse: 9, endVerse: 9),
+        ),
+        isEmpty,
+      );
+
+      // Overlap is not containment: the newly added range also includes verse 9.
+      final overlapping = isaiah.copyWith(startVerse: 8, endVerse: 10);
+      await notesService.updateConceptMap(
+        note.id,
+        ConceptMapDocument.fromMermaid(map).addPassage(overlapping).toMermaid(),
+      );
+      final saved = (await notesService.getNote(note.id))!;
+      expect(
+        notesService.passagesFor(saved.copyWith(conceptMap: const Value(null))),
+        [passage, isaiah, overlapping],
+      );
+      expect(
+        (await notesService.findByPassage(
+          isaiah.copyWith(startVerse: 9, endVerse: 9),
+        )).single.id,
+        note.id,
+      );
+    },
+  );
+
   test('passage visibility is a per-card Mermaid setting', () {
     final document = ConceptMapDocument.fromMermaid('''
 flowchart TD
@@ -1156,6 +1215,23 @@ flowchart TD
     expect(addedPassage.type, ConceptMapNodeType.passage);
     expect(addedPassage.passage, otherPassage);
     expect(transform.value.getMaxScaleOnAxis(), 1.5);
+    await tester.runAsync(() async {
+      await tester.tap(find.byTooltip('Save'));
+      await database
+          .watchStudyNotes()
+          .firstWhere(
+            (notes) => notesService
+                .passagesFor(
+                  notes.single.copyWith(conceptMap: const Value(null)),
+                )
+                .contains(otherPassage),
+          )
+          .timeout(const Duration(seconds: 5));
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notes'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(Chip, 'John 3:16-16'), findsOneWidget);
   });
 
   testWidgets('connect uses the selected card and one destination tap', (
