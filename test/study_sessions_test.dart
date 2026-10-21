@@ -636,6 +636,90 @@ flowchart TD
     expect(straight.map((point) => point.dy).toSet(), {125});
   });
 
+  test(
+    'shared scripture keeps neighboring passage branches visually separate',
+    () {
+      final document = ConceptMapDocument.fromMermaid('''
+flowchart TD
+  key10[Glory in humiliation]:::keyPoint
+  james10[James 1:10]:::passage
+  key11[Unaligned pursuits]:::keyPoint
+  james11[James 1:11]:::passage
+  isaiah[Isaiah 40:6-8]:::passage
+  rich[The Rich]:::note
+  humiliation[Humiliation]:::note
+  end[Miserable End]:::note
+  pursuits[Unaligned Pursuits]:::note
+  key10 ---> james10
+  key11 ---> james11
+  james10 ---> isaiah
+  james11 ---> isaiah
+  rich ---> james10
+  humiliation ---> james10
+  end ---> james11
+  james11 ---> pursuits
+''');
+      final sizes = {
+        for (final node in document.nodes) node.id: const Size(300, 50),
+        'james10': const Size(300, 120),
+        'james11': const Size(300, 180),
+      };
+      final positions = conceptMapLayout(document, nodeSizes: sizes);
+      // The shared passage belongs between the two sets of exclusive notes,
+      // even though it was created before any of those notes.
+      for (final (above, below) in [
+        ('rich', 'humiliation'),
+        ('humiliation', 'isaiah'),
+        ('isaiah', 'end'),
+        ('end', 'pursuits'),
+      ]) {
+        expect(
+          positions[above]!.dy + sizes[above]!.height,
+          lessThan(positions[below]!.dy),
+        );
+      }
+      final upper = [
+        for (final id in ['rich', 'humiliation', 'isaiah'])
+          conceptMapConnector(
+            ConceptMapEdge(from: 'james10', to: id),
+            positions,
+            sizes,
+          ),
+      ];
+      final lower = [
+        for (final id in ['end', 'pursuits', 'isaiah'])
+          conceptMapConnector(
+            ConceptMapEdge(from: 'james11', to: id),
+            positions,
+            sizes,
+          ),
+      ];
+      for (var a = 0; a < upper.length; a++) {
+        for (var b = 0; b < lower.length; b++) {
+          if (a == 2 && b == 2) continue; // Both actually connect to Isaiah.
+          expect(upper[a], isNotEmpty);
+          expect(lower[b], isNotEmpty);
+          for (var i = 1; i < upper[a].length; i++) {
+            for (var j = 1; j < lower[b].length; j++) {
+              expect(
+                Rect.fromPoints(upper[a][i - 1], upper[a][i])
+                    .inflate(1.5)
+                    .overlaps(
+                      Rect.fromPoints(
+                        lower[b][j - 1],
+                        lower[b][j],
+                      ).inflate(1.5),
+                    ),
+                isFalse,
+                reason: 'Unrelated branches must not look connected',
+              );
+            }
+          }
+        }
+      }
+    },
+  );
+
   test('branches from one card share a trunk without crossing each other', () {
     const positions = {
       'node13': Offset(80, 300),

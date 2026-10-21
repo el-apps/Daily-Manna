@@ -82,6 +82,7 @@ Map<String, Offset> conceptMapLayout(
   final columns = groups.keys.toList()..sort();
   for (final column in columns) {
     final preferredCenters = <String, double>{};
+    final parentCenters = <String, double>{};
     for (final node in groups[column]!) {
       final placedNeighbors = [
         for (final id in nodeIds)
@@ -89,6 +90,12 @@ Map<String, Offset> conceptMapLayout(
             id,
       ];
       if (placedNeighbors.isNotEmpty) {
+        parentCenters[node.id] =
+            placedNeighbors.fold<double>(
+              0,
+              (sum, id) => sum + positions[id]!.dy + height(id) / 2,
+            ) /
+            placedNeighbors.length;
         preferredCenters[node.id] =
             placedNeighbors.fold<double>(0, (sum, id) {
               var center =
@@ -104,6 +111,11 @@ Map<String, Offset> conceptMapLayout(
     }
     final nodes = groups[column]!.toList()
       ..sort((a, b) {
+        // Keep each parent's notes together, with shared cards between groups.
+        final parentComparison = (parentCenters[a.id] ?? 0).compareTo(
+          parentCenters[b.id] ?? 0,
+        );
+        if (parentComparison != 0) return parentComparison;
         final comparison = (preferredCenters[a.id] ?? 0).compareTo(
           preferredCenters[b.id] ?? 0,
         );
@@ -206,14 +218,28 @@ List<Offset> conceptMapConnector(
               math.max(a.dy, b.dy) > rect.top &&
               math.min(a.dy, b.dy) < rect.bottom,
   );
-  // Adjacent columns share one centered trunk instead of choosing opposite
-  // sides of the gap for different branches of the same card.
+  // Branches from one source share a lane, but different sources must not
+  // merge into a single bus when they connect to a shared destination.
   final middle = (entry + exit) / 2;
+  var trunkX = middle.dx;
+  if (horizontal) {
+    final left = from.center.dx < to.center.dx ? from : to;
+    final right = from.center.dx < to.center.dx ? to : from;
+    final sources =
+        cards.values.where((rect) => rect.right == left.right).toList()
+          ..sort((a, b) => a.center.dy.compareTo(b.center.dy));
+    trunkX =
+        left.right +
+        clearance +
+        (right.left - left.right - 2 * clearance) *
+            (sources.indexOf(left) + 1) /
+            (sources.length + 1);
+  }
   final trunk = [
     entry,
     if (horizontal) ...[
-      Offset(middle.dx, entry.dy),
-      Offset(middle.dx, exit.dy),
+      Offset(trunkX, entry.dy),
+      Offset(trunkX, exit.dy),
     ] else ...[
       Offset(entry.dx, middle.dy),
       Offset(exit.dx, middle.dy),
