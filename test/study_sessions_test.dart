@@ -16,6 +16,7 @@ import 'package:daily_manna/ui/study/study_result_detail_page.dart';
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -804,6 +805,207 @@ flowchart TD
     await render(false);
     expect(bounds(), original);
   });
+
+  testWidgets('pinching with a stationary finger on a label cancels its menu', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      host(
+        Scaffold(
+          body: ConceptMapEditor(
+            document: ConceptMapDocument.fromMermaid(
+              'flowchart TD\n a[Hold here]:::note',
+            ),
+            editing: true,
+            onChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final first = await tester.startGesture(
+      tester.getCenter(find.text('Hold here')),
+      pointer: 1,
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    final second = await tester.startGesture(
+      const Offset(500, 250),
+      pointer: 2,
+    );
+    await second.moveTo(const Offset(650, 350));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(
+      tester
+          .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+          .transformationController!
+          .value
+          .getMaxScaleOnAxis(),
+      greaterThan(1),
+    );
+    await second.up();
+    await first.up();
+    await tester.pumpAndSettle();
+    await openCardMenu(tester, 'Hold here');
+    expect(find.text('Add connection'), findsOneWidget);
+  });
+
+  testWidgets('double-tap selection can copy and paste editable labels', (
+    tester,
+  ) async {
+    var clipboard = '';
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      switch (call.method) {
+        case 'Clipboard.setData':
+          clipboard = (call.arguments as Map)['text'] as String;
+          return null;
+        case 'Clipboard.getData':
+          return {'text': clipboard};
+        case 'Clipboard.hasStrings':
+          return {'value': clipboard.isNotEmpty};
+      }
+      return null;
+    });
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+    var document = ConceptMapDocument.fromMermaid(
+      'flowchart TD\n a[Alpha Beta]:::note',
+    );
+    await tester.pumpWidget(
+      host(
+        Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => ConceptMapEditor(
+              document: document,
+              editing: true,
+              onChanged: (value) => setState(() => document = value),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final text = find.byType(EditableText);
+    final point = tester.getTopLeft(text) + const Offset(20, 8);
+    await tester.tapAt(point);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tapAt(point);
+    await tester.pumpAndSettle();
+    expect(find.text('Copy'), findsOneWidget);
+    expect(find.text('Cut'), findsOneWidget);
+    await tester.tap(find.text('Copy'));
+    await tester.pumpAndSettle();
+    expect(clipboard, 'Alpha');
+    await tester.pump(const Duration(milliseconds: 500));
+    final editable = tester.state<EditableTextState>(text).renderEditable;
+    final secondWord = editable.localToGlobal(
+      editable.getLocalRectForCaret(const TextPosition(offset: 8)).center,
+    );
+    await tester.tapAt(secondWord);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tapAt(secondWord);
+    await tester.pumpAndSettle();
+    final controller = tester.widget<EditableText>(text).controller;
+    expect(controller.selection.textInside(controller.text), 'Beta');
+    await tester.tap(find.text('Paste'));
+    await tester.pumpAndSettle();
+    expect(document.nodes.single.label, 'Alpha Alpha');
+  });
+
+  testWidgets('card menu stays usable in landscape with large text', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(640, 360));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    for (final scale in [1.0, 2.0]) {
+      var document = ConceptMapDocument.fromMermaid(
+        'flowchart TD\n a[Landscape]:::note',
+      );
+      await tester.pumpWidget(
+        host(
+          Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(scale)),
+              child: Scaffold(
+                body: StatefulBuilder(
+                  builder: (context, setState) => ConceptMapEditor(
+                    document: document,
+                    editing: true,
+                    onChanged: (value) => setState(() => document = value),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await openCardMenu(tester, 'Landscape');
+      await tester.scrollUntilVisible(
+        find.text('Delete box'),
+        80,
+        scrollable: find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Delete box'));
+      await tester.pumpAndSettle();
+      expect(document.nodes, isEmpty);
+    }
+  });
+
+  testWidgets(
+    'keyboard can open passage menus and connect to an editable label',
+    (tester) async {
+      var document = ConceptMapDocument.fromMermaid('''
+flowchart TD
+ a[James 1:9]:::passage
+ b[The Lowly]:::note
+''');
+      await tester.pumpWidget(
+        host(
+          Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) => ConceptMapEditor(
+                document: document,
+                editing: true,
+                onChanged: (value) => setState(() => document = value),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+      await tester.pumpAndSettle();
+      expect(find.text('Show passage'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.text('Tap another card to connect it.'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      expect(document.edges, isEmpty);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(document.edges.single.from, 'a');
+      expect(document.edges.single.to, 'b');
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.f10);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.pumpAndSettle();
+      expect(find.text('Change to key point'), findsOneWidget);
+    },
+  );
 
   testWidgets('adding cards centers the viewport without changing zoom', (
     tester,

@@ -14,6 +14,8 @@ An app for building strong daily habits in interacting with the Word of God.
 - Open a study note's **Concept Map** tab and select **Edit**.
 - Use **+ Key point**, **+ Note**, or **+ Passage** in the toolbar to add a card.
 - Long-press a card to add/remove connections, show/hide passage text, or delete the card.
+- With a keyboard, Tab to a card and press **Shift+F10** or the **Menu** key to open its menu; after choosing **Add connection**, Tab to the destination and press **Enter** or **Space**.
+- Double-tap editable text to select a word and use the text-selection toolbar to cut, copy, or paste.
 - Use **Change to note** to turn a key point into a free-flowing subpoint without losing its text or connections; **Change to key point** anchors it on the left again.
 - To attach “The Lowly” after James 1:9, make it a Note, then choose **Add connection** from either card's menu and tap the other card.
 - Select **Save** to persist your changes.

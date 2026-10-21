@@ -6,6 +6,7 @@ import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 const _cardWidth = 300.0;
@@ -296,10 +297,13 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
   final _nodeSizes = <String, Size>{};
   final _viewportKey = GlobalKey();
   final _transform = TransformationController();
+  final _cancelLabelHolds = ValueNotifier(0);
+  final _pointers = <int>{};
   String? _pendingCenterId;
 
   @override
   void dispose() {
+    _cancelLabelHolds.dispose();
     _transform.dispose();
     super.dispose();
   }
@@ -421,50 +425,65 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
           );
       });
     }
-    return InteractiveViewer(
-      key: _viewportKey,
-      transformationController: _transform,
-      constrained: false,
-      boundaryMargin: const EdgeInsets.all(double.infinity),
-      minScale: .25,
-      maxScale: 4,
-      child: SizedBox(
-        width: positions.entries.fold<double>(
-          900,
-          (width, entry) => math.max(
-            width,
-            entry.value.dx + (_nodeSizes[entry.key]?.width ?? _cardWidth) + 80,
+    return Listener(
+      onPointerDown: (event) {
+        _pointers.add(event.pointer);
+        if (_pointers.length > 1) _cancelLabelHolds.value++;
+      },
+      onPointerUp: (event) => _pointers.remove(event.pointer),
+      onPointerCancel: (event) => _pointers.remove(event.pointer),
+      child: InteractiveViewer(
+        key: _viewportKey,
+        transformationController: _transform,
+        onInteractionUpdate: (_) => _cancelLabelHolds.value++,
+        constrained: false,
+        boundaryMargin: const EdgeInsets.all(double.infinity),
+        minScale: .25,
+        maxScale: 4,
+        child: SizedBox(
+          width: positions.entries.fold<double>(
+            900,
+            (width, entry) => math.max(
+              width,
+              entry.value.dx +
+                  (_nodeSizes[entry.key]?.width ?? _cardWidth) +
+                  80,
+            ),
           ),
-        ),
-        height: positions.entries.fold<double>(
-          700,
-          (height, entry) => math.max(
-            height,
-            entry.value.dy + (_nodeSizes[entry.key]?.height ?? 90) + 80,
+          height: positions.entries.fold<double>(
+            700,
+            (height, entry) => math.max(
+              height,
+              entry.value.dy + (_nodeSizes[entry.key]?.height ?? 90) + 80,
+            ),
           ),
-        ),
-        child: CustomPaint(
-          painter: _ConceptMapEdgesPainter(widget.document, Map.of(_nodeSizes)),
-          child: Stack(
-            children: [
-              for (final entry in positions.entries)
-                _ConceptMapNodeWidget(
-                  key: ValueKey(entry.key),
-                  node: widget.document.nodes.firstWhere(
-                    (node) => node.id == entry.key,
+          child: CustomPaint(
+            painter: _ConceptMapEdgesPainter(
+              widget.document,
+              Map.of(_nodeSizes),
+            ),
+            child: Stack(
+              children: [
+                for (final entry in positions.entries)
+                  _ConceptMapNodeWidget(
+                    key: ValueKey(entry.key),
+                    node: widget.document.nodes.firstWhere(
+                      (node) => node.id == entry.key,
+                    ),
+                    position: entry.value,
+                    editing: widget.editing,
+                    connecting: _connectingFrom != null,
+                    selected:
+                        widget.editing && widget.selectedNodeId == entry.key,
+                    onTap: () => _selectNode(entry.key),
+                    onLongPress: () => _showNodeMenu(entry.key),
+                    cancelLabelHolds: _cancelLabelHolds,
+                    onSizeChanged: _updateNodeSize,
+                    onChanged: (node) =>
+                        widget.onChanged(widget.document.updateNode(node)),
                   ),
-                  position: entry.value,
-                  editing: widget.editing,
-                  connecting: _connectingFrom != null,
-                  selected:
-                      widget.editing && widget.selectedNodeId == entry.key,
-                  onTap: () => _selectNode(entry.key),
-                  onLongPress: () => _showNodeMenu(entry.key),
-                  onSizeChanged: _updateNodeSize,
-                  onChanged: (node) =>
-                      widget.onChanged(widget.document.updateNode(node)),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -500,8 +519,8 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
     final action = await showModalBottomSheet<String>(
       context: context,
       builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: ListView(
+          shrinkWrap: true,
           children: [
             if (node.type == ConceptMapNodeType.passage)
               ListTile(
@@ -581,6 +600,7 @@ class _ConceptMapNodeWidget extends StatefulWidget {
     required this.selected,
     required this.onTap,
     required this.onLongPress,
+    required this.cancelLabelHolds,
     required this.onSizeChanged,
     required this.onChanged,
   });
@@ -591,7 +611,8 @@ class _ConceptMapNodeWidget extends StatefulWidget {
   final bool connecting;
   final bool selected;
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
+  final Future<void> Function() onLongPress;
+  final Listenable cancelLabelHolds;
   final void Function(String id, Size size) onSizeChanged;
   final ValueChanged<ConceptMapNode> onChanged;
 
@@ -601,6 +622,7 @@ class _ConceptMapNodeWidget extends StatefulWidget {
 
 class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
   late final TextEditingController _controller;
+  final _focusNode = FocusNode();
   Timer? _longPress;
   Offset? _pressOrigin;
 
@@ -608,6 +630,14 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.node.label);
+    widget.cancelLabelHolds.addListener(_cancelHold);
+  }
+
+  void _cancelHold() => _longPress?.cancel();
+
+  Future<void> _openMenu() async {
+    await widget.onLongPress();
+    if (mounted && widget.editing) _focusNode.requestFocus();
   }
 
   @override
@@ -622,6 +652,8 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
   @override
   void dispose() {
     _longPress?.cancel();
+    widget.cancelLabelHolds.removeListener(_cancelHold);
+    _focusNode.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -647,61 +679,86 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
       left: widget.position.dx,
       top: widget.position.dy,
       width: _cardWidth,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        onLongPress: widget.onLongPress,
-        child: Card(
-          color: color,
-          shape: widget.selected
-              ? RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: colors.primary, width: 2),
-                )
-              : null,
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: widget.node.type == ConceptMapNodeType.passage
-                ? _PassageNodeContent(
-                    node: widget.node,
-                    bibleService: bibleService,
-                    showContent: widget.node.showPassage,
+      child: Focus(
+        focusNode: _focusNode,
+        canRequestFocus: widget.editing,
+        skipTraversal: widget.node.type != ConceptMapNodeType.passage,
+        onFocusChange: (_) => setState(() {}),
+        onKeyEvent: (_, event) {
+          if (!widget.editing || event is! KeyDownEvent) {
+            return KeyEventResult.ignored;
+          }
+          final key = event.logicalKey;
+          if (widget.connecting &&
+              (key == LogicalKeyboardKey.enter ||
+                  key == LogicalKeyboardKey.space)) {
+            widget.onTap();
+            return KeyEventResult.handled;
+          }
+          if (key == LogicalKeyboardKey.contextMenu ||
+              (key == LogicalKeyboardKey.f10 &&
+                  HardwareKeyboard.instance.isShiftPressed)) {
+            _openMenu();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: GestureDetector(
+          onTap: widget.onTap,
+          onLongPress: _openMenu,
+          child: Card(
+            color: color,
+            shape: widget.selected || (widget.editing && _focusNode.hasFocus)
+                ? RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: colors.primary, width: 2),
                   )
-                : widget.editing
-                ? Listener(
-                    // Observe the hold without competing with TextField's
-                    // selection gesture or the canvas's drag gesture.
-                    onPointerDown: (event) {
-                      _longPress?.cancel();
-                      if (widget.connecting ||
-                          event.buttons != kPrimaryButton) {
-                        return;
-                      }
-                      _pressOrigin = event.position;
-                      _longPress = Timer(kLongPressTimeout, widget.onLongPress);
-                    },
-                    onPointerMove: (event) {
-                      if (_pressOrigin != null &&
-                          (event.position - _pressOrigin!).distance >
-                              kTouchSlop) {
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: widget.node.type == ConceptMapNodeType.passage
+                  ? _PassageNodeContent(
+                      node: widget.node,
+                      bibleService: bibleService,
+                      showContent: widget.node.showPassage,
+                    )
+                  : widget.editing
+                  ? Listener(
+                      // Observe the hold without competing with TextField's
+                      // selection gesture or the canvas's drag gesture.
+                      onPointerDown: (event) {
                         _longPress?.cancel();
-                      }
-                    },
-                    onPointerUp: (_) => _longPress?.cancel(),
-                    onPointerCancel: (_) => _longPress?.cancel(),
-                    child: TextField(
-                      controller: _controller,
-                      style: labelStyle,
-                      strutStyle: StrutStyle.disabled,
-                      onTap: widget.onTap,
-                      readOnly: widget.connecting,
-                      maxLines: null,
-                      contextMenuBuilder: (_, _) => const SizedBox.shrink(),
-                      onChanged: (value) =>
-                          widget.onChanged(widget.node.copyWith(label: value)),
-                      decoration: null,
-                    ),
-                  )
-                : Text(widget.node.label, style: labelStyle),
+                        if (widget.connecting ||
+                            event.buttons != kPrimaryButton) {
+                          return;
+                        }
+                        _pressOrigin = event.position;
+                        _longPress = Timer(kLongPressTimeout, _openMenu);
+                      },
+                      onPointerMove: (event) {
+                        if (_pressOrigin != null &&
+                            (event.position - _pressOrigin!).distance >
+                                kTouchSlop) {
+                          _longPress?.cancel();
+                        }
+                      },
+                      onPointerUp: (_) => _longPress?.cancel(),
+                      onPointerCancel: (_) => _longPress?.cancel(),
+                      child: TextField(
+                        controller: _controller,
+                        style: labelStyle,
+                        strutStyle: StrutStyle.disabled,
+                        onTap: widget.onTap,
+                        readOnly: widget.connecting,
+                        maxLines: null,
+                        onChanged: (value) => widget.onChanged(
+                          widget.node.copyWith(label: value),
+                        ),
+                        decoration: null,
+                      ),
+                    )
+                  : Text(widget.node.label, style: labelStyle),
+            ),
           ),
         ),
       ),
