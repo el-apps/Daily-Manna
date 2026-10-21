@@ -857,17 +857,26 @@ flowchart TD
   verse[James 1:9]:::passage
   note[A longer note that wraps onto multiple lines with enough words to fill the card]:::note
   empty[]:::note
+  rich[The Rich Should Glory in Their Humiliation]:::keyPoint
+  boundary[XXXXXXXXXXXXXXXXXXX]:::note
   key ---> verse
   verse ---> note
 ''');
-    Future<void> render(bool editing) async {
+    Future<void> render(bool editing, double textScale) async {
       await tester.pumpWidget(
         host(
           Scaffold(
-            body: ConceptMapEditor(
-              document: document,
-              editing: editing,
-              onChanged: (_) {},
+            body: Builder(
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: TextScaler.linear(textScale)),
+                child: ConceptMapEditor(
+                  document: document,
+                  editing: editing,
+                  onChanged: (_) {},
+                ),
+              ),
             ),
           ),
         ),
@@ -879,15 +888,18 @@ flowchart TD
       for (final card in find.byType(Card).evaluate())
         tester.getRect(find.byWidget(card.widget)),
     ];
-    await render(false);
-    final original = bounds();
-    await render(true);
-    expect(bounds(), original);
-    await tester.tap(find.widgetWithText(TextField, 'A short key point'));
-    await tester.pumpAndSettle();
-    expect(bounds(), original);
-    await render(false);
-    expect(bounds(), original);
+    // The near-full boundary label catches an extra line caused by caret space.
+    for (final scale in [1.0, 1.5, 2.0]) {
+      await render(false, scale);
+      final original = bounds();
+      await render(true, scale);
+      expect(bounds(), original);
+      await tester.tap(find.widgetWithText(TextField, 'A short key point'));
+      await tester.pumpAndSettle();
+      expect(bounds(), original);
+      await render(false, scale);
+      expect(bounds(), original);
+    }
   });
 
   testWidgets('pinching with a stationary finger on a label cancels its menu', (

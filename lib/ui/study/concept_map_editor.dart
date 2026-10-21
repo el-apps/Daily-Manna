@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 const _cardWidth = 300.0;
+const _labelCursorWidth = 2.0;
 
 Map<String, Offset> conceptMapLayout(
   ConceptMapDocument document, {
@@ -774,6 +775,7 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
                         controller: _controller,
                         style: labelStyle,
                         strutStyle: StrutStyle.disabled,
+                        cursorWidth: _labelCursorWidth,
                         onTap: widget.onTap,
                         readOnly: widget.connecting,
                         maxLines: null,
@@ -783,7 +785,14 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
                         decoration: null,
                       ),
                     )
-                  : Text(widget.node.label, style: labelStyle),
+                  : Padding(
+                      // RenderEditable reserves the cursor width plus a 1px
+                      // gap; use the same wrap width when displaying the label.
+                      padding: const EdgeInsetsDirectional.only(
+                        end: _labelCursorWidth + 1,
+                      ),
+                      child: Text(widget.node.label, style: labelStyle),
+                    ),
             ),
           ),
         ),
