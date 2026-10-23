@@ -16,6 +16,7 @@ import 'package:daily_manna/ui/study/study_result_detail_page.dart';
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -85,6 +86,11 @@ void main() {
         ? MaterialApp(home: home)
         : MaterialApp.router(routerConfig: router),
   );
+
+  Future<void> openCardMenu(WidgetTester tester, String label) async {
+    await tester.longPress(find.text(label));
+    await tester.pumpAndSettle();
+  }
 
   test(
     'note edits automatically record one note-anchored session per day',
@@ -279,6 +285,65 @@ And another]]:::note
     },
   );
 
+  test(
+    'map passages appear in legacy notes, search, and subsequent saves',
+    () async {
+      const isaiah = ScriptureRangeRef(
+        bookId: 'Isa',
+        chapter: 40,
+        startVerse: 6,
+        endVerse: 8,
+      );
+      final note = await notesService.createNote(
+        title: 'Glory',
+        passage: passage,
+      );
+      // Simulate an older/synced note whose map was saved without its passage list.
+      const map = '''
+flowchart TD
+  james[James 1:10]:::passage
+  click james "passage://Jas/1/10/"
+  isaiah[Isaiah 40:6-8]:::passage
+  click isaiah "passage://Isa/40/6/8"
+  duplicate[Isaiah again]:::passage
+  click duplicate "passage://Isa/40/6/8"
+''';
+      await database.updateStudyNote(note.id, conceptMap: map);
+      final legacy = (await notesService.getNote(note.id))!;
+      expect(notesService.passagesFor(legacy), [passage, isaiah]);
+      expect(
+        (await notesService.findByPassage(
+          isaiah.copyWith(startVerse: 7, endVerse: 7),
+        )).single.id,
+        note.id,
+      );
+      expect(
+        await notesService.findByPassage(
+          isaiah.copyWith(startVerse: 9, endVerse: 9),
+        ),
+        isEmpty,
+      );
+
+      // Overlap is not containment: the newly added range also includes verse 9.
+      final overlapping = isaiah.copyWith(startVerse: 8, endVerse: 10);
+      await notesService.updateConceptMap(
+        note.id,
+        ConceptMapDocument.fromMermaid(map).addPassage(overlapping).toMermaid(),
+      );
+      final saved = (await notesService.getNote(note.id))!;
+      expect(
+        notesService.passagesFor(saved.copyWith(conceptMap: const Value(null))),
+        [passage, isaiah, overlapping],
+      );
+      expect(
+        (await notesService.findByPassage(
+          isaiah.copyWith(startVerse: 9, endVerse: 9),
+        )).single.id,
+        note.id,
+      );
+    },
+  );
+
   test('passage visibility is a per-card Mermaid setting', () {
     final document = ConceptMapDocument.fromMermaid('''
 flowchart TD
@@ -304,6 +369,81 @@ flowchart TD
     );
     expect(document.nodes[1].passage, otherPassage);
     expect(document.edges.single.to, 'b');
+  });
+
+  testWidgets('card menu converts key points to notes without losing links', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final document = ConceptMapDocument.fromMermaid('''
+flowchart TD
+  key[The Lowly Should Glory in Their High Position]:::keyPoint
+  verse[James 1:9]:::passage
+  lowly[The Lowly]:::keyPoint
+  key ---> verse
+  verse ---> lowly
+''');
+    final original = document.toMermaid();
+    late StudyNote note;
+    await tester.runAsync(() async {
+      note = await notesService.createNote(title: 'Glory in the Lord');
+      await notesService.updateConceptMap(note.id, original);
+      note = (await notesService.getNote(note.id))!;
+    });
+    await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+    await tester.tap(find.text('Concept Map'));
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('The Lowly'));
+    await tester.pumpAndSettle();
+    expect(find.text('Change to note'), findsNothing);
+    final drag = await tester.startGesture(
+      tester.getCenter(find.text('The Lowly')),
+    );
+    await drag.moveBy(const Offset(40, 0));
+    await tester.pump(const Duration(milliseconds: 700));
+    await drag.up();
+    await tester.pumpAndSettle();
+    expect(find.text('Change to note'), findsNothing);
+    await openCardMenu(tester, 'The Lowly');
+    await tester.tap(find.text('Change to note'));
+    await tester.pumpAndSettle();
+    ConceptMapDocument currentDocument() =>
+        tester.widget<ConceptMapEditor>(find.byType(ConceptMapEditor)).document;
+    final restored = ConceptMapDocument.fromMermaid(
+      currentDocument().toMermaid(),
+    );
+    expect(restored.nodes.last.type, ConceptMapNodeType.note);
+    expect(
+      currentDocument().toMermaid(),
+      original.replaceFirst(
+        'lowly[The Lowly]:::keyPoint',
+        'lowly[The Lowly]:::note',
+      ),
+    );
+    expect(
+      tester.getTopLeft(find.text('The Lowly')).dx,
+      greaterThan(tester.getTopLeft(find.text('James 1:9')).dx),
+    );
+    await tester.runAsync(() async {
+      await tester.tap(find.byTooltip('Save'));
+      note = (await notesService.getNote(note.id))!;
+      expect(note.conceptMap, currentDocument().toMermaid());
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    await openCardMenu(tester, 'The Lowly');
+    await tester.tap(find.text('Change to key point'));
+    await tester.pumpAndSettle();
+    expect(currentDocument().toMermaid(), original);
+    await tester.tap(find.text('James 1:9'));
+    await tester.pumpAndSettle();
+    await openCardMenu(tester, 'James 1:9');
+    expect(find.text('Change to note'), findsNothing);
+    expect(find.text('Change to key point'), findsNothing);
+    expect(find.text('Delete box'), findsOneWidget);
   });
 
   test('map layout leaves room for expanded cards in each column', () {
@@ -555,6 +695,90 @@ flowchart TD
     expect(straight.map((point) => point.dy).toSet(), {125});
   });
 
+  test(
+    'shared scripture keeps neighboring passage branches visually separate',
+    () {
+      final document = ConceptMapDocument.fromMermaid('''
+flowchart TD
+  key10[Glory in humiliation]:::keyPoint
+  james10[James 1:10]:::passage
+  key11[Unaligned pursuits]:::keyPoint
+  james11[James 1:11]:::passage
+  isaiah[Isaiah 40:6-8]:::passage
+  rich[The Rich]:::note
+  humiliation[Humiliation]:::note
+  end[Miserable End]:::note
+  pursuits[Unaligned Pursuits]:::note
+  key10 ---> james10
+  key11 ---> james11
+  james10 ---> isaiah
+  james11 ---> isaiah
+  rich ---> james10
+  humiliation ---> james10
+  end ---> james11
+  james11 ---> pursuits
+''');
+      final sizes = {
+        for (final node in document.nodes) node.id: const Size(300, 50),
+        'james10': const Size(300, 120),
+        'james11': const Size(300, 180),
+      };
+      final positions = conceptMapLayout(document, nodeSizes: sizes);
+      // The shared passage belongs between the two sets of exclusive notes,
+      // even though it was created before any of those notes.
+      for (final (above, below) in [
+        ('rich', 'humiliation'),
+        ('humiliation', 'isaiah'),
+        ('isaiah', 'end'),
+        ('end', 'pursuits'),
+      ]) {
+        expect(
+          positions[above]!.dy + sizes[above]!.height,
+          lessThan(positions[below]!.dy),
+        );
+      }
+      final upper = [
+        for (final id in ['rich', 'humiliation', 'isaiah'])
+          conceptMapConnector(
+            ConceptMapEdge(from: 'james10', to: id),
+            positions,
+            sizes,
+          ),
+      ];
+      final lower = [
+        for (final id in ['end', 'pursuits', 'isaiah'])
+          conceptMapConnector(
+            ConceptMapEdge(from: 'james11', to: id),
+            positions,
+            sizes,
+          ),
+      ];
+      for (var a = 0; a < upper.length; a++) {
+        for (var b = 0; b < lower.length; b++) {
+          if (a == 2 && b == 2) continue; // Both actually connect to Isaiah.
+          expect(upper[a], isNotEmpty);
+          expect(lower[b], isNotEmpty);
+          for (var i = 1; i < upper[a].length; i++) {
+            for (var j = 1; j < lower[b].length; j++) {
+              expect(
+                Rect.fromPoints(upper[a][i - 1], upper[a][i])
+                    .inflate(1.5)
+                    .overlaps(
+                      Rect.fromPoints(
+                        lower[b][j - 1],
+                        lower[b][j],
+                      ).inflate(1.5),
+                    ),
+                isFalse,
+                reason: 'Unrelated branches must not look connected',
+              );
+            }
+          }
+        }
+      }
+    },
+  );
+
   test('branches from one card share a trunk without crossing each other', () {
     const positions = {
       'node13': Offset(80, 300),
@@ -681,6 +905,263 @@ flowchart TD
     }
   });
 
+  testWidgets('unchanged cards keep their bounds when toggling edit mode', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final document = ConceptMapDocument.fromMermaid('''
+flowchart TD
+  key[A short key point]:::keyPoint
+  verse[James 1:9]:::passage
+  note[A longer note that wraps onto multiple lines with enough words to fill the card]:::note
+  empty[]:::note
+  rich[The Rich Should Glory in Their Humiliation]:::keyPoint
+  boundary[XXXXXXXXXXXXXXXXXXX]:::note
+  key ---> verse
+  verse ---> note
+''');
+    Future<void> render(bool editing, double textScale) async {
+      await tester.pumpWidget(
+        host(
+          Scaffold(
+            body: Builder(
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: TextScaler.linear(textScale)),
+                child: ConceptMapEditor(
+                  document: document,
+                  editing: editing,
+                  onChanged: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    List<Rect> bounds() => [
+      for (final card in find.byType(Card).evaluate())
+        tester.getRect(find.byWidget(card.widget)),
+    ];
+    // The near-full boundary label catches an extra line caused by caret space.
+    for (final scale in [1.0, 1.5, 2.0]) {
+      await render(false, scale);
+      final original = bounds();
+      await render(true, scale);
+      expect(bounds(), original);
+      await tester.tap(find.widgetWithText(TextField, 'A short key point'));
+      await tester.pumpAndSettle();
+      expect(bounds(), original);
+      await render(false, scale);
+      expect(bounds(), original);
+    }
+  });
+
+  testWidgets('pinching with a stationary finger on a label cancels its menu', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      host(
+        Scaffold(
+          body: ConceptMapEditor(
+            document: ConceptMapDocument.fromMermaid(
+              'flowchart TD\n a[Hold here]:::note',
+            ),
+            editing: true,
+            onChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final first = await tester.startGesture(
+      tester.getCenter(find.text('Hold here')),
+      pointer: 1,
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    final second = await tester.startGesture(
+      const Offset(500, 250),
+      pointer: 2,
+    );
+    await second.moveTo(const Offset(650, 350));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(
+      tester
+          .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+          .transformationController!
+          .value
+          .getMaxScaleOnAxis(),
+      greaterThan(1),
+    );
+    await second.up();
+    await first.up();
+    await tester.pumpAndSettle();
+    await openCardMenu(tester, 'Hold here');
+    expect(find.text('Add connection'), findsOneWidget);
+  });
+
+  testWidgets('double-tap selection can copy and paste editable labels', (
+    tester,
+  ) async {
+    var clipboard = '';
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      switch (call.method) {
+        case 'Clipboard.setData':
+          clipboard = (call.arguments as Map)['text'] as String;
+          return null;
+        case 'Clipboard.getData':
+          return {'text': clipboard};
+        case 'Clipboard.hasStrings':
+          return {'value': clipboard.isNotEmpty};
+      }
+      return null;
+    });
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+    var document = ConceptMapDocument.fromMermaid(
+      'flowchart TD\n a[Alpha Beta]:::note',
+    );
+    await tester.pumpWidget(
+      host(
+        Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => ConceptMapEditor(
+              document: document,
+              editing: true,
+              onChanged: (value) => setState(() => document = value),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final text = find.byType(EditableText);
+    final point = tester.getTopLeft(text) + const Offset(20, 8);
+    await tester.tapAt(point);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tapAt(point);
+    await tester.pumpAndSettle();
+    expect(find.text('Copy'), findsOneWidget);
+    expect(find.text('Cut'), findsOneWidget);
+    await tester.tap(find.text('Copy'));
+    await tester.pumpAndSettle();
+    expect(clipboard, 'Alpha');
+    await tester.pump(const Duration(milliseconds: 500));
+    final editable = tester.state<EditableTextState>(text).renderEditable;
+    final secondWord = editable.localToGlobal(
+      editable.getLocalRectForCaret(const TextPosition(offset: 8)).center,
+    );
+    await tester.tapAt(secondWord);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tapAt(secondWord);
+    await tester.pumpAndSettle();
+    final controller = tester.widget<EditableText>(text).controller;
+    expect(controller.selection.textInside(controller.text), 'Beta');
+    await tester.tap(find.text('Paste'));
+    await tester.pumpAndSettle();
+    expect(document.nodes.single.label, 'Alpha Alpha');
+  });
+
+  testWidgets('card menu stays usable in landscape with large text', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(640, 360));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    for (final scale in [1.0, 2.0]) {
+      var document = ConceptMapDocument.fromMermaid(
+        'flowchart TD\n a[Landscape]:::note',
+      );
+      await tester.pumpWidget(
+        host(
+          Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(scale)),
+              child: Scaffold(
+                body: StatefulBuilder(
+                  builder: (context, setState) => ConceptMapEditor(
+                    document: document,
+                    editing: true,
+                    onChanged: (value) => setState(() => document = value),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await openCardMenu(tester, 'Landscape');
+      await tester.scrollUntilVisible(
+        find.text('Delete box'),
+        80,
+        scrollable: find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Delete box'));
+      await tester.pumpAndSettle();
+      expect(document.nodes, isEmpty);
+    }
+  });
+
+  testWidgets(
+    'keyboard can open passage menus and connect to an editable label',
+    (tester) async {
+      var document = ConceptMapDocument.fromMermaid('''
+flowchart TD
+ a[James 1:9]:::passage
+ b[The Lowly]:::note
+''');
+      await tester.pumpWidget(
+        host(
+          Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) => ConceptMapEditor(
+                document: document,
+                editing: true,
+                onChanged: (value) => setState(() => document = value),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+      await tester.pumpAndSettle();
+      expect(find.text('Show passage'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.text('Tap another card to connect it.'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      expect(document.edges, isEmpty);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(document.edges.single.from, 'a');
+      expect(document.edges.single.to, 'b');
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.f10);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.pumpAndSettle();
+      expect(find.text('Change to key point'), findsOneWidget);
+    },
+  );
+
   testWidgets('adding cards centers the viewport without changing zoom', (
     tester,
   ) async {
@@ -714,14 +1195,43 @@ flowchart TD
       ..setTranslationRaw(-140, -70, 0);
     await tester.pumpAndSettle();
     for (final type in ['Note', 'Key point']) {
-      await tester.tap(find.byTooltip('Add box'));
-      await tester.pumpAndSettle();
       await tester.tap(find.text(type).last);
       await tester.pumpAndSettle();
       final center = tester.getRect(find.byType(Card).last).center;
       expect((center - tester.getRect(viewer).center).distance, lessThan(1));
       expect(transform.value.getMaxScaleOnAxis(), 1.5);
     }
+    await tester.tap(find.text('Passage'));
+    await tester.pumpAndSettle();
+    Navigator.of(
+      tester.element(find.byType(StudyNotesDetailPage)),
+    ).pop(otherPassage);
+    await tester.pumpAndSettle();
+    final addedPassage = tester
+        .widget<ConceptMapEditor>(find.byType(ConceptMapEditor))
+        .document
+        .nodes
+        .last;
+    expect(addedPassage.type, ConceptMapNodeType.passage);
+    expect(addedPassage.passage, otherPassage);
+    expect(transform.value.getMaxScaleOnAxis(), 1.5);
+    await tester.runAsync(() async {
+      await tester.tap(find.byTooltip('Save'));
+      await database
+          .watchStudyNotes()
+          .firstWhere(
+            (notes) => notesService
+                .passagesFor(
+                  notes.single.copyWith(conceptMap: const Value(null)),
+                )
+                .contains(otherPassage),
+          )
+          .timeout(const Duration(seconds: 5));
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notes'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(Chip, 'John 3:16-16'), findsOneWidget);
   });
 
   testWidgets('connect uses the selected card and one destination tap', (
@@ -745,17 +1255,18 @@ flowchart TD
     await tester.tap(find.text('Concept Map'));
     await tester.tap(find.byTooltip('Edit'));
     await tester.pumpAndSettle();
-    final connect = find.byWidgetPredicate(
-      (widget) => widget is IconButton && widget.tooltip == 'Connect boxes',
-    );
-    expect(tester.widget<IconButton>(connect).onPressed, isNull);
-    await tester.tap(find.widgetWithText(TextField, 'Source'));
-    await tester.pumpAndSettle();
-    expect(tester.widget<IconButton>(connect).onPressed, isNotNull);
+    expect(find.byTooltip('Connect boxes'), findsNothing);
     final cardBounds = [
       for (var i = 0; i < 3; i++) tester.getRect(find.byType(Card).at(i)),
     ];
-    await tester.tap(connect);
+    await openCardMenu(tester, 'Source');
+    expect(
+      tester
+          .widget<ListTile>(find.widgetWithText(ListTile, 'Remove connection'))
+          .onTap,
+      isNull,
+    );
+    await tester.tap(find.text('Add connection'));
     await tester.pumpAndSettle();
     expect(find.text('Tap another card to connect it.'), findsOneWidget);
     expect(find.text('Passage text'), findsOneWidget);
@@ -784,7 +1295,8 @@ flowchart TD
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(TextField, 'Source'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Remove connection'));
+    await openCardMenu(tester, 'Source');
+    await tester.tap(find.text('Remove connection'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(ListTile, 'Destination'));
     await tester.pumpAndSettle();
@@ -926,9 +1438,8 @@ flowchart TD
     await tester.enterText(find.byType(TextField), 'Updated');
     await tester.tap(find.text('Concept Map'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Jas 1:9-11'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Show passage'));
+    await openCardMenu(tester, 'Jas 1:9-11');
+    await tester.tap(find.text('Show passage'));
     await tester.pumpAndSettle();
     await save();
     await tester.runAsync(() async {
@@ -1092,22 +1603,9 @@ flowchart TD
       expect(find.text('Passage text'), findsNothing);
       await tester.tap(find.byTooltip('Edit'));
       await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<IconButton>(
-              find.byWidgetPredicate(
-                (widget) =>
-                    widget is IconButton &&
-                    widget.tooltip == 'Select a passage card',
-              ),
-            )
-            .onPressed,
-        isNull,
-      );
-      await tester.tap(find.text('John 3:16-16'));
-      await tester.pumpAndSettle();
-      expect(find.byTooltip('Show passage'), findsOneWidget);
-      await tester.tap(find.byTooltip('Show passage'));
+      expect(find.text('Show passage'), findsNothing);
+      await openCardMenu(tester, 'John 3:16-16');
+      await tester.tap(find.text('Show passage'));
       await tester.pumpAndSettle();
       expect(find.text('Passage text'), findsOneWidget);
       expect(
@@ -1118,16 +1616,14 @@ flowchart TD
             .map((node) => node.showPassage),
         [false, true],
       );
-      await tester.tap(find.text('Jas 1:9-11'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Show passage'));
+      await openCardMenu(tester, 'Jas 1:9-11');
+      await tester.tap(find.text('Show passage'));
       await tester.pumpAndSettle();
       expect(find.text('Passage text'), findsNWidgets(2));
-      await tester.tap(find.text('John 3:16-16'));
-      await tester.pumpAndSettle();
-      expect(find.byTooltip('Add box'), findsOneWidget);
+      expect(find.text('Passage'), findsOneWidget);
       expect(find.byTooltip('Save'), findsOneWidget);
-      await tester.tap(find.byTooltip('Hide passage'));
+      await openCardMenu(tester, 'John 3:16-16');
+      await tester.tap(find.text('Hide passage'));
       await tester.pumpAndSettle();
       expect(find.text('Passage text'), findsOneWidget);
       await tester.tap(find.text('Notes'));

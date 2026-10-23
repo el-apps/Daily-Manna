@@ -1,12 +1,16 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:daily_manna/models/concept_map.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 const _cardWidth = 300.0;
+const _labelCursorWidth = 2.0;
 
 Map<String, Offset> conceptMapLayout(
   ConceptMapDocument document, {
@@ -79,6 +83,7 @@ Map<String, Offset> conceptMapLayout(
   final columns = groups.keys.toList()..sort();
   for (final column in columns) {
     final preferredCenters = <String, double>{};
+    final parentCenters = <String, double>{};
     for (final node in groups[column]!) {
       final placedNeighbors = [
         for (final id in nodeIds)
@@ -86,6 +91,12 @@ Map<String, Offset> conceptMapLayout(
             id,
       ];
       if (placedNeighbors.isNotEmpty) {
+        parentCenters[node.id] =
+            placedNeighbors.fold<double>(
+              0,
+              (sum, id) => sum + positions[id]!.dy + height(id) / 2,
+            ) /
+            placedNeighbors.length;
         preferredCenters[node.id] =
             placedNeighbors.fold<double>(0, (sum, id) {
               var center =
@@ -101,6 +112,11 @@ Map<String, Offset> conceptMapLayout(
     }
     final nodes = groups[column]!.toList()
       ..sort((a, b) {
+        // Keep each parent's notes together, with shared cards between groups.
+        final parentComparison = (parentCenters[a.id] ?? 0).compareTo(
+          parentCenters[b.id] ?? 0,
+        );
+        if (parentComparison != 0) return parentComparison;
         final comparison = (preferredCenters[a.id] ?? 0).compareTo(
           preferredCenters[b.id] ?? 0,
         );
@@ -203,14 +219,28 @@ List<Offset> conceptMapConnector(
               math.max(a.dy, b.dy) > rect.top &&
               math.min(a.dy, b.dy) < rect.bottom,
   );
-  // Adjacent columns share one centered trunk instead of choosing opposite
-  // sides of the gap for different branches of the same card.
+  // Branches from one source share a lane, but different sources must not
+  // merge into a single bus when they connect to a shared destination.
   final middle = (entry + exit) / 2;
+  var trunkX = middle.dx;
+  if (horizontal) {
+    final left = from.center.dx < to.center.dx ? from : to;
+    final right = from.center.dx < to.center.dx ? to : from;
+    final sources =
+        cards.values.where((rect) => rect.right == left.right).toList()
+          ..sort((a, b) => a.center.dy.compareTo(b.center.dy));
+    trunkX =
+        left.right +
+        clearance +
+        (right.left - left.right - 2 * clearance) *
+            (sources.indexOf(left) + 1) /
+            (sources.length + 1);
+  }
   final trunk = [
     entry,
     if (horizontal) ...[
-      Offset(middle.dx, entry.dy),
-      Offset(middle.dx, exit.dy),
+      Offset(trunkX, entry.dy),
+      Offset(trunkX, exit.dy),
     ] else ...[
       Offset(entry.dx, middle.dy),
       Offset(exit.dx, middle.dy),
@@ -294,10 +324,13 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
   final _nodeSizes = <String, Size>{};
   final _viewportKey = GlobalKey();
   final _transform = TransformationController();
+  final _cancelLabelHolds = ValueNotifier(0);
+  final _pointers = <int>{};
   String? _pendingCenterId;
 
   @override
   void dispose() {
+    _cancelLabelHolds.dispose();
     _transform.dispose();
     super.dispose();
   }
@@ -311,57 +344,35 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
     );
   }
 
-  Future<void> addNodeMenu() async {
+  Future<void> addPassage() async {
     if (!widget.editing) return;
-    final type = await showModalBottomSheet<ConceptMapNodeType>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final nodeType in ConceptMapNodeType.values)
-              ListTile(
-                leading: Icon(_iconFor(nodeType)),
-                title: Text(_labelFor(nodeType)),
-                onTap: () => Navigator.pop(context, nodeType),
-              ),
-          ],
+    final passage = await showPassageSelector(context);
+    if (passage == null || !mounted) return;
+    final bibleService = context.read<BibleService>();
+    final id = widget.document.nextNodeId;
+    widget.onChanged(
+      widget.document.addNode(
+        ConceptMapNode(
+          id: id,
+          type: ConceptMapNodeType.passage,
+          label: bibleService.getRangeRefName(passage),
+          passage: passage,
         ),
       ),
     );
-    if (type == null || !mounted) return;
-    if (type == ConceptMapNodeType.passage) {
-      final passage = await showPassageSelector(context);
-      if (passage == null || !mounted) return;
-      final bibleService = context.read<BibleService>();
-      final id = widget.document.nextNodeId;
-      widget.onChanged(
-        widget.document.addNode(
-          ConceptMapNode(
-            id: id,
-            type: type,
-            label: bibleService.getRangeRefName(passage),
-            passage: passage,
-          ),
-        ),
-      );
-      return;
-    }
-    addNode(type);
   }
 
-  void startConnecting() {
-    if (!widget.editing || widget.selectedNodeId == null) return;
+  void _startConnecting(String id) {
+    if (!widget.editing) return;
     FocusScope.of(context).unfocus();
-    setState(() => _connectingFrom = widget.selectedNodeId);
+    setState(() => _connectingFrom = id);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Tap another card to connect it.')),
     );
   }
 
-  Future<void> disconnectMenu() async {
-    final selected = widget.selectedNodeId;
-    if (!widget.editing || selected == null) return;
+  Future<void> _disconnectMenu(String selected) async {
+    if (!widget.editing) return;
     setState(() => _connectingFrom = null);
     final neighbors = <String>{
       for (final edge in widget.document.edges)
@@ -441,50 +452,65 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
           );
       });
     }
-    return InteractiveViewer(
-      key: _viewportKey,
-      transformationController: _transform,
-      constrained: false,
-      boundaryMargin: const EdgeInsets.all(double.infinity),
-      minScale: .25,
-      maxScale: 4,
-      child: SizedBox(
-        width: positions.entries.fold<double>(
-          900,
-          (width, entry) => math.max(
-            width,
-            entry.value.dx + (_nodeSizes[entry.key]?.width ?? _cardWidth) + 80,
+    return Listener(
+      onPointerDown: (event) {
+        _pointers.add(event.pointer);
+        if (_pointers.length > 1) _cancelLabelHolds.value++;
+      },
+      onPointerUp: (event) => _pointers.remove(event.pointer),
+      onPointerCancel: (event) => _pointers.remove(event.pointer),
+      child: InteractiveViewer(
+        key: _viewportKey,
+        transformationController: _transform,
+        onInteractionUpdate: (_) => _cancelLabelHolds.value++,
+        constrained: false,
+        boundaryMargin: const EdgeInsets.all(double.infinity),
+        minScale: .25,
+        maxScale: 4,
+        child: SizedBox(
+          width: positions.entries.fold<double>(
+            900,
+            (width, entry) => math.max(
+              width,
+              entry.value.dx +
+                  (_nodeSizes[entry.key]?.width ?? _cardWidth) +
+                  80,
+            ),
           ),
-        ),
-        height: positions.entries.fold<double>(
-          700,
-          (height, entry) => math.max(
-            height,
-            entry.value.dy + (_nodeSizes[entry.key]?.height ?? 90) + 80,
+          height: positions.entries.fold<double>(
+            700,
+            (height, entry) => math.max(
+              height,
+              entry.value.dy + (_nodeSizes[entry.key]?.height ?? 90) + 80,
+            ),
           ),
-        ),
-        child: CustomPaint(
-          painter: _ConceptMapEdgesPainter(widget.document, Map.of(_nodeSizes)),
-          child: Stack(
-            children: [
-              for (final entry in positions.entries)
-                _ConceptMapNodeWidget(
-                  key: ValueKey(entry.key),
-                  node: widget.document.nodes.firstWhere(
-                    (node) => node.id == entry.key,
+          child: CustomPaint(
+            painter: _ConceptMapEdgesPainter(
+              widget.document,
+              Map.of(_nodeSizes),
+            ),
+            child: Stack(
+              children: [
+                for (final entry in positions.entries)
+                  _ConceptMapNodeWidget(
+                    key: ValueKey(entry.key),
+                    node: widget.document.nodes.firstWhere(
+                      (node) => node.id == entry.key,
+                    ),
+                    position: entry.value,
+                    editing: widget.editing,
+                    connecting: _connectingFrom != null,
+                    selected:
+                        widget.editing && widget.selectedNodeId == entry.key,
+                    onTap: () => _selectNode(entry.key),
+                    onLongPress: () => _showNodeMenu(entry.key),
+                    cancelLabelHolds: _cancelLabelHolds,
+                    onSizeChanged: _updateNodeSize,
+                    onChanged: (node) =>
+                        widget.onChanged(widget.document.updateNode(node)),
                   ),
-                  position: entry.value,
-                  editing: widget.editing,
-                  connecting: _connectingFrom != null,
-                  selected:
-                      widget.editing && widget.selectedNodeId == entry.key,
-                  onTap: () => _selectNode(entry.key),
-                  onLongPress: () => _showNodeMenu(entry.key),
-                  onSizeChanged: _updateNodeSize,
-                  onChanged: (node) =>
-                      widget.onChanged(widget.document.updateNode(node)),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -511,17 +537,69 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
 
   Future<void> _showNodeMenu(String id) async {
     if (!widget.editing || _connectingFrom != null) return;
-    final shouldDelete = await showModalBottomSheet<bool>(
+    widget.onNodeSelected?.call(id);
+    FocusScope.of(context).unfocus();
+    final node = widget.document.nodes.firstWhere((node) => node.id == id);
+    final targetType = node.type == ConceptMapNodeType.keyPoint
+        ? ConceptMapNodeType.note
+        : ConceptMapNodeType.keyPoint;
+    final action = await showModalBottomSheet<String>(
       context: context,
       builder: (context) => SafeArea(
-        child: ListTile(
-          leading: const Icon(Icons.delete_outline),
-          title: const Text('Delete box'),
-          onTap: () => Navigator.pop(context, true),
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            if (node.type == ConceptMapNodeType.passage)
+              ListTile(
+                leading: const Icon(Icons.article_outlined),
+                title: Text(node.showPassage ? 'Hide passage' : 'Show passage'),
+                onTap: () => Navigator.pop(context, 'visibility'),
+              ),
+            ListTile(
+              leading: const Icon(Icons.account_tree_outlined),
+              title: const Text('Add connection'),
+              onTap: () => Navigator.pop(context, 'connect'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.link_off),
+              title: const Text('Remove connection'),
+              onTap:
+                  widget.document.edges.any(
+                    (edge) => edge.from == id || edge.to == id,
+                  )
+                  ? () => Navigator.pop(context, 'disconnect')
+                  : null,
+            ),
+            if (node.type != ConceptMapNodeType.passage)
+              ListTile(
+                leading: Icon(_iconFor(targetType)),
+                title: Text('Change to ${_labelFor(targetType).toLowerCase()}'),
+                onTap: () => Navigator.pop(context, 'convert'),
+              ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('Delete box'),
+              onTap: () => Navigator.pop(context, 'delete'),
+            ),
+          ],
         ),
       ),
     );
-    if (shouldDelete == true && mounted) {
+    if (!mounted) return;
+    if (action == 'connect') {
+      _startConnecting(id);
+    } else if (action == 'disconnect') {
+      await _disconnectMenu(id);
+    } else if (action == 'convert' || action == 'visibility') {
+      final current = widget.document.nodes.firstWhere((node) => node.id == id);
+      widget.onChanged(
+        widget.document.updateNode(
+          action == 'convert'
+              ? current.copyWith(type: targetType)
+              : current.copyWith(showPassage: !current.showPassage),
+        ),
+      );
+    } else if (action == 'delete') {
       widget.onChanged(widget.document.deleteNode(id));
     }
   }
@@ -549,6 +627,7 @@ class _ConceptMapNodeWidget extends StatefulWidget {
     required this.selected,
     required this.onTap,
     required this.onLongPress,
+    required this.cancelLabelHolds,
     required this.onSizeChanged,
     required this.onChanged,
   });
@@ -559,7 +638,8 @@ class _ConceptMapNodeWidget extends StatefulWidget {
   final bool connecting;
   final bool selected;
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
+  final Future<void> Function() onLongPress;
+  final Listenable cancelLabelHolds;
   final void Function(String id, Size size) onSizeChanged;
   final ValueChanged<ConceptMapNode> onChanged;
 
@@ -569,11 +649,22 @@ class _ConceptMapNodeWidget extends StatefulWidget {
 
 class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
   late final TextEditingController _controller;
+  final _focusNode = FocusNode();
+  Timer? _longPress;
+  Offset? _pressOrigin;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.node.label);
+    widget.cancelLabelHolds.addListener(_cancelHold);
+  }
+
+  void _cancelHold() => _longPress?.cancel();
+
+  Future<void> _openMenu() async {
+    await widget.onLongPress();
+    if (mounted && widget.editing) _focusNode.requestFocus();
   }
 
   @override
@@ -587,6 +678,9 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
 
   @override
   void dispose() {
+    _longPress?.cancel();
+    widget.cancelLabelHolds.removeListener(_cancelHold);
+    _focusNode.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -599,6 +693,9 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
       }
     });
     final colors = Theme.of(context).colorScheme;
+    final labelStyle = Theme.of(
+      context,
+    ).textTheme.bodyMedium!.copyWith(inherit: false);
     final bibleService = context.read<BibleService>();
     final color = switch (widget.node.type) {
       ConceptMapNodeType.keyPoint => colors.primaryContainer,
@@ -609,36 +706,94 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
       left: widget.position.dx,
       top: widget.position.dy,
       width: _cardWidth,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        onLongPress: widget.onLongPress,
-        child: Card(
-          color: color,
-          shape: widget.selected
-              ? RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: colors.primary, width: 2),
-                )
-              : null,
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: widget.node.type == ConceptMapNodeType.passage
-                ? _PassageNodeContent(
-                    node: widget.node,
-                    bibleService: bibleService,
-                    showContent: widget.node.showPassage,
+      child: Focus(
+        focusNode: _focusNode,
+        canRequestFocus: widget.editing,
+        skipTraversal: widget.node.type != ConceptMapNodeType.passage,
+        onFocusChange: (_) => setState(() {}),
+        onKeyEvent: (_, event) {
+          if (!widget.editing || event is! KeyDownEvent) {
+            return KeyEventResult.ignored;
+          }
+          final key = event.logicalKey;
+          if (widget.connecting &&
+              (key == LogicalKeyboardKey.enter ||
+                  key == LogicalKeyboardKey.space)) {
+            widget.onTap();
+            return KeyEventResult.handled;
+          }
+          if (key == LogicalKeyboardKey.contextMenu ||
+              (key == LogicalKeyboardKey.f10 &&
+                  HardwareKeyboard.instance.isShiftPressed)) {
+            _openMenu();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: GestureDetector(
+          onTap: widget.onTap,
+          onLongPress: _openMenu,
+          child: Card(
+            color: color,
+            shape: widget.selected || (widget.editing && _focusNode.hasFocus)
+                ? RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: colors.primary, width: 2),
                   )
-                : widget.editing
-                ? TextField(
-                    controller: _controller,
-                    onTap: widget.onTap,
-                    readOnly: widget.connecting,
-                    maxLines: null,
-                    onChanged: (value) =>
-                        widget.onChanged(widget.node.copyWith(label: value)),
-                    decoration: const InputDecoration(border: InputBorder.none),
-                  )
-                : Text(widget.node.label),
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: widget.node.type == ConceptMapNodeType.passage
+                  ? _PassageNodeContent(
+                      node: widget.node,
+                      bibleService: bibleService,
+                      showContent: widget.node.showPassage,
+                    )
+                  : widget.editing
+                  ? Listener(
+                      // Observe the hold without competing with TextField's
+                      // selection gesture or the canvas's drag gesture.
+                      onPointerDown: (event) {
+                        _longPress?.cancel();
+                        if (widget.connecting ||
+                            event.buttons != kPrimaryButton) {
+                          return;
+                        }
+                        _pressOrigin = event.position;
+                        _longPress = Timer(kLongPressTimeout, _openMenu);
+                      },
+                      onPointerMove: (event) {
+                        if (_pressOrigin != null &&
+                            (event.position - _pressOrigin!).distance >
+                                kTouchSlop) {
+                          _longPress?.cancel();
+                        }
+                      },
+                      onPointerUp: (_) => _longPress?.cancel(),
+                      onPointerCancel: (_) => _longPress?.cancel(),
+                      child: TextField(
+                        controller: _controller,
+                        style: labelStyle,
+                        strutStyle: StrutStyle.disabled,
+                        cursorWidth: _labelCursorWidth,
+                        onTap: widget.onTap,
+                        readOnly: widget.connecting,
+                        maxLines: null,
+                        onChanged: (value) => widget.onChanged(
+                          widget.node.copyWith(label: value),
+                        ),
+                        decoration: null,
+                      ),
+                    )
+                  : Padding(
+                      // RenderEditable reserves the cursor width plus a 1px
+                      // gap; use the same wrap width when displaying the label.
+                      padding: const EdgeInsetsDirectional.only(
+                        end: _labelCursorWidth + 1,
+                      ),
+                      child: Text(widget.node.label, style: labelStyle),
+                    ),
+            ),
           ),
         ),
       ),

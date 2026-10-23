@@ -63,11 +63,22 @@ class StudyNotesService {
     Value<String?> notes = const Value.absent(),
     String? conceptMap,
   }) async {
-    final changed = await _db.updateStudyNote(
-      id,
-      notes: notes,
-      conceptMap: conceptMap,
-    );
+    final changed = await _db.transaction(() async {
+      String? passages;
+      if (conceptMap != null) {
+        final note = await _db.studyNoteById(id);
+        if (note == null) return false;
+        passages = _encodePassages(
+          passagesFor(note.copyWith(conceptMap: Value(conceptMap))),
+        );
+      }
+      return _db.updateStudyNote(
+        id,
+        notes: notes,
+        conceptMap: conceptMap,
+        passages: passages,
+      );
+    });
     if (changed) await onLocalChange?.call();
   }
 
@@ -78,35 +89,41 @@ class StudyNotesService {
   }) async {
     final note = await _db.studyNoteById(id);
     if (note == null) return;
-    final passages = _decodePassages(note.passages);
-    final added = !passages.contains(passage);
-    if (added) passages.add(passage);
     final document =
         conceptMap ?? ConceptMapDocument.fromMermaid(note.conceptMap ?? '');
-    final updatedMap = document.addPassage(passage).toMermaid();
-    if (added || updatedMap != note.conceptMap) {
-      await _db.updateStudyNote(
-        id,
-        passages: _encodePassages(passages),
-        conceptMap: updatedMap,
-      );
-      await onLocalChange?.call();
-    }
+    await saveNote(id, conceptMap: document.addPassage(passage).toMermaid());
   }
 
   Future<List<StudyNote>> findByPassage(ScriptureRangeRef passage) async {
     final notes = await _db.getStudyNotes();
     return notes
         .where(
-          (note) => _decodePassages(
-            note.passages,
-          ).any((reference) => reference.overlaps(passage)),
+          (note) =>
+              passagesFor(note).any((reference) => reference.overlaps(passage)),
         )
         .toList();
   }
 
-  List<ScriptureRangeRef> passagesFor(StudyNote note) =>
-      _decodePassages(note.passages);
+  List<ScriptureRangeRef> passagesFor(StudyNote note) {
+    final passages = _decodePassages(note.passages);
+    final document = ConceptMapDocument.fromMermaid(note.conceptMap ?? '');
+    for (final node in document.nodes) {
+      final reference = node.passage;
+      if (node.type != ConceptMapNodeType.passage || reference == null) {
+        continue;
+      }
+      // Existing chapter/range links already cover their individual map verses.
+      final covered = passages.any(
+        (existing) =>
+            existing.overlaps(reference) &&
+            existing.startVerse <= reference.startVerse &&
+            (existing.endVerse ?? existing.startVerse) >=
+                (reference.endVerse ?? reference.startVerse),
+      );
+      if (!covered) passages.add(reference);
+    }
+    return passages;
+  }
 
   static String _encodePassages(List<ScriptureRangeRef> passages) => jsonEncode(
     passages
