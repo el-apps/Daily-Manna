@@ -64,6 +64,8 @@ Map<String, Offset> conceptMapLayout(
       ],
   };
   final spans = <String, double>{};
+  const siblingGap = 24.0;
+  const keyPointGap = 80.0;
   late double Function(String) span;
   double childrenSpan(String id) {
     final list = children[id]!;
@@ -73,7 +75,7 @@ Map<String, Offset> conceptMapLayout(
                   .take(list.length - 1)
                   .fold<double>(
                     0,
-                    (sum, child) => sum + math.max(160, span(child) + 24),
+                    (sum, child) => sum + span(child) + siblingGap,
                   ) +
               span(list.last);
   }
@@ -103,7 +105,7 @@ Map<String, Offset> conceptMapLayout(
                   positions[id]!.dy + height(id) / 2 - childrenSpan(id) / 2;
               for (final child in children[id]!) {
                 if (child == node.id) return sum + center + span(child) / 2;
-                center += math.max(160, span(child) + 24);
+                center += span(child) + siblingGap;
               }
               return sum + positions[id]!.dy + height(id) / 2;
             }) /
@@ -133,39 +135,13 @@ Map<String, Offset> conceptMapLayout(
         80 + column * (_cardWidth + 50),
         y + (bandHeight - height(node.id)) / 2,
       );
-      y += math.max(160, bandHeight + 24);
+      // Root bands reserve space for the entire branch. Carry that separation
+      // into later columns via preferredCenters, without spreading siblings out.
+      y += bandHeight + (column == 0 ? keyPointGap : siblingGap);
     }
   }
-  // A crowded destination column may have pushed a card below its source.
-  // Move sources to match, within the free space between their neighbors.
-  for (final column in columns.reversed) {
-    final nodes = groups[column]!.toList()
-      ..sort((a, b) => positions[a.id]!.dy.compareTo(positions[b.id]!.dy));
-    for (var i = 0; i < nodes.length; i++) {
-      final node = nodes[i];
-      final targets = children[node.id]!;
-      if (targets.isEmpty) continue;
-      final top = targets
-          .map((id) => positions[id]!.dy + height(id) / 2 - span(id) / 2)
-          .reduce(math.min);
-      final bottom = targets
-          .map((id) => positions[id]!.dy + height(id) / 2 + span(id) / 2)
-          .reduce(math.max);
-      final center = (top + bottom) / 2;
-      final minimum = i == 0
-          ? 80.0
-          : positions[nodes[i - 1].id]!.dy +
-                math.max(160, height(nodes[i - 1].id) + 24);
-      final maximum = i == nodes.length - 1
-          ? double.infinity
-          : positions[nodes[i + 1].id]!.dy -
-                math.max(160, height(node.id) + 24);
-      positions[node.id] = Offset(
-        positions[node.id]!.dx,
-        (center - height(node.id) / 2).clamp(minimum, maximum),
-      );
-    }
-  }
+  // Shared destinations are placed between their sources, but must not pull
+  // those sources out of the branch bands reserved above.
   return positions;
 }
 

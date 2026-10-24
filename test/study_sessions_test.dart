@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:bible_parser_flutter/bible_parser_flutter.dart';
@@ -468,10 +469,11 @@ flowchart TD
       },
     );
     expect(positions['a'], const Offset(80, 80));
-    expect(positions['b'], const Offset(80, 382));
-    expect(positions['c'], const Offset(430, 174));
-    expect(positions['d'], const Offset(430, 382));
-    expect(conceptMapLayout(document)['b'], const Offset(80, 240));
+    expect(positions['b']!.dy - (positions['a']!.dy + 278), 80);
+    expect(positions['c']!.dy + 45, positions['a']!.dy + 139);
+    expect(positions['d']!.dy + 25, positions['b']!.dy + 25);
+    final defaultPositions = conceptMapLayout(document);
+    expect(defaultPositions['b']!.dy - (defaultPositions['a']!.dy + 90), 80);
     final tallerTarget = conceptMapLayout(
       document,
       nodeSizes: {'c': const Size(210, 278)},
@@ -484,6 +486,60 @@ flowchart TD
     );
     expect(tallerTarget['b']!.dy + 45, tallerTarget['d']!.dy + 45);
   });
+
+  for (final measured in [false, true]) {
+    test(
+      'exported branches stay centered and separate (measured: $measured)',
+      () {
+        final document = ConceptMapDocument.fromMermaid(
+          File('test/fixtures/glory_in_the_lord.mmd').readAsStringSync(),
+        );
+        final sizes = measured
+            ? {
+                for (final node in document.nodes)
+                  node.id: Size(300, switch (node.id) {
+                    'node3' => 100,
+                    'node5' => 120,
+                    'node7' => 184,
+                    'node15' => 52,
+                    'node16' => 68,
+                    _ => 44,
+                  }),
+              }
+            : <String, Size>{};
+        final positions = conceptMapLayout(document, nodeSizes: sizes);
+        Rect card(String id) =>
+            positions[id]! & (sizes[id] ?? const Size(300, 90));
+
+        // An asymmetric pair catches using card tops rather than branch bounds.
+        expect(
+          card('node7').center.dy,
+          closeTo((card('node15').top + card('node16').bottom) / 2, .001),
+        );
+        expect(card('node15').center.dy, lessThan(card('node7').center.dy));
+        expect(card('node16').center.dy, greaterThan(card('node7').center.dy));
+        final exampleGap = card('node21').top - card('node20').bottom;
+        final groupGap = card('node20').top - card('node7').bottom;
+        expect(exampleGap, closeTo(24, .001));
+        expect(groupGap, greaterThanOrEqualTo(80));
+        expect(groupGap, greaterThan(exampleGap));
+        expect(
+          card('node19').center.dy,
+          closeTo((card('node20').top + card('node24').bottom) / 2, .001),
+        );
+        // Isaiah is shared by two branches; it must not drag either note down.
+        expect(
+          card('node5').center.dy,
+          closeTo((card('node13').top + card('node17').bottom) / 2, .001),
+        );
+        for (final a in document.nodes) {
+          for (final b in document.nodes) {
+            if (a.id != b.id) expect(card(a.id).overlaps(card(b.id)), isFalse);
+          }
+        }
+      },
+    );
+  }
 
   test('key points reserve space for their expanded scripture branches', () {
     final document = ConceptMapDocument(
