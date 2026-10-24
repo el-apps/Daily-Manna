@@ -70,7 +70,78 @@ class AuthService extends ChangeNotifier {
   bool get isSignedIn => _token?.isNotEmpty == true;
   bool get isConfigured => baseUrl.hasScheme && baseUrl.host.isNotEmpty;
   String? get email => _email;
-  Future<String?> tokenProvider() async => _token;
+  Future<void>? _refreshing;
+
+  /// PocketBase tokens expire (14 days by default), so the session is renewed
+  /// well before expiry. An already-expired session is cleared so the user is
+  /// asked to sign in again instead of syncing with a dead token forever.
+  Future<String?> tokenProvider() async {
+    final token = _token;
+    if (token == null || token.isEmpty) return null;
+    final expiry = tokenExpiry(token);
+    if (expiry != null &&
+        expiry.difference(DateTime.now()) < refreshThreshold) {
+      await refresh();
+    }
+    return _token;
+  }
+
+  static const refreshThreshold = Duration(days: 7);
+
+  /// Reads the `exp` claim of a JWT, or null if the token is not a JWT.
+  static DateTime? tokenExpiry(String token) {
+    final parts = token.split('.');
+    if (parts.length != 3) return null;
+    try {
+      final payload =
+          jsonDecode(
+                utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+              )
+              as Map<String, dynamic>;
+      final exp = payload['exp'];
+      if (exp is! num) return null;
+      return DateTime.fromMillisecondsSinceEpoch(exp.toInt() * 1000);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Exchanges the current token for a fresh one. Rejection means the session
+  /// is no longer valid, so it is signed out; network failures keep the token.
+  Future<void> refresh() =>
+      _refreshing ??= _refresh().whenComplete(() => _refreshing = null);
+
+  Future<void> _refresh() async {
+    final token = _token;
+    if (token == null || token.isEmpty) return;
+    final http.Response response;
+    try {
+      response = await _client
+          .post(
+            baseUrl.resolve('/api/collections/users/auth-refresh'),
+            headers: {'Authorization': token},
+          )
+          .timeout(const Duration(seconds: 30));
+    } catch (_) {
+      return;
+    }
+    if (response.statusCode == 401 ||
+        response.statusCode == 403 ||
+        response.statusCode == 404) {
+      await signOut();
+      return;
+    }
+    if (response.statusCode < 200 || response.statusCode >= 300) return;
+    try {
+      final fresh =
+          (jsonDecode(response.body) as Map<String, dynamic>)['token'];
+      if (fresh is String && fresh.isNotEmpty && _token == token) {
+        _token = fresh;
+        await _store.write(_tokenKey, fresh);
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
 
   Future<void> init() async {
     _token = await _store.read(_tokenKey);

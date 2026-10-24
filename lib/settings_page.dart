@@ -66,6 +66,14 @@ class _AccountSyncSectionState extends State<_AccountSyncSection> {
       if (mounted) {
         _message('Sync complete.');
       }
+    } on SyncException catch (error) {
+      if (mounted) {
+        _message(
+          error.isUnauthorized
+              ? 'Your session expired. Please sign in again.'
+              : 'Could not sync. Check your connection and account.',
+        );
+      }
     } catch (_) {
       if (mounted) {
         _message('Could not sync. Check your connection and account.');

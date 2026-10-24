@@ -60,6 +60,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
       _database,
       authTokenProvider: _authService.tokenProvider,
       errorLogger: _errorLoggerService,
+      onUnauthorized: _authService.signOut,
     );
     _resultsService.onLocalChange = _syncService.requestSync;
     _studyNotesService.onLocalChange = _syncService.requestSync;

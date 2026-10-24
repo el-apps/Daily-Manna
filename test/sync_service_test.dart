@@ -6,6 +6,8 @@ import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FakeSyncTransport implements SyncTransport {
@@ -103,6 +105,31 @@ void main() {
     await service.sync();
 
     expect(transport.tokens, everyElement('saved-token'));
+  });
+
+  test('plain-text 401 surfaces as unauthorized and signs out', () async {
+    var signedOut = false;
+    final service = SyncService(
+      database,
+      transport: HttpSyncTransport(
+        endpoint: Uri.parse('https://sync.example.com/api/sync'),
+        client: MockClient(
+          (_) async => http.Response('invalid authentication\n', 401),
+        ),
+      ),
+      authTokenProvider: () async => 'expired-token',
+      onUnauthorized: () async => signedOut = true,
+    );
+
+    await expectLater(
+      service.sync(),
+      throwsA(
+        isA<SyncException>()
+            .having((e) => e.isUnauthorized, 'isUnauthorized', isTrue)
+            .having((e) => e.message, 'message', 'invalid authentication'),
+      ),
+    );
+    expect(signedOut, isTrue);
   });
 
   for (final archived in [false, true]) {

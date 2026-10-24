@@ -64,4 +64,62 @@ void main() {
     expect(auth.isSignedIn, isFalse);
     expect(store.values, isEmpty);
   });
+
+  String jwt(DateTime expiry) {
+    String part(Map<String, dynamic> value) =>
+        base64Url.encode(utf8.encode(jsonEncode(value))).replaceAll('=', '');
+    return '${part({'alg': 'HS256'})}.'
+        '${part({'exp': expiry.millisecondsSinceEpoch ~/ 1000})}.sig';
+  }
+
+  test('near-expiry token is refreshed before use', () async {
+    final store = MemoryTokenStore();
+    final old = jwt(DateTime.now().add(const Duration(days: 1)));
+    final fresh = jwt(DateTime.now().add(const Duration(days: 14)));
+    store.values['auth_token'] = old;
+    final auth = AuthService(
+      client: MockClient((request) async {
+        expect(request.url.path, '/api/collections/users/auth-refresh');
+        expect(request.headers['Authorization'], old);
+        return http.Response(jsonEncode({'token': fresh}), 200);
+      }),
+      store: store,
+      baseUrl: Uri.parse('https://accounts.example.com'),
+    );
+    await auth.init();
+    expect(await auth.tokenProvider(), fresh);
+    expect(store.values['auth_token'], fresh);
+  });
+
+  test('expired token that cannot be refreshed signs out', () async {
+    final store = MemoryTokenStore();
+    store.values['auth_token'] = jwt(
+      DateTime.now().subtract(const Duration(days: 1)),
+    );
+    store.values['auth_email'] = 'a@b.com';
+    final auth = AuthService(
+      client: MockClient(
+        (_) async => http.Response('{"message":"Unauthorized"}', 401),
+      ),
+      store: store,
+      baseUrl: Uri.parse('https://accounts.example.com'),
+    );
+    await auth.init();
+    expect(await auth.tokenProvider(), isNull);
+    expect(auth.isSignedIn, isFalse);
+    expect(store.values, isEmpty);
+  });
+
+  test('network failure during refresh keeps the session', () async {
+    final store = MemoryTokenStore();
+    final token = jwt(DateTime.now().add(const Duration(days: 1)));
+    store.values['auth_token'] = token;
+    final auth = AuthService(
+      client: MockClient((_) async => throw Exception('offline')),
+      store: store,
+      baseUrl: Uri.parse('https://accounts.example.com'),
+    );
+    await auth.init();
+    expect(await auth.tokenProvider(), token);
+  });
 }

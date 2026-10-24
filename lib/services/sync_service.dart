@@ -64,10 +64,19 @@ class HttpSyncTransport implements SyncTransport {
           }),
         )
         .timeout(const Duration(seconds: 30));
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw SyncException(response.statusCode, body['error']?.toString());
+      // Error bodies may be plain text (e.g. "invalid authentication").
+      String? message = response.body.trim();
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map) message = decoded['error']?.toString();
+      } catch (_) {}
+      throw SyncException(
+        response.statusCode,
+        message == null || message.isEmpty ? null : message,
+      );
     }
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
     return SyncResponse(
       cursor: (body['cursor'] as num).toInt(),
       changes: (body['changes'] as List? ?? const [])
@@ -81,6 +90,7 @@ class SyncException implements Exception {
   const SyncException(this.statusCode, [this.message]);
   final int statusCode;
   final String? message;
+  bool get isUnauthorized => statusCode == 401;
   @override
   String toString() =>
       'SyncException($statusCode${message == null ? '' : ': $message'})';
@@ -95,7 +105,9 @@ class SyncService {
     AuthTokenProvider? authTokenProvider,
     Future<SharedPreferences> Function()? preferencesProvider,
     ErrorLoggerService? errorLogger,
-  }) : _transport = transport ?? HttpSyncTransport(),
+    Future<void> Function()? onUnauthorized,
+  }) : _onUnauthorized = onUnauthorized,
+       _transport = transport ?? HttpSyncTransport(),
        _authTokenProvider = authTokenProvider,
        _preferencesProvider =
            preferencesProvider ?? SharedPreferences.getInstance,
@@ -106,6 +118,7 @@ class SyncService {
   final AuthTokenProvider? _authTokenProvider;
   final Future<SharedPreferences> Function() _preferencesProvider;
   final ErrorLoggerService? _errorLogger;
+  final Future<void> Function()? _onUnauthorized;
   static const _clientIdKey = 'sync_client_id';
   bool _syncing = false;
   bool _syncAgain = false;
@@ -215,6 +228,9 @@ class SyncService {
       );
     } catch (error) {
       _errorLogger?.logError('Sync failed: $error', context: 'Sync');
+      if (error is SyncException && error.isUnauthorized) {
+        await _onUnauthorized?.call();
+      }
       rethrow;
     }
   }
