@@ -308,29 +308,39 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
 
   void addNode([ConceptMapNodeType type = ConceptMapNodeType.note]) {
     final id = widget.document.nextNodeId;
-    widget.onChanged(
-      widget.document.addNode(
-        ConceptMapNode(id: id, type: type, label: _labelFor(type)),
-      ),
+    _addNode(
+      ConceptMapNode(id: id, type: type, label: _labelFor(type)),
+      widget.selectedNodeId,
     );
   }
 
   Future<void> addPassage() async {
     if (!widget.editing) return;
+    final selectedNodeId = widget.selectedNodeId;
     final passage = await showPassageSelector(context);
     if (passage == null || !mounted) return;
     final bibleService = context.read<BibleService>();
     final id = widget.document.nextNodeId;
-    widget.onChanged(
-      widget.document.addNode(
-        ConceptMapNode(
-          id: id,
-          type: ConceptMapNodeType.passage,
-          label: bibleService.getRangeRefName(passage),
-          passage: passage,
-        ),
+    _addNode(
+      ConceptMapNode(
+        id: id,
+        type: ConceptMapNodeType.passage,
+        label: bibleService.getRangeRefName(passage),
+        passage: passage,
       ),
+      selectedNodeId,
     );
+  }
+
+  void _addNode(ConceptMapNode node, String? connectFrom) {
+    var document = widget.document.addNode(node);
+    if (connectFrom != null) {
+      document = document.addEdge(
+        ConceptMapEdge(from: connectFrom, to: node.id),
+      );
+    }
+    setState(() => _connectingFrom = null);
+    widget.onChanged(document);
   }
 
   void startConnecting(String id) {

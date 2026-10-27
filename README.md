@@ -13,6 +13,7 @@ An app for building strong daily habits in interacting with the Word of God.
 
 - Open a study note's **Concept Map** tab and select **Edit**.
 - Use **+ Key point**, **+ Note**, or **+ Passage** in the toolbar to add a card.
+- When a card is selected, the plus buttons automatically connect new cards to it and keep it selected for adding more branches. With no selection, new cards are unconnected.
 - Select a card to add its actions to the toolbar: add/remove connections, show/hide passage text, change card type, or delete the card. Scroll the toolbar horizontally if needed.
 - With a keyboard, Tab to a card to select it, then use Tab or Shift+Tab to reach its toolbar actions; after choosing **Connect**, Tab to the destination and press **Enter** or **Space**.
 - Double-tap editable text to select a word and use the text-selection toolbar to cut, copy, or paste.

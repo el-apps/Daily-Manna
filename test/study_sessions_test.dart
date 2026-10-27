@@ -1314,6 +1314,70 @@ flowchart TD
     expect(find.widgetWithText(Chip, 'John 3:16-16'), findsOneWidget);
   });
 
+  testWidgets('plus buttons connect new cards only when a card is selected', (
+    tester,
+  ) async {
+    for (final selected in [false, true]) {
+      late StudyNote note;
+      await tester.runAsync(() async {
+        note = await notesService.createNote(title: 'New branches');
+        await notesService.updateConceptMap(note.id, '''
+flowchart TD
+  a[Other card]:::keyPoint
+  b[Selected parent]:::note
+''');
+        note = (await notesService.getNote(note.id))!;
+      });
+      await tester.pumpWidget(
+        host(StudyNotesDetailPage(key: ValueKey(selected), note: note)),
+      );
+      await tester.tap(find.text('Concept Map'));
+      await tester.tap(find.byTooltip('Edit'));
+      await tester.pumpAndSettle();
+      if (selected) {
+        await selectCard(tester, 'Selected parent');
+        await tester.tap(find.text('Connect'));
+        await tester.pumpAndSettle();
+      }
+      ConceptMapEditor editor() =>
+          tester.widget<ConceptMapEditor>(find.byType(ConceptMapEditor));
+      final addedIds = <String>[];
+      for (final type in ['Note', 'Key point', 'Passage']) {
+        await tester.ensureVisible(find.text(type).last);
+        await tester.tap(find.text(type).last);
+        await tester.pumpAndSettle();
+        if (type == 'Passage') {
+          Navigator.of(
+            tester.element(find.byType(StudyNotesDetailPage)),
+          ).pop(otherPassage);
+          await tester.pumpAndSettle();
+        }
+        final document = editor().document;
+        addedIds.add(document.nodes.last.id);
+        expect(document.nodes, hasLength(2 + addedIds.length));
+        expect(document.edges.map((edge) => (edge.from, edge.to)), [
+          if (selected)
+            for (final id in addedIds) ('b', id),
+        ]);
+        expect(editor().selectedNodeId, selected ? 'b' : null);
+      }
+      expect(editor().document.nodes.last.passage, otherPassage);
+      final beforeCancel = editor().document.toMermaid();
+      await tester.ensureVisible(find.text('Passage'));
+      await tester.tap(find.text('Passage'));
+      await tester.pumpAndSettle();
+      Navigator.of(tester.element(find.byType(StudyNotesDetailPage))).pop();
+      await tester.pumpAndSettle();
+      expect(editor().document.toMermaid(), beforeCancel);
+      await tester.runAsync(() async {
+        await tester.tap(find.byTooltip('Save'));
+        final saved = (await notesService.getNote(note.id))!;
+        expect(saved.conceptMap, beforeCancel);
+      });
+      await tester.pumpAndSettle();
+    }
+  });
+
   testWidgets('connect uses the selected card and one destination tap', (
     tester,
   ) async {
