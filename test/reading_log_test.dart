@@ -1,11 +1,16 @@
 import 'dart:io';
 
 import 'package:bible_parser_flutter/bible_parser_flutter.dart';
+import 'package:daily_manna/home_page.dart';
+import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/reading_reference_parser.dart';
 import 'package:daily_manna/services/results_service.dart';
-import 'package:daily_manna/ui/study/log_reading_page.dart';
+import 'package:daily_manna/services/spaced_repetition_service.dart';
+import 'package:daily_manna/services/streak_service.dart';
+import 'package:daily_manna/ui/study/reading_reference_form.dart';
+import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,6 +24,9 @@ class _Bible extends BibleService {
   Map<String, Book> get booksMap => {for (final b in books) b.id: b};
   @override
   List<Chapter> getChapters(String id) => booksMap[id]!.chapters;
+  @override
+  String getRangeRefName(ScriptureRangeRef ref) =>
+      '${booksMap[ref.bookId]!.title} ${ref.chapter}:${ref.startVerse}';
 }
 
 void main() {
@@ -158,7 +166,9 @@ void main() {
           Provider<BibleService>.value(value: bible),
           Provider(create: (_) => ResultsService(db)),
         ],
-        child: const MaterialApp(home: LogReadingPage()),
+        child: MaterialApp(
+          home: Scaffold(body: ReadingReferenceForm(onLogged: () {})),
+        ),
       ),
     );
     final save = find.widgetWithText(FilledButton, 'Log reading');
@@ -175,5 +185,87 @@ void main() {
     await tester.tap(find.text('1 jhn 2'));
     await tester.pump();
     expect(find.text('1 John 2'), findsOneWidget);
+  });
+
+  Widget host(AppDatabase db, Widget home) => MultiProvider(
+    providers: [
+      Provider<BibleService>.value(value: bible),
+      Provider<AppDatabase>.value(value: db),
+      Provider(create: (_) => ResultsService(db)),
+      Provider(create: (_) => StreakService(db)),
+      Provider(create: (_) => SpacedRepetitionService(db)),
+    ],
+    child: MaterialApp(home: home),
+  );
+
+  testWidgets(
+    'Interact owns reading entry, closes after save, and keeps browsing',
+    (tester) async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      await tester.runAsync(() => db.getAllResults());
+      await tester.pumpWidget(host(db, const HomePage()));
+      await tester.pumpAndSettle();
+      expect(find.text('Log reading'), findsNothing);
+      await tester.tap(find.text('Interact'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ReadingReferenceForm), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'Deut 1–4');
+      await tester.pump();
+      expect(find.text('Deuteronomy 1–4'), findsOneWidget);
+      await tester.runAsync(() async {
+        await tester.tap(find.widgetWithText(FilledButton, 'Log reading'));
+      });
+      // Let real database work and Flutter's fake-async callbacks both advance.
+      for (
+        var attempt = 0;
+        attempt < 100 &&
+            find.byType(ReadingReferenceForm).evaluate().isNotEmpty;
+        attempt++
+      ) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      await tester.pumpAndSettle();
+      expect(find.byType(ReadingReferenceForm), findsNothing);
+      expect(find.text('Memorize'), findsNothing);
+      await tester.runAsync(() async {
+        expect((await db.getAllResults()).single.endChapter, 4);
+      });
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(ReadingReferenceForm), findsOneWidget);
+      await tester.tap(find.text('Books'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Deuteronomy'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('1').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Select entire chapter'));
+      await tester.pumpAndSettle();
+      expect(find.text('Memorize'), findsOneWidget);
+      expect(find.text('Recite'), findsOneWidget);
+      expect(find.text('Study'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 1));
+    },
+  );
+
+  testWidgets('passage attachment selectors do not offer logging', (
+    tester,
+  ) async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    await tester.pumpWidget(
+      host(db, const VerseSelectionPage(rangeMode: true)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Reading'), findsNothing);
+    expect(find.byType(ReadingReferenceForm), findsNothing);
+    expect(find.text('Books'), findsOneWidget);
+    expect(find.text('Review'), findsOneWidget);
+    expect(find.text('Suggestions'), findsOneWidget);
   });
 }

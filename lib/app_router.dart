@@ -8,7 +8,6 @@ import 'package:daily_manna/ui/recitation/recitation_mode.dart';
 import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
 import 'package:daily_manna/ui/study/study_notes_page.dart';
 import 'package:daily_manna/ui/study/study_result_detail_page.dart';
-import 'package:daily_manna/ui/study/log_reading_page.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -17,7 +16,6 @@ final appRouter = GoRouter(
   initialLocation: '/',
   routes: [
     GoRoute(path: '/', builder: (_, __) => const HomePage()),
-    GoRoute(path: '/log-reading', builder: (_, __) => const LogReadingPage()),
     GoRoute(path: '/history', builder: (_, __) => const HistoryPage()),
     GoRoute(path: '/study-notes', builder: (_, __) => const StudyNotesPage()),
     GoRoute(

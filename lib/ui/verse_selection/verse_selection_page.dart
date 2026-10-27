@@ -1,6 +1,7 @@
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
+import 'package:daily_manna/ui/study/reading_reference_form.dart';
 import 'package:daily_manna/ui/verse_selection/books_tab.dart';
 import 'package:daily_manna/ui/verse_selection/suggestions_tab.dart';
 import 'package:daily_manna/ui/verse_selection/review_tab.dart';
@@ -8,33 +9,44 @@ import 'package:daily_manna/services/bible_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-Future<ScriptureRangeRef?> showPassageSelector(BuildContext context) =>
-    showModalBottomSheet<ScriptureRangeRef>(
-      context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      useSafeArea: true,
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.9,
-      ),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      builder: (_) => const VerseSelectionPage(rangeMode: true),
-    );
+Future<ScriptureRangeRef?> showPassageSelector(
+  BuildContext context, {
+  bool allowReading = false,
+}) => showModalBottomSheet<ScriptureRangeRef>(
+  context: context,
+  useRootNavigator: true,
+  isScrollControlled: true,
+  useSafeArea: true,
+  constraints: BoxConstraints(
+    maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+  ),
+  shape: const RoundedRectangleBorder(
+    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+  ),
+  clipBehavior: Clip.antiAlias,
+  builder: (sheetContext) => Padding(
+    padding: EdgeInsets.only(
+      bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+    ),
+    child: VerseSelectionPage(rangeMode: true, allowReading: allowReading),
+  ),
+);
 
-/// Full-screen verse selection page with tabs for Books, Needs Review, and Recents.
+/// Passage selection with optional reading entry when starting Interact.
 class VerseSelectionPage extends StatefulWidget {
   const VerseSelectionPage({
     super.key,
     this.rangeMode = false,
+    this.allowReading = false,
     this.initialBookId,
     this.initialChapter,
     this.initialTabIndex = 0,
   });
 
   final bool rangeMode;
+  // Logging is only offered when starting Interact, not when attaching passages
+  // to notes or choosing a memorization verse.
+  final bool allowReading;
   final String? initialBookId;
   final int? initialChapter;
   final int initialTabIndex;
@@ -64,17 +76,20 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
   @override
   Widget build(BuildContext context) => DefaultTabController(
     initialIndex: widget.initialTabIndex,
-    length: 3,
+    length: widget.allowReading ? 4 : 3,
     child: AppScaffold(
       title: _title,
       showShareButton: false,
       bottom: (_hasSelectedBook || widget.initialBookId != null)
           ? null
-          : const TabBar(
+          : TabBar(
+              isScrollable: widget.allowReading,
+              tabAlignment: widget.allowReading ? TabAlignment.start : null,
               tabs: [
-                Tab(text: 'Books'),
-                Tab(text: 'Review'),
-                Tab(text: 'Suggestions'),
+                if (widget.allowReading) const Tab(text: 'Reading'),
+                const Tab(text: 'Books'),
+                const Tab(text: 'Review'),
+                const Tab(text: 'Suggestions'),
               ],
             ),
       body: widget.rangeMode
@@ -85,6 +100,10 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
 
   Widget _buildRangeModeBody(BuildContext context) => TabBarView(
     children: [
+      if (widget.allowReading)
+        ReadingReferenceForm(
+          onLogged: () => Navigator.of(context, rootNavigator: true).pop(),
+        ),
       BooksTab.range(
         initialBookId: widget.initialBookId,
         initialChapter: widget.initialChapter,

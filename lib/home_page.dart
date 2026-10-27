@@ -25,11 +25,6 @@ class HomePage extends StatelessWidget {
         ),
         const StreakCard(),
         ModeCard(
-          title: 'Log reading',
-          icon: Icons.menu_book,
-          onTap: () => context.push('/log-reading'),
-        ),
-        ModeCard(
           title: 'Interact',
           icon: Icons.play_arrow,
           onTap: () => _startInteraction(context),
@@ -63,7 +58,7 @@ class HomePage extends StatelessWidget {
   );
 
   Future<void> _startInteraction(BuildContext context) async {
-    final passage = await showPassageSelector(context);
+    final passage = await showPassageSelector(context, allowReading: true);
     if (context.mounted && passage != null) {
       showPassageInteractionSheet(context, passage);
     }

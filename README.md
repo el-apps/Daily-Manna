@@ -3,7 +3,7 @@ An app for building strong daily habits in interacting with the Word of God.
 
 ## Recording study sessions
 
-- Use **Log reading** on the home screen to record reading without notes in one submission.
+- Open **Interact → Reading** to record reading without notes in one submission. The existing Interact card and play button both open this form; **Books**, **Review**, and **Suggestions** remain available for other interactions.
 - Enter chapter ranges (`Deut 1–4`), chapter lists (`John 1,3`), verses (`John 3:16,18`), cross-chapter ranges (`John 3:16–4:12`), or multiple books (`Psalm 23; Romans 8`). Chapter-only references include their last verse automatically.
 - Book names accept case-insensitive abbreviations, periods, spaces, numbered books (`1 jhn 2`), and unambiguous prefixes. The live preview must resolve every passage before logging is enabled; ambiguous names need a longer spelling.
 - Reading currently uses note-free **Study** history records, one per distinct passage, saved together. Multi-chapter passages remain one record and appear intact in History and shared results.
