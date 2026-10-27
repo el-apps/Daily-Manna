@@ -446,7 +446,7 @@ flowchart TD
     await selectCard(tester, 'James 1:9');
     expect(find.text('Change to note'), findsNothing);
     expect(find.text('Change to key point'), findsNothing);
-    expect(find.text('Delete box'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
   });
 
   test('map layout leaves room for expanded cards in each column', () {
@@ -1160,12 +1160,12 @@ flowchart TD
         await tester.tap(find.text('Concept Map'));
         await tester.tap(find.byTooltip('Edit'));
         await tester.pumpAndSettle();
-        expect(find.text('Delete box'), findsNothing);
+        expect(find.text('Delete'), findsNothing);
         await selectCard(tester, 'Landscape card');
-        await tester.ensureVisible(find.text('Delete box'));
+        await tester.ensureVisible(find.text('Delete'));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        await tester.tap(find.text('Delete box'));
+        await tester.tap(find.text('Delete'));
         await tester.pumpAndSettle();
         expect(
           tester
@@ -1174,8 +1174,8 @@ flowchart TD
               .nodes,
           isEmpty,
         );
-        expect(find.text('Delete box'), findsNothing);
-        expect(find.text('Add connection'), findsNothing);
+        expect(find.text('Delete'), findsNothing);
+        expect(find.text('Connect'), findsNothing);
         expect(find.text('Key point'), findsOneWidget);
       }
     },
@@ -1212,8 +1212,7 @@ flowchart TD
       expect(find.text('Show passage'), findsOneWidget);
       for (
         var i = 0;
-        i < 10 &&
-            !Focus.of(tester.element(find.text('Add connection'))).hasFocus;
+        i < 10 && !Focus.of(tester.element(find.text('Connect'))).hasFocus;
         i++
       ) {
         await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
@@ -1221,10 +1220,7 @@ flowchart TD
         await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
         await tester.pumpAndSettle();
       }
-      expect(
-        Focus.of(tester.element(find.text('Add connection'))).hasFocus,
-        isTrue,
-      );
+      expect(Focus.of(tester.element(find.text('Connect'))).hasFocus, isTrue);
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
       expect(find.byType(SnackBar), findsNothing);
@@ -1348,7 +1344,7 @@ flowchart TD
       tester
           .widget<TextButton>(
             find.ancestor(
-              of: find.text('Remove connection'),
+              of: find.text('Disconnect'),
               matching: find.byWidgetPredicate(
                 (widget) => widget is TextButton,
               ),
@@ -1357,7 +1353,7 @@ flowchart TD
           .onPressed,
       isNull,
     );
-    await tester.tap(find.text('Add connection'));
+    await tester.tap(find.text('Connect'));
     await tester.pumpAndSettle();
     expect(find.byType(SnackBar), findsNothing);
     expect(find.text('Passage text'), findsOneWidget);
@@ -1387,8 +1383,8 @@ flowchart TD
     await tester.tap(find.widgetWithText(TextField, 'Source'));
     await tester.pumpAndSettle();
     await selectCard(tester, 'Source');
-    await tester.ensureVisible(find.text('Remove connection'));
-    await tester.tap(find.text('Remove connection'));
+    await tester.ensureVisible(find.text('Disconnect'));
+    await tester.tap(find.text('Disconnect'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(ListTile, 'Destination'));
     await tester.pumpAndSettle();

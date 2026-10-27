@@ -264,7 +264,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
                   onPressed: () =>
                       _conceptMapKey.currentState?.startConnecting(node.id),
                   icon: const Icon(Icons.account_tree_outlined),
-                  label: const Text('Add connection'),
+                  label: const Text('Connect'),
                 ),
                 TextButton.icon(
                   onPressed:
@@ -276,7 +276,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
                         )
                       : null,
                   icon: const Icon(Icons.link_off),
-                  label: const Text('Remove connection'),
+                  label: const Text('Disconnect'),
                 ),
                 if (node.type != ConceptMapNodeType.passage)
                   TextButton.icon(
@@ -306,7 +306,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
                     _selectedMapNodeId = null;
                   }),
                   icon: const Icon(Icons.delete_outline),
-                  label: const Text('Delete box'),
+                  label: const Text('Delete'),
                 ),
               ],
           ],

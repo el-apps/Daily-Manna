@@ -354,7 +354,7 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
         child: ListView(
           shrinkWrap: true,
           children: [
-            const ListTile(title: Text('Remove connection')),
+            const ListTile(title: Text('Disconnect')),
             for (final node in widget.document.nodes)
               if (neighbors.contains(node.id))
                 ListTile(
