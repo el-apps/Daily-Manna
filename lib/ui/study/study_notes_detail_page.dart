@@ -500,6 +500,7 @@ class _NotesTab extends StatelessWidget {
         const SizedBox(height: 8),
         TextField(
           controller: notesController,
+          style: const TextStyle(fontFamily: 'monospace'),
           autofocus: true,
           maxLines: null,
           minLines: 10,

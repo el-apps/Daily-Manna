@@ -255,6 +255,7 @@ void main() {
     await tester.tap(find.byTooltip('Edit'));
     await tester.pumpAndSettle();
     final editor = find.byType(TextField);
+    expect(tester.widget<TextField>(editor).style?.fontFamily, 'monospace');
     final controller = tester.widget<TextField>(editor).controller!;
     await tester.enterText(editor, '##### Heading');
     await tester.tap(find.byTooltip('Increase heading'));
