@@ -3,13 +3,16 @@ import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
 import 'package:daily_manna/services/study_notes_service.dart';
+import 'package:daily_manna/services/study_notes_pdf.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/study/concept_map_editor.dart';
+import 'package:daily_manna/ui/study/study_markdown_preview.dart';
 import 'package:daily_manna/ui/edit_toolbar.dart';
 import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:printing/printing.dart';
 import 'package:drift/drift.dart' show Value;
 
 /// Persistent workspace for a titled study note.
@@ -31,6 +34,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   late final TabController _tabController;
   final _conceptMapKey = GlobalKey<ConceptMapEditorState>();
   bool _isEditing = false;
+  bool _exporting = false;
   late bool _archived;
   String? _selectedMapNodeId;
   int _activeTab = 0;
@@ -68,6 +72,11 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
       title: widget.note.title,
       showShareButton: false,
       appBarActions: [
+        IconButton(
+          tooltip: _exporting ? 'Generating PDF…' : 'Generate PDF',
+          onPressed: _exporting ? null : _exportPdf,
+          icon: const Icon(Icons.picture_as_pdf_outlined),
+        ),
         if (!_isEditing)
           PopupMenuButton<bool>(
             tooltip: 'Note actions',
@@ -135,6 +144,56 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   }
 
   void _enterEditMode() => setState(() => _isEditing = true);
+
+  Future<void> _exportPdf() async {
+    final halfLetter = await showDialog<bool>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Generate PDF'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Letter · 8.5 × 11 in · 11 pt'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Half-letter · 5.5 × 8.5 in · 8 pt'),
+          ),
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Sequential pages with page numbers. Exports the current '
+              'draft without saving it. Cut-and-stack printing is not included.',
+            ),
+          ),
+        ],
+      ),
+    );
+    if (halfLetter == null || !mounted) return;
+    setState(() => _exporting = true);
+    try {
+      final bytes = await buildStudyNotesPdf(
+        title: widget.note.title,
+        source: _notesController.text,
+        halfLetter: halfLetter,
+      );
+      final name = widget.note.title.replaceAll(RegExp(r'[^\w\- ]'), '').trim();
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: '${name.isEmpty ? 'study-notes' : name}.pdf',
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not generate PDF. Please try again.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
 
   Future<void> _setArchived(bool archived) async {
     await context.read<StudyNotesService>().setArchived(
@@ -225,6 +284,23 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
               tooltip: 'Increase bullet indent',
               onPressed: () => _adjustBullets(1),
               icon: const Icon(Icons.format_indent_increase),
+            ),
+            IconButton(
+              tooltip: 'Bold (blue)',
+              onPressed: _bold,
+              icon: const Icon(Icons.format_bold),
+            ),
+            IconButton(
+              tooltip: 'Blockquote',
+              onPressed: () => _adjustLine(
+                (line) => line.startsWith('> ') ? line.substring(2) : '> $line',
+              ),
+              icon: const Icon(Icons.format_quote),
+            ),
+            IconButton(
+              tooltip: 'Page break',
+              onPressed: () => _insert('\n\n\\newpage\n\n'),
+              icon: const Icon(Icons.insert_page_break_outlined),
             ),
           ]
         : [
@@ -317,33 +393,62 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   void _adjustLine(String Function(String) update) {
     final value = _notesController.value;
     final text = value.text;
-    final offset = value.selection.baseOffset.clamp(0, text.length);
-    final lineStart = text.lastIndexOf('\n', offset - 1) + 1;
-    final lineEnd = text.indexOf('\n', offset);
+    final offset = value.selection.start.clamp(0, text.length);
+    final selectedEnd = value.selection.end.clamp(offset, text.length);
+    final lineStart = offset == 0 ? 0 : text.lastIndexOf('\n', offset - 1) + 1;
+    final endOffset = selectedEnd > offset && text[selectedEnd - 1] == '\n'
+        ? selectedEnd - 1
+        : selectedEnd;
+    final lineEnd = text.indexOf('\n', endOffset);
     final end = lineEnd == -1 ? text.length : lineEnd;
-    final updated = update(text.substring(lineStart, end));
+    final updated = text
+        .substring(lineStart, end)
+        .split('\n')
+        .map(update)
+        .join('\n');
     _notesController.value = value.copyWith(
       text: text.replaceRange(lineStart, end, updated),
       selection: TextSelection.collapsed(offset: lineStart + updated.length),
     );
   }
 
+  void _insert(String insertion) {
+    final value = _notesController.value;
+    final start = value.selection.start.clamp(0, value.text.length);
+    final end = value.selection.end.clamp(start, value.text.length);
+    _notesController.value = TextEditingValue(
+      text: value.text.replaceRange(start, end, insertion),
+      selection: TextSelection.collapsed(offset: start + insertion.length),
+    );
+  }
+
+  void _bold() {
+    final value = _notesController.value;
+    final start = value.selection.start.clamp(0, value.text.length);
+    final end = value.selection.end.clamp(start, value.text.length);
+    final selected = value.text.substring(start, end);
+    final content = selected.isEmpty ? 'bold text' : selected;
+    _insert('**$content**');
+    _notesController.selection = TextSelection(
+      baseOffset: start + 2,
+      extentOffset: start + 2 + content.length,
+    );
+  }
+
   void _adjustHeading(int delta) => _adjustLine((line) {
-    final content = line.replaceFirst(RegExp(r'^#{1,3}\s?'), '');
+    final content = line.replaceFirst(RegExp(r'^#{1,6}\s?'), '');
     final current = line.startsWith('#')
         ? RegExp(r'^#+').firstMatch(line)!.group(0)!.length
         : 0;
-    final level = (current + delta).clamp(0, 3);
+    final level = (current + delta).clamp(0, 6);
     return '${level == 0 ? '' : '${'#' * level} '}$content';
   });
 
   void _adjustBullets(int delta) => _adjustLine((line) {
-    final content = line.replaceFirst(RegExp(r'^(  ){0,3}-\s?'), '');
-    final match = RegExp(r'^(  +)-\s').firstMatch(line);
-    final current = match == null
-        ? (line.startsWith('- ') ? 1 : 0)
-        : (match.group(1)!.length ~/ 2) + 1;
-    final level = (current + delta).clamp(0, 3);
+    final content = line.replaceFirst(RegExp(r'^\s*[-+*]\s+'), '');
+    final match = RegExp(r'^( *)[-+*]\s+').firstMatch(line);
+    final current = match == null ? 0 : (match.group(1)!.length ~/ 2) + 1;
+    final level = (current + delta).clamp(0, 9);
     return '${level == 0 ? '' : '${'  ' * (level - 1)}- '}$content';
   });
 }
@@ -390,19 +495,22 @@ class _NotesTab extends StatelessWidget {
         ),
         const SizedBox(height: 24),
       ],
-      if (isEditing)
+      if (isEditing) ...[
+        const Text('Markdown · **bold** is blue · Read … is red · > quote'),
+        const SizedBox(height: 8),
         TextField(
           controller: notesController,
           autofocus: true,
           maxLines: null,
           minLines: 10,
           decoration: const InputDecoration(
-            hintText: 'What stood out to you?',
+            hintText:
+                '# Sermon title\n\n- Main point\n  - Supporting point\n\nRead James 1:9-11\n\n> Quotation',
             alignLabelWithHint: true,
           ),
-        )
-      else if (notes?.isNotEmpty == true)
-        _MarkdownPreview(notes!)
+        ),
+      ] else if (notes?.isNotEmpty == true)
+        StudyMarkdownPreview(source: notes!)
       else
         const EmptyState(
           icon: Icons.edit_note,
@@ -412,43 +520,4 @@ class _NotesTab extends StatelessWidget {
         ),
     ],
   );
-}
-
-class _MarkdownPreview extends StatelessWidget {
-  const _MarkdownPreview(this.source);
-
-  final String source;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: source.split('\n').map((line) {
-        final heading = RegExp(r'^(#{1,3})\s+(.*)$').firstMatch(line);
-        if (heading != null) {
-          final size = [0.0, 24.0, 20.0, 17.0][heading.group(1)!.length];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              heading.group(2)!,
-              style: theme.textTheme.titleLarge?.copyWith(fontSize: size),
-            ),
-          );
-        }
-        final bullet = RegExp(r'^(  ){0,2}-\s+(.*)$').firstMatch(line);
-        if (bullet != null) {
-          final indent = ((bullet.group(1)?.length ?? 0) * 16).toDouble();
-          return Padding(
-            padding: EdgeInsets.only(left: indent, bottom: 4),
-            child: Text('• ${bullet.group(2)}'),
-          );
-        }
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Text(line, style: theme.textTheme.bodyLarge),
-        );
-      }).toList(),
-    );
-  }
 }

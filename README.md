@@ -9,6 +9,19 @@ An app for building strong daily habits in interacting with the Word of God.
 - History and shared results identify note-based sessions by the note title, without requiring a main passage.
 - To record reading without notes, use **Study → Record without a note** on a passage.
 
+## Writing Markdown study notes
+
+- Open a study note and select **Edit** to write or paste Markdown; **Save** returns to the formatted notes view.
+- The shared edit toolbar provides heading decrease/increase (levels 1–6), bullet outdent/indent (up to nine levels), **Bold**, **Blockquote**, **Page break**, and **Save**.
+- Select text before using Bold; line actions apply to the current line or all selected lines.
+- Use `**bold**` for steel-blue emphasis, nested `- ` lists for subpoints, and `> ` for green-outlined blockquotes.
+- Start a paragraph or list item with the whole word `Read` to color it red; bold text within it stays blue. `Reader` does not trigger this styling.
+- A standalone `\newpage` forces a PDF page break and appears as a divider in the notes view.
+- Select **Generate PDF** (the PDF icon in the app bar) for Letter (11 pt, 1-inch margins) or sequential half-letter (8 pt, 0.75-inch margins), both with page numbers.
+- Export uses the current draft without saving it or recording a study session. On web it downloads a PDF; on Android it opens the share sheet.
+- PDF generation runs locally with bundled DejaVu Serif fonts, including bold and italic. It does not require Pandoc, LaTeX, a conversion server, or a font download.
+- PDF output follows the sermon styling conventions, but is not a pixel-identical LaTeX rendering. Cut-and-stack fronts/backs, duplex imposition, and two-up openings are not currently supported.
+
 ## Editing concept maps
 
 - Open a study note's **Concept Map** tab and select **Edit**.

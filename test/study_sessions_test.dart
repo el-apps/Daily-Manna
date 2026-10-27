@@ -237,6 +237,64 @@ void main() {
     },
   );
 
+  testWidgets('Markdown toolbar edits selections and keeps PDF in app bar', (
+    tester,
+  ) async {
+    late StudyNote note;
+    await tester.runAsync(() async {
+      note = await notesService.createNote(title: 'Outline');
+    });
+    await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byTooltip('Generate PDF'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    final editor = find.byType(TextField);
+    final controller = tester.widget<TextField>(editor).controller!;
+    await tester.enterText(editor, '##### Heading');
+    await tester.tap(find.byTooltip('Increase heading'));
+    expect(controller.text, '###### Heading');
+    await tester.tap(find.byTooltip('Increase heading'));
+    expect(controller.text, '###### Heading');
+    await tester.enterText(editor, '      + Deep point');
+    await tester.tap(find.byTooltip('Increase bullet indent'));
+    expect(controller.text, '        - Deep point');
+    await tester.tap(find.byTooltip('Decrease bullet indent'));
+    expect(controller.text, '      - Deep point');
+    await tester.enterText(editor, 'First\nSecond\nThird');
+    controller.selection = const TextSelection(baseOffset: 0, extentOffset: 13);
+    await tester.tap(find.byTooltip('Blockquote'));
+    expect(controller.text, '> First\n> Second\nThird');
+    controller.selection = const TextSelection(
+      baseOffset: 17,
+      extentOffset: 22,
+    );
+    await tester.tap(find.byTooltip('Bold (blue)'));
+    expect(controller.text, '> First\n> Second\n**Third**');
+    expect(find.byTooltip('Read passage (red)'), findsNothing);
+    expect(find.byTooltip('Preview Markdown'), findsNothing);
+    await tester.tap(find.byTooltip('Generate PDF'));
+    await tester.pumpAndSettle();
+    expect(find.text('Half-letter · 5.5 × 8.5 in · 8 pt'), findsOneWidget);
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
+    expect(controller.text, '> First\n> Second\n**Third**');
+    await tester.tap(find.byTooltip('Save'));
+    await tester.runAsync(() async {
+      await database.watchStudyNotes().firstWhere(
+        (notes) => notes.single.notes == '> First\n> Second\n**Third**',
+      );
+    });
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsNothing);
+    expect(find.textContaining('Third', findRichText: true), findsOneWidget);
+  });
+
   test('multiline card labels survive Mermaid saves, including old maps', () {
     final legacy = ConceptMapDocument.fromMermaid('''
 flowchart TD
