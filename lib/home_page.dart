@@ -58,7 +58,7 @@ class HomePage extends StatelessWidget {
   );
 
   Future<void> _startInteraction(BuildContext context) async {
-    final passage = await showPassageSelector(context, allowReading: true);
+    final passage = await showPassageSelector(context, allowReadingLog: true);
     if (context.mounted && passage != null) {
       showPassageInteractionSheet(context, passage);
     }

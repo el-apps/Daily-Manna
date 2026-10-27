@@ -1,17 +1,19 @@
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
-import 'package:daily_manna/ui/study/reading_reference_form.dart';
+import 'package:daily_manna/ui/verse_selection/reference_tab.dart';
 import 'package:daily_manna/ui/verse_selection/books_tab.dart';
 import 'package:daily_manna/ui/verse_selection/suggestions_tab.dart';
 import 'package:daily_manna/ui/verse_selection/review_tab.dart';
 import 'package:daily_manna/services/bible_service.dart';
+import 'package:daily_manna/services/reading_reference_parser.dart';
+import 'package:daily_manna/services/results_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 Future<ScriptureRangeRef?> showPassageSelector(
   BuildContext context, {
-  bool allowReading = false,
+  bool allowReadingLog = false,
 }) => showModalBottomSheet<ScriptureRangeRef>(
   context: context,
   useRootNavigator: true,
@@ -28,25 +30,27 @@ Future<ScriptureRangeRef?> showPassageSelector(
     padding: EdgeInsets.only(
       bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
     ),
-    child: VerseSelectionPage(rangeMode: true, allowReading: allowReading),
+    child: VerseSelectionPage(
+      rangeMode: true,
+      allowReadingLog: allowReadingLog,
+    ),
   ),
 );
 
-/// Passage selection with optional reading entry when starting Interact.
+/// Shared reference entry and browsing, with optional logging for Interact.
 class VerseSelectionPage extends StatefulWidget {
   const VerseSelectionPage({
     super.key,
     this.rangeMode = false,
-    this.allowReading = false,
+    this.allowReadingLog = false,
     this.initialBookId,
     this.initialChapter,
     this.initialTabIndex = 0,
   });
 
   final bool rangeMode;
-  // Logging is only offered when starting Interact, not when attaching passages
-  // to notes or choosing a memorization verse.
-  final bool allowReading;
+  // Reference entry is always available; only Interact offers activity logging.
+  final bool allowReadingLog;
   final String? initialBookId;
   final int? initialChapter;
   final int initialTabIndex;
@@ -75,21 +79,21 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
 
   @override
   Widget build(BuildContext context) => DefaultTabController(
-    initialIndex: widget.initialTabIndex,
-    length: widget.allowReading ? 4 : 3,
+    initialIndex: widget.initialBookId != null ? 1 : widget.initialTabIndex,
+    length: 4,
     child: AppScaffold(
       title: _title,
       showShareButton: false,
       bottom: (_hasSelectedBook || widget.initialBookId != null)
           ? null
           : TabBar(
-              isScrollable: widget.allowReading,
-              tabAlignment: widget.allowReading ? TabAlignment.start : null,
-              tabs: [
-                if (widget.allowReading) const Tab(text: 'Reading'),
-                const Tab(text: 'Books'),
-                const Tab(text: 'Review'),
-                const Tab(text: 'Suggestions'),
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              tabs: const [
+                Tab(text: 'Reference'),
+                Tab(text: 'Books'),
+                Tab(text: 'Review'),
+                Tab(text: 'Suggestions'),
               ],
             ),
       body: widget.rangeMode
@@ -100,10 +104,11 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
 
   Widget _buildRangeModeBody(BuildContext context) => TabBarView(
     children: [
-      if (widget.allowReading)
-        ReadingReferenceForm(
-          onLogged: () => Navigator.of(context, rootNavigator: true).pop(),
-        ),
+      ReferenceTab(
+        onSelected: (ref) =>
+            Navigator.of(context, rootNavigator: true).pop(ref),
+        onLogReading: widget.allowReadingLog ? _logReading : null,
+      ),
       BooksTab.range(
         initialBookId: widget.initialBookId,
         initialChapter: widget.initialChapter,
@@ -124,6 +129,17 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
 
   Widget _buildNormalBody(BuildContext context) => TabBarView(
     children: [
+      ReferenceTab(
+        rangeMode: false,
+        onSelected: (ref) => _selectVerse(
+          context,
+          ScriptureRef(
+            bookId: ref.bookId,
+            chapterNumber: ref.chapter,
+            verseNumber: ref.startVerse,
+          ),
+        ),
+      ),
       BooksTab(
         initialBookId: widget.initialBookId,
         initialChapter: widget.initialChapter,
@@ -155,6 +171,15 @@ class _VerseSelectionPageState extends State<VerseSelectionPage> {
 
   void _selectVerse(BuildContext context, ScriptureRef ref) {
     Navigator.of(context, rootNavigator: true).pop(ref);
+  }
+
+  Future<void> _logReading(List<ReadingPassage> passages) async {
+    await context.read<ResultsService>().addReading(passages);
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Reading logged')));
+    Navigator.of(context, rootNavigator: true).pop();
   }
 
   void _updateTitle(String title) {
