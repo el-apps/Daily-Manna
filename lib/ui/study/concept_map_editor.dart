@@ -337,9 +337,6 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
     if (!widget.editing) return;
     FocusScope.of(context).unfocus();
     setState(() => _connectingFrom = id);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tap another card to connect it.')),
-    );
   }
 
   Future<void> removeConnection(String selected) async {

@@ -1227,7 +1227,7 @@ flowchart TD
       );
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
-      expect(find.text('Tap another card to connect it.'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
       final label = tester.widget<EditableText>(find.byType(EditableText));
       for (var i = 0; i < 10 && !label.focusNode.hasFocus; i++) {
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
@@ -1359,7 +1359,7 @@ flowchart TD
     );
     await tester.tap(find.text('Add connection'));
     await tester.pumpAndSettle();
-    expect(find.text('Tap another card to connect it.'), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
     expect(find.text('Passage text'), findsOneWidget);
     expect([
       for (var i = 0; i < 3; i++) tester.getRect(find.byType(Card).at(i)),
