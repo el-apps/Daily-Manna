@@ -197,6 +197,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
         _conceptMap = ConceptMapDocument.fromMermaid(saved.conceptMap ?? '');
         _savedConceptMap = _conceptMap.toMermaid();
         _isEditing = false;
+        _selectedMapNodeId = null;
       });
     }
   }
@@ -244,6 +245,70 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
               icon: const Icon(Icons.add),
               label: const Text('Passage'),
             ),
+            for (final node in _conceptMap.nodes)
+              if (node.id == _selectedMapNodeId) ...[
+                const SizedBox(height: 24, child: VerticalDivider()),
+                if (node.type == ConceptMapNodeType.passage)
+                  TextButton.icon(
+                    onPressed: () => setState(() {
+                      _conceptMap = _conceptMap.updateNode(
+                        node.copyWith(showPassage: !node.showPassage),
+                      );
+                    }),
+                    icon: const Icon(Icons.article_outlined),
+                    label: Text(
+                      node.showPassage ? 'Hide passage' : 'Show passage',
+                    ),
+                  ),
+                TextButton.icon(
+                  onPressed: () =>
+                      _conceptMapKey.currentState?.startConnecting(node.id),
+                  icon: const Icon(Icons.account_tree_outlined),
+                  label: const Text('Add connection'),
+                ),
+                TextButton.icon(
+                  onPressed:
+                      _conceptMap.edges.any(
+                        (edge) => edge.from == node.id || edge.to == node.id,
+                      )
+                      ? () => _conceptMapKey.currentState?.removeConnection(
+                          node.id,
+                        )
+                      : null,
+                  icon: const Icon(Icons.link_off),
+                  label: const Text('Remove connection'),
+                ),
+                if (node.type != ConceptMapNodeType.passage)
+                  TextButton.icon(
+                    onPressed: () => setState(() {
+                      _conceptMap = _conceptMap.updateNode(
+                        node.copyWith(
+                          type: node.type == ConceptMapNodeType.keyPoint
+                              ? ConceptMapNodeType.note
+                              : ConceptMapNodeType.keyPoint,
+                        ),
+                      );
+                    }),
+                    icon: Icon(
+                      node.type == ConceptMapNodeType.keyPoint
+                          ? Icons.note_outlined
+                          : Icons.star_outline,
+                    ),
+                    label: Text(
+                      node.type == ConceptMapNodeType.keyPoint
+                          ? 'Change to note'
+                          : 'Change to key point',
+                    ),
+                  ),
+                TextButton.icon(
+                  onPressed: () => setState(() {
+                    _conceptMap = _conceptMap.deleteNode(node.id);
+                    _selectedMapNodeId = null;
+                  }),
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Delete box'),
+                ),
+              ],
           ],
     onEdit: _enterEditMode,
     onSave: _save,
