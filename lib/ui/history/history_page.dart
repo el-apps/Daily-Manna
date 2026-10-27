@@ -191,7 +191,10 @@ class _DateGroup extends StatelessWidget {
           result: result,
           reference: reference,
           score: ScoreData(value: result.score, attempts: result.attempts ?? 1),
-          onInteract: result.bookId == null
+          onInteract:
+              result.bookId == null ||
+                  (result.endChapter != null &&
+                      result.endChapter != result.startChapter)
               ? null
               : () => _showInteractionDialog(context, result),
         );
@@ -230,6 +233,15 @@ class _DateGroup extends StatelessWidget {
   }
 
   String _getReference(db.Result result) {
+    if (result.endChapter != null && result.endVerse != null) {
+      return bibleService.getReadingName(
+        bookId: result.bookId!,
+        startChapter: result.startChapter!,
+        startVerse: result.startVerse!,
+        endChapter: result.endChapter!,
+        endVerse: result.endVerse!,
+      );
+    }
     final bookTitle = bibleService.booksMap[result.bookId]?.title ?? 'Unknown';
     final start = '${result.startChapter}:${result.startVerse}';
 

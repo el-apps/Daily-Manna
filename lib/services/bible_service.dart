@@ -82,4 +82,23 @@ class BibleService {
     }
     return '$bookTitle ${ref.chapter}:${ref.startVerse}-${ref.endVerse}';
   }
+
+  /// Formats a stored reading, including whole chapters and cross-chapter ranges.
+  String getReadingName({
+    required String bookId,
+    required int startChapter,
+    required int startVerse,
+    required int endChapter,
+    required int endVerse,
+  }) {
+    final title = booksMap[bookId]?.title ?? 'Unknown';
+    if (startVerse == 1 && endVerse == getVerses(bookId, endChapter).length) {
+      return startChapter == endChapter
+          ? '$title $startChapter'
+          : '$title $startChapter–$endChapter';
+    }
+    final start = '$title $startChapter:$startVerse';
+    if (startChapter != endChapter) return '$start–$endChapter:$endVerse';
+    return startVerse == endVerse ? start : '$start–$endVerse';
+  }
 }
