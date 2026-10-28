@@ -105,7 +105,7 @@ class _VerseSelectionPageState extends State<VerseSelectionPage>
         isScrollable: true,
         tabAlignment: TabAlignment.start,
         tabs: const [
-          Tab(text: 'Reference'),
+          Tab(text: 'Search'),
           Tab(text: 'Books'),
           Tab(text: 'Review'),
           Tab(text: 'Suggestions'),

@@ -115,6 +115,42 @@ void main() {
     expect(labels('John 1:5–2:5'), ['John 1:5–2:5']);
   });
 
+  test(
+    'alternative matches validate each book and retain reference context',
+    () {
+      List<String> matches(String input) => parser
+          .parse(input, includeAlternatives: true)
+          .map(
+            (p) => bible.getReadingName(
+              bookId: p.bookId,
+              startChapter: p.startChapter,
+              startVerse: p.startVerse,
+              endChapter: p.endChapter,
+              endVerse: p.endVerse,
+            ),
+          )
+          .toList();
+      expect(matches('D 8'), ['Deuteronomy 8', 'Daniel 8']);
+      expect(matches('D 8,9'), [
+        'Deuteronomy 8',
+        'Daniel 8',
+        'Deuteronomy 9',
+        'Daniel 9',
+      ]);
+      expect(matches('D 8:25'), ['Daniel 8:25']);
+      expect(matches('D 13'), ['Deuteronomy 13']);
+      expect(matches('Dan 8'), ['Daniel 8']);
+      expect(matches('D 8; John 1,3'), [
+        'Deuteronomy 8',
+        'Daniel 8',
+        'John 1',
+        'John 3',
+      ]);
+      expect(() => matches('D 8:99'), throwsFormatException);
+      expect(() => matches('D 8; John 99'), throwsFormatException);
+    },
+  );
+
   test('partial input and invalid passages reject the entire submission', () {
     for (final input in [
       'John 22',
@@ -177,7 +213,7 @@ void main() {
       await tester.enterText(find.byType(TextField), 'John 1,3');
       await tester.pump();
       expect(find.text('Preview'), findsNothing);
-      expect(find.byType(Divider), findsNothing);
+      expect(find.byType(Divider), findsOneWidget);
       expect(find.text('John 1'), findsOneWidget);
       expect(find.text('John 3'), findsOneWidget);
       expect(selected, isNull);
@@ -198,6 +234,8 @@ void main() {
       );
       await tester.enterText(find.byType(TextField), 'D 8');
       await tester.pump();
+      expect(find.text('Deuteronomy 8'), findsOneWidget);
+      expect(find.text('Daniel 8'), findsOneWidget);
       await tester.tap(find.text('Deuteronomy 8'));
       expect(
         selected,
@@ -208,6 +246,16 @@ void main() {
           chapter: 8,
           startVerse: 1,
           endVerse: 20,
+        ),
+      );
+      await tester.tap(find.text('Daniel 8'));
+      expect(
+        selected,
+        ScriptureRangeRef(
+          bookId: bible.books.firstWhere((book) => book.title == 'Daniel').id,
+          chapter: 8,
+          startVerse: 1,
+          endVerse: 27,
         ),
       );
     },
@@ -235,7 +283,7 @@ void main() {
     expect(find.text('Log reading'), findsNothing);
     await tester.tap(find.text('Interact'));
     await tester.pumpAndSettle();
-    expect(find.text('Reference'), findsOneWidget);
+    expect(find.text('Search'), findsOneWidget);
     expect(find.byType(ReferenceTab), findsOneWidget);
     expect(find.byType(ActionChip), findsNothing);
     expect(
@@ -305,7 +353,7 @@ void main() {
     await tester.tap(find.text('Choose passage'));
     await tester.pumpAndSettle();
     expect(find.text('Reading'), findsNothing);
-    expect(find.text('Reference'), findsOneWidget);
+    expect(find.text('Search'), findsOneWidget);
     expect(find.byType(ReferenceTab), findsOneWidget);
     expect(find.text('Log reading'), findsNothing);
     expect(find.text('Books'), findsOneWidget);
@@ -391,17 +439,17 @@ void main() {
           ),
         ),
       );
-      for (final tab in ['Reference', 'Books', 'Review', 'Suggestions']) {
+      for (final tab in ['Search', 'Books', 'Review', 'Suggestions']) {
         selected = null;
         await tester.tap(find.text('Choose passage'));
         await tester.pumpAndSettle();
         expect(find.text('Select passage'), findsNothing);
-        if (tab != 'Reference') {
+        if (tab != 'Search') {
           await tester.tap(find.text(tab));
           await tester.pumpAndSettle();
         }
         ScriptureRangeRef expected;
-        if (tab == 'Reference') {
+        if (tab == 'Search') {
           await tester.enterText(find.byType(TextField), 'John 1,3');
           await tester.pump();
           expect(selected, isNull);
@@ -473,7 +521,7 @@ void main() {
     );
     await tester.tap(find.text('Choose verse'));
     await tester.pumpAndSettle();
-    expect(find.text('Reference'), findsOneWidget);
+    expect(find.text('Search'), findsOneWidget);
     expect(find.text('Log reading'), findsNothing);
     expect(find.text('Select verse'), findsNothing);
     for (final input in ['John 3', 'John 3:16-18']) {

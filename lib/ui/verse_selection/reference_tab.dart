@@ -36,7 +36,7 @@ class _ReferenceTabState extends State<ReferenceTab>
     try {
       passages = ReadingReferenceParser(
         context.read<BibleService>(),
-      ).parse(input);
+      ).parse(input, includeAlternatives: true);
     } on FormatException catch (exception) {
       error = exception.message;
     }
@@ -55,34 +55,42 @@ class _ReferenceTabState extends State<ReferenceTab>
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.zero,
           children: [
-            TextField(
-              autofocus: true,
-              minLines: 2,
-              maxLines: 4,
-              autocorrect: false,
-              enableSuggestions: false,
-              textCapitalization: TextCapitalization.none,
-              decoration: InputDecoration(
-                labelText: 'Passage reference',
-                hintText: 'e.g. $example',
-                alignLabelWithHint: true,
-                errorText: _parseError,
-                errorMaxLines: 3,
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    autofocus: true,
+                    minLines: 2,
+                    maxLines: 4,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    textCapitalization: TextCapitalization.none,
+                    decoration: InputDecoration(
+                      labelText: 'Passage reference',
+                      hintText: 'e.g. $example',
+                      alignLabelWithHint: true,
+                      errorText: _parseError,
+                      errorMaxLines: 3,
+                    ),
+                    onChanged: _updateReference,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.rangeMode
+                        ? 'Enter a chapter or verse range. Abbreviations work.'
+                        : 'Enter one verse. Abbreviations work.',
+                  ),
+                ],
               ),
-              onChanged: _updateReference,
             ),
-            const SizedBox(height: 8),
-            Text(
-              widget.rangeMode
-                  ? 'Enter a chapter or verse range. Abbreviations work.'
-                  : 'Enter one verse. Abbreviations work.',
-            ),
+            if (_passages.any(_canSelect)) const Divider(),
             for (final passage in _passages)
               if (_canSelect(passage))
                 ListTile(
-                  contentPadding: EdgeInsets.zero,
                   title: Text(
                     bible.getReadingName(
                       bookId: passage.bookId,
@@ -102,12 +110,14 @@ class _ReferenceTabState extends State<ReferenceTab>
                   ),
                 ),
             if (_passages.any((passage) => !_canSelect(passage))) ...[
-              const SizedBox(height: 12),
-              Text(
-                widget.rangeMode
-                    ? 'To select a passage, enter one chapter or a verse range '
-                          'within a chapter.'
-                    : 'To select a verse, enter one verse, such as John 3:16.',
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  widget.rangeMode
+                      ? 'To select a passage, enter one chapter or a verse range '
+                            'within a chapter.'
+                      : 'To select a verse, enter one verse, such as John 3:16.',
+                ),
               ),
             ],
           ],

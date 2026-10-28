@@ -42,12 +42,12 @@ class ReadingReferenceParser {
     'rev': ['re', 'rv', 'revelations'],
   };
 
-  List<ReadingPassage> parse(String input) {
+  List<ReadingPassage> parse(String input, {bool includeAlternatives = false}) {
     if (input.trim().isEmpty) return [];
     if (RegExp(r'^[;,]|[;,\n]\s*[;,\n]|[;,]$').hasMatch(input.trim())) {
       throw const FormatException('Finish each reference between separators.');
     }
-    Book? currentBook;
+    var currentBooks = <Book>[];
     int? verseChapter;
     final passages = <ReadingPassage>[];
     // Keep delimiters: semicolons/newlines begin a new chapter-level reference,
@@ -65,8 +65,8 @@ class ReadingReferenceParser {
         );
       }
       final bookText = match[1];
-      final book = bookText == null ? currentBook : _findBook(bookText);
-      if (book == null) {
+      final books = bookText == null ? currentBooks : _findBooks(bookText);
+      if (books.isEmpty) {
         throw const FormatException(
           'Start with a book name, such as John 1,3.',
         );
@@ -87,35 +87,59 @@ class ReadingReferenceParser {
           endVerse = int.tryParse(match[5] ?? '');
         }
       }
-      final startLimit = _verseCount(book, chapter);
-      final endLimit = _verseCount(book, endChapter);
-      final start = verse ?? 1;
-      final end = endVerse ?? endLimit;
-      if (start < 1 || start > startLimit) {
-        throw FormatException('${book.title} $chapter has $startLimit verses.');
+      final validBooks = <Book>[];
+      FormatException? error;
+      for (final book in includeAlternatives ? books : books.take(1)) {
+        try {
+          final passage = _parsePassage(
+            book,
+            chapter,
+            verse,
+            endChapter,
+            endVerse,
+          );
+          if (!passages.contains(passage)) passages.add(passage);
+          validBooks.add(book);
+        } on FormatException catch (exception) {
+          error = exception;
+        }
       }
-      if (end < 1 || end > endLimit) {
-        throw FormatException(
-          '${book.title} $endChapter has $endLimit verses.',
-        );
-      }
-      if (endChapter < chapter || (endChapter == chapter && end < start)) {
-        throw const FormatException(
-          'The end of a passage must not precede its start.',
-        );
-      }
-      final passage = (
-        bookId: book.id,
-        startChapter: chapter,
-        startVerse: start,
-        endChapter: endChapter,
-        endVerse: end,
-      );
-      if (!passages.contains(passage)) passages.add(passage);
-      currentBook = book;
+      if (validBooks.isEmpty) throw error!;
+      currentBooks = validBooks;
       verseChapter = verse == null ? null : endChapter;
     }
     return passages;
+  }
+
+  ReadingPassage _parsePassage(
+    Book book,
+    int chapter,
+    int? verse,
+    int endChapter,
+    int? endVerse,
+  ) {
+    final startLimit = _verseCount(book, chapter);
+    final endLimit = _verseCount(book, endChapter);
+    final start = verse ?? 1;
+    final end = endVerse ?? endLimit;
+    if (start < 1 || start > startLimit) {
+      throw FormatException('${book.title} $chapter has $startLimit verses.');
+    }
+    if (end < 1 || end > endLimit) {
+      throw FormatException('${book.title} $endChapter has $endLimit verses.');
+    }
+    if (endChapter < chapter || (endChapter == chapter && end < start)) {
+      throw const FormatException(
+        'The end of a passage must not precede its start.',
+      );
+    }
+    return (
+      bookId: book.id,
+      startChapter: chapter,
+      startVerse: start,
+      endChapter: endChapter,
+      endVerse: end,
+    );
   }
 
   int _verseCount(Book book, int chapter) {
@@ -135,7 +159,7 @@ class ReadingReferenceParser {
       )
       .replaceAll(RegExp(r'[\s.]'), '');
 
-  Book _findBook(String text) {
+  List<Book> _findBooks(String text) {
     final query = _normalize(text);
     List<String> names(Book book) => [
       book.id,
@@ -145,12 +169,11 @@ class ReadingReferenceParser {
     final exact = bible.books
         .where((book) => names(book).contains(query))
         .toList();
-    if (exact.length == 1) return exact.single;
+    if (exact.isNotEmpty) return exact;
     final prefixes = bible.books
         .where((book) => names(book).any((name) => name.startsWith(query)))
         .toList();
-    // Prefer exact abbreviations, then use Bible order to resolve short prefixes.
-    if (prefixes.isNotEmpty) return prefixes.first;
+    if (prefixes.isNotEmpty) return prefixes;
     throw FormatException('Book “$text” not recognized. Try a longer name.');
   }
 }
