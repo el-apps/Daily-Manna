@@ -188,7 +188,7 @@ void main() {
     await tester.pump();
     expect(tester.widget<FilledButton>(save).onPressed, isNull);
     expect(await db.getAllResults(), isEmpty);
-    await tester.tap(find.text('1 jhn 2'));
+    await tester.enterText(find.byType(TextField), '1 jhn 2');
     await tester.pump();
     expect(find.text('1 John 2'), findsOneWidget);
   });
@@ -217,6 +217,14 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Reference'), findsOneWidget);
       expect(find.byType(ReferenceTab), findsOneWidget);
+      expect(find.byType(ActionChip), findsNothing);
+      expect(
+        tester
+            .widget<EditableText>(find.byType(EditableText))
+            .focusNode
+            .hasFocus,
+        isTrue,
+      );
       await tester.enterText(find.byType(TextField), 'Deut 1–4');
       await tester.pump();
       expect(find.text('Deuteronomy 1–4'), findsOneWidget);

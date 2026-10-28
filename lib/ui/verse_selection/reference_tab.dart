@@ -59,11 +59,11 @@ class _ReferenceTabState extends State<ReferenceTab> {
             ),
           );
     final selectLabel = widget.rangeMode ? 'Select passage' : 'Select verse';
-    final examples = widget.onLogReading != null
-        ? ['Deut 1–4', 'John 1,3', '1 jhn 2']
+    final example = widget.onLogReading != null
+        ? 'Deut 1–4'
         : widget.rangeMode
-        ? ['John 3', 'John 3:16–20', '1 jhn 2']
-        : ['John 3:16', 'Ps 23:1', '1 jhn 2:5'];
+        ? 'John 3'
+        : 'John 3:16';
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
@@ -72,6 +72,7 @@ class _ReferenceTabState extends State<ReferenceTab> {
           children: [
             TextField(
               controller: _input,
+              autofocus: true,
               enabled: !_saving,
               minLines: 2,
               maxLines: 4,
@@ -80,7 +81,7 @@ class _ReferenceTabState extends State<ReferenceTab> {
               textCapitalization: TextCapitalization.none,
               decoration: InputDecoration(
                 labelText: 'Passage reference',
-                hintText: 'e.g. ${examples.first}',
+                hintText: 'e.g. $example',
                 alignLabelWithHint: true,
               ),
               onChanged: (_) => setState(() => _saveError = null),
@@ -92,23 +93,6 @@ class _ReferenceTabState extends State<ReferenceTab> {
                   : widget.rangeMode
                   ? 'Enter a chapter or verse range. Abbreviations work.'
                   : 'Enter one verse. Abbreviations work.',
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final example in examples)
-                  ActionChip(
-                    label: Text(example),
-                    onPressed: _saving
-                        ? null
-                        : () => setState(() {
-                            _input.text = example;
-                            _saveError = null;
-                          }),
-                  ),
-              ],
             ),
             const SizedBox(height: 20),
             const Divider(),
