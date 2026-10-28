@@ -694,27 +694,33 @@ flowchart TD
         (widget) => widget is IconButton && widget.tooltip == label,
       ),
     );
+    Future<void> move(String label) async {
+      await tester.ensureVisible(find.byTooltip(label));
+      await tester.tap(find.byTooltip(label));
+      await tester.pumpAndSettle();
+    }
+
     expect(button('Move up').onPressed, isNull);
     await selectCard(tester, 'Do Not Forget God');
     for (var i = 0; i < 2; i++) {
-      await tester.tap(find.byTooltip('Move down'));
-      await tester.pumpAndSettle();
+      await move('Move down');
     }
     expect(button('Move down').onPressed, isNull);
     expect(
       tester.getTopLeft(find.text('Do Not Forget God')).dy,
       greaterThan(tester.getTopLeft(find.text('God Provides')).dy),
     );
-    await tester.tap(find.byTooltip('Move up'));
-    await tester.pumpAndSettle();
+    await move('Move up');
     expect(
       tester.getTopLeft(find.text('Do Not Forget God')).dy,
       lessThan(tester.getTopLeft(find.text('God Provides')).dy),
     );
-    await tester.tap(find.byTooltip('Move down'));
-    await tester.pumpAndSettle();
+    await move('Move down');
     await tester.binding.setSurfaceSize(const Size(390, 844));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Delete'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete').hitTestable(), findsOneWidget);
     expect(find.byTooltip('Move up').hitTestable(), findsOneWidget);
     expect(find.byTooltip('Move down').hitTestable(), findsOneWidget);
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
@@ -745,16 +751,14 @@ flowchart TD
     await tester.pumpAndSettle();
     await selectCard(tester, 'Deut 8:11-20');
     expect(button('Move up').onPressed, isNull);
-    await tester.tap(find.byTooltip('Move down'));
-    await tester.pumpAndSettle();
+    await move('Move down');
     expect(button('Move down').onPressed, isNull);
     expect(
       tester.getTopLeft(find.text('Deut 8:11-20')).dy,
       greaterThan(tester.getTopLeft(find.text('Remember')).dy),
     );
     await selectCard(tester, 'Remember');
-    await tester.tap(find.byTooltip('Move down'));
-    await tester.pumpAndSettle();
+    await move('Move down');
     expect(
       tester.getTopLeft(find.text('Remember')).dy,
       greaterThan(tester.getTopLeft(find.text('Deut 8:11-20')).dy),
@@ -1585,7 +1589,7 @@ flowchart TD
       await tester.pumpAndSettle();
       expect(find.byType(SnackBar), findsNothing);
       final label = tester.widget<EditableText>(find.byType(EditableText));
-      for (var i = 0; i < 10 && !label.focusNode.hasFocus; i++) {
+      for (var i = 0; i < 20 && !label.focusNode.hasFocus; i++) {
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
         await tester.pumpAndSettle();
       }

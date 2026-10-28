@@ -303,31 +303,6 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
             ),
           ]
         : [
-            for (final node in _conceptMap.nodes)
-              if (node.id == _selectedMapNodeId) ...[
-                for (final (offset, label, icon) in [
-                  (-1, 'Move up', Icons.arrow_upward),
-                  (1, 'Move down', Icons.arrow_downward),
-                ])
-                  IconButton(
-                    tooltip: label,
-                    onPressed:
-                        identical(
-                          conceptMapMoveNode(_conceptMap, node.id, offset),
-                          _conceptMap,
-                        )
-                        ? null
-                        : () => setState(() {
-                            _conceptMap = conceptMapMoveNode(
-                              _conceptMap,
-                              node.id,
-                              offset,
-                            );
-                          }),
-                    icon: Icon(icon),
-                  ),
-                const SizedBox(height: 24, child: VerticalDivider()),
-              ],
             TextButton.icon(
               onPressed: () => _conceptMapKey.currentState?.addNode(
                 ConceptMapNodeType.keyPoint,
@@ -408,6 +383,27 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
                   icon: const Icon(Icons.delete_outline),
                   label: const Text('Delete'),
                 ),
+                for (final (offset, label, icon) in [
+                  (-1, 'Move up', Icons.arrow_upward),
+                  (1, 'Move down', Icons.arrow_downward),
+                ])
+                  IconButton(
+                    tooltip: label,
+                    onPressed:
+                        identical(
+                          conceptMapMoveNode(_conceptMap, node.id, offset),
+                          _conceptMap,
+                        )
+                        ? null
+                        : () => setState(() {
+                            _conceptMap = conceptMapMoveNode(
+                              _conceptMap,
+                              node.id,
+                              offset,
+                            );
+                          }),
+                    icon: Icon(icon),
+                  ),
               ],
           ],
     onEdit: _enterEditMode,
