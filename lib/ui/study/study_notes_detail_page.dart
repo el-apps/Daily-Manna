@@ -11,6 +11,7 @@ import 'package:daily_manna/ui/study/study_markdown_preview.dart';
 import 'package:daily_manna/ui/edit_toolbar.dart';
 import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:printing/printing.dart';
 import 'package:drift/drift.dart' show Value;
@@ -123,6 +124,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
                   passages: _passages,
                   bibleService: bibleService,
                   onAddPassage: _addPassage,
+                  onBold: _bold,
                 ),
                 ConceptMapEditor(
                   key: _conceptMapKey,
@@ -286,7 +288,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
               icon: const Icon(Icons.format_indent_increase),
             ),
             IconButton(
-              tooltip: 'Bold (blue)',
+              tooltip: 'Bold (blue) · Ctrl+B / ⌘B',
               onPressed: _bold,
               icon: const Icon(Icons.format_bold),
             ),
@@ -423,6 +425,8 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   }
 
   void _bold() {
+    // Switching tabs can leave the hidden Markdown field holding focus.
+    if (!_isEditing || _activeTab != 0) return;
     final value = _notesController.value;
     final start = value.selection.start.clamp(0, value.text.length);
     final end = value.selection.end.clamp(start, value.text.length);
@@ -461,6 +465,7 @@ class _NotesTab extends StatelessWidget {
     required this.passages,
     required this.bibleService,
     required this.onAddPassage,
+    required this.onBold,
   });
 
   final String? notes;
@@ -469,6 +474,7 @@ class _NotesTab extends StatelessWidget {
   final List<ScriptureRangeRef> passages;
   final BibleService bibleService;
   final VoidCallback onAddPassage;
+  final VoidCallback onBold;
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -498,16 +504,23 @@ class _NotesTab extends StatelessWidget {
       if (isEditing) ...[
         const Text('Markdown · **bold** is blue · Read … is red · > quote'),
         const SizedBox(height: 8),
-        TextField(
-          controller: notesController,
-          style: const TextStyle(fontFamily: 'monospace'),
-          autofocus: true,
-          maxLines: null,
-          minLines: 10,
-          decoration: const InputDecoration(
-            hintText:
-                '# Sermon title\n\n- Main point\n  - Supporting point\n\nRead James 1:9-11\n\n> Quotation',
-            alignLabelWithHint: true,
+        CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.keyB, control: true):
+                onBold,
+            const SingleActivator(LogicalKeyboardKey.keyB, meta: true): onBold,
+          },
+          child: TextField(
+            controller: notesController,
+            style: const TextStyle(fontFamily: 'monospace'),
+            autofocus: true,
+            maxLines: null,
+            minLines: 10,
+            decoration: const InputDecoration(
+              hintText:
+                  '# Sermon title\n\n- Main point\n  - Supporting point\n\nRead James 1:9-11\n\n> Quotation',
+              alignLabelWithHint: true,
+            ),
           ),
         ),
       ] else if (notes?.isNotEmpty == true)

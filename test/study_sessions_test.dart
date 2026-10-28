@@ -275,8 +275,32 @@ void main() {
       baseOffset: 17,
       extentOffset: 22,
     );
-    await tester.tap(find.byTooltip('Bold (blue)'));
+    await tester.tap(find.byTooltip('Bold (blue) · Ctrl+B / ⌘B'));
     expect(controller.text, '> First\n> Second\n**Third**');
+    for (final modifier in [
+      LogicalKeyboardKey.controlLeft,
+      LogicalKeyboardKey.metaLeft,
+    ]) {
+      await tester.enterText(editor, '> First\n> Second\nThird');
+      controller.selection = const TextSelection(
+        baseOffset: 22,
+        extentOffset: 17,
+      );
+      await tester.sendKeyDownEvent(modifier);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
+      await tester.sendKeyUpEvent(modifier);
+      await tester.pump();
+      expect(controller.text, '> First\n> Second\n**Third**');
+      expect(controller.selection.textInside(controller.text), 'Third');
+    }
+    await tester.tap(find.text('Concept Map'));
+    await tester.pumpAndSettle();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    expect(controller.text, '> First\n> Second\n**Third**');
+    await tester.tap(find.text('Notes'));
+    await tester.pumpAndSettle();
     expect(find.byTooltip('Read passage (red)'), findsNothing);
     expect(find.byTooltip('Preview Markdown'), findsNothing);
     await tester.tap(find.byTooltip('Generate PDF'));
