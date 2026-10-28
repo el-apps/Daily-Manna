@@ -22,24 +22,8 @@ class ReadingReferenceParser {
     caseSensitive: false,
   );
 
-  static const _aliases = {
-    'gen': ['gn', 'gns'],
-    'exod': ['ex', 'exo'],
-    'deut': ['dt', 'deu'],
-    'ps': ['psalm', 'psa', 'psm'],
-    'song': ['sos', 'song of songs', 'songs'],
-    'john': ['jn', 'jhn'],
-    'rom': ['rm', 'rms'],
-    '1john': ['1jn', '1jhn'],
-    '2john': ['2jn', '2jhn'],
-    '3john': ['3jn', '3jhn'],
-    'phil': ['php', 'phlp'],
-    'phlm': ['phm'],
-    'jas': ['jm', 'jms'],
-    'mark': ['mk', 'mrk'],
-    'matt': ['mt'],
-    'luke': ['lk', 'luk'],
-    'rev': ['re', 'rv', 'revelations'],
+  static const _alternateNames = {
+    'song': ['song of songs'],
   };
 
   List<ReadingPassage> parse(String input, {bool includeAlternatives = false}) {
@@ -161,11 +145,13 @@ class ReadingReferenceParser {
 
   List<Book> _findBooks(String text) {
     final query = _normalize(text);
-    List<String> names(Book book) => [
-      book.id,
-      book.title,
-      ...?_aliases[book.id.toLowerCase()],
-    ].map(_normalize).toList();
+    final bookNumber = RegExp(r'^[1-3]');
+    final number = bookNumber.stringMatch(query);
+    List<String> names(Book book) =>
+        [book.id, book.title, ...?_alternateNames[book.id.toLowerCase()]]
+            .map(_normalize)
+            .where((name) => bookNumber.stringMatch(name) == number)
+            .toList();
     final exact = bible.books
         .where((book) => names(book).contains(query))
         .toList();
@@ -174,6 +160,34 @@ class ReadingReferenceParser {
         .where((book) => names(book).any((name) => name.startsWith(query)))
         .toList();
     if (prefixes.isNotEmpty) return prefixes;
+    final ranked = <Book, int>{};
+    for (final book in bible.books) {
+      for (final name in names(book)) {
+        final gaps = _letterGaps(query, name);
+        if (gaps != null && (ranked[book] == null || gaps < ranked[book]!)) {
+          ranked[book] = gaps;
+        }
+      }
+    }
+    if (ranked.isNotEmpty) {
+      return ranked.keys.toList()..sort((a, b) {
+        final byGaps = ranked[a]!.compareTo(ranked[b]!);
+        return byGaps != 0
+            ? byGaps
+            : bible.books.indexOf(a).compareTo(bible.books.indexOf(b));
+      });
+    }
     throw FormatException('Book “$text” not recognized. Try a longer name.');
+  }
+
+  // Count skipped letters, including leading letters, but not unused suffixes.
+  int? _letterGaps(String query, String name) {
+    var cursor = 0;
+    for (final letter in query.split('')) {
+      final index = name.indexOf(letter, cursor);
+      if (index < 0) return null;
+      cursor = index + 1;
+    }
+    return cursor - query.length;
   }
 }

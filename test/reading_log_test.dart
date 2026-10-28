@@ -109,6 +109,25 @@ void main() {
     },
   );
 
+  test('ordered letters match abbreviations without per-book aliases', () {
+    List<String> matchingBooks(String input) => parser
+        .parse(input, includeAlternatives: true)
+        .map((passage) => bible.booksMap[passage.bookId]!.title)
+        .toList();
+
+    expect(matchingBooks('dtrn 8'), ['Deuteronomy']);
+    expect(matchingBooks('hbk 2'), ['Habakkuk']);
+    expect(matchingBooks('zph 1'), ['Zephaniah']);
+    expect(matchingBooks('mrk 2'), ['Mark']);
+    expect(matchingBooks('jm 1'), ['James', 'Jeremiah']);
+    expect(matchingBooks('D 8'), ['Deuteronomy', 'Daniel']);
+    expect(matchingBooks('Dan 8'), ['Daniel']);
+    expect(matchingBooks('jhn 1'), ['John']);
+    expect(matchingBooks('2 jhn 1'), ['2 John']);
+    expect(matchingBooks('song of songs 1'), ['Song of Solomon']);
+    expect(() => matchingBooks('nhj 1'), throwsFormatException);
+  });
+
   test('cross-chapter and mixed ranges retain both endpoints', () {
     expect(labels('John 3:16–4:12'), ['John 3:16–4:12']);
     expect(labels('John 3–4:12'), ['John 3:1–4:12']);
