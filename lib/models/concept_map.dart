@@ -88,7 +88,7 @@ class ConceptMapDocument {
         );
       }
       final passageMatch = RegExp(
-        r'^\s*click\s+([A-Za-z][\w-]*)\s+"passage://([^/]+)/([^/]+)/([^/]+)/([^" ]*)"',
+        r'^\s*click\s+([A-Za-z][\w-]*)\s+"passage://([^/]+)/([^/]+)/([^/]+)/([^/" ]*)(?:/(\d+))?"',
       ).firstMatch(line);
       if (passageMatch != null) {
         final end = passageMatch.group(5)!;
@@ -97,6 +97,7 @@ class ConceptMapDocument {
           chapter: int.parse(passageMatch.group(3)!),
           startVerse: int.parse(passageMatch.group(4)!),
           endVerse: end.isEmpty ? null : int.parse(end),
+          endChapter: int.tryParse(passageMatch.group(6) ?? ''),
         );
       }
     }
@@ -127,7 +128,8 @@ class ConceptMapDocument {
         buffer.writeln(
           '  click ${node.id} "passage://${passage.bookId}/'
           '${passage.chapter}/${passage.startVerse}/'
-          '${passage.endVerse ?? ''}"',
+          '${passage.endVerse ?? ''}'
+          '${passage.endChapter == null ? '' : '/${passage.endChapter}'}"',
         );
       }
     }
@@ -152,14 +154,19 @@ class ConceptMapDocument {
     )) {
       return this;
     }
-    final end = passage.endVerse;
+    final end =
+        passage.endChapter != null && passage.endChapter != passage.chapter
+        ? '${passage.endChapter}:${passage.endVerse ?? passage.startVerse}'
+        : passage.endVerse == null || passage.endVerse == passage.startVerse
+        ? null
+        : '${passage.endVerse}';
     return addNode(
       ConceptMapNode(
         id: nextNodeId,
         type: ConceptMapNodeType.passage,
         label:
             '${passage.bookId} ${passage.chapter}:${passage.startVerse}'
-            '${end == null || end == passage.startVerse ? '' : '-$end'}',
+            '${end == null ? '' : '-$end'}',
         passage: passage,
       ),
     );

@@ -668,6 +668,7 @@ class _PassageNodeContent extends StatelessWidget {
             passage.bookId,
             passage.chapter,
             passage.startVerse,
+            endChapter: passage.endChapter,
             endVerse: passage.endVerse,
           );
     return Column(

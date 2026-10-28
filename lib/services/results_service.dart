@@ -40,6 +40,7 @@ class ResultsService {
         bookId: Value(result.ref.bookId),
         startChapter: Value(result.ref.chapter),
         startVerse: Value(result.ref.startVerse),
+        endChapter: Value(result.ref.endChapter),
         endVerse: Value(result.ref.endVerse),
         score: result.score,
       ),
@@ -65,6 +66,7 @@ class ResultsService {
         bookId: Value(ref.bookId),
         startChapter: Value(ref.chapter),
         startVerse: Value(ref.startVerse),
+        endChapter: Value(ref.endChapter),
         endVerse: Value(ref.endVerse),
         score: 1,
         notes: Value(notes),
@@ -190,6 +192,7 @@ class ResultsService {
     bookId: r.bookId!,
     chapter: r.startChapter!,
     startVerse: r.startVerse!,
+    endChapter: r.endChapter,
     endVerse: r.endVerse,
   );
 

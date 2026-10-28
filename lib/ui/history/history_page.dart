@@ -227,6 +227,7 @@ class _DateGroup extends StatelessWidget {
         bookId: result.bookId!,
         chapter: result.startChapter!,
         startVerse: result.startVerse!,
+        endChapter: result.endChapter,
         endVerse: result.endVerse,
       ),
     );

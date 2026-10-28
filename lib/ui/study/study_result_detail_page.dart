@@ -44,12 +44,10 @@ class _StudyResultDetailPageState extends State<StudyResultDetailPage> {
             bookId: widget.result.bookId!,
             chapter: widget.result.startChapter!,
             startVerse: widget.result.startVerse!,
+            endChapter: widget.result.endChapter,
             endVerse: widget.result.endVerse,
           );
     final hasNotes = _notes?.isNotEmpty == true;
-    final crossChapter =
-        widget.result.endChapter != null &&
-        widget.result.endChapter != widget.result.startChapter;
     return AppScaffold(
       title: 'Study Session',
       showShareButton: false,
@@ -126,7 +124,7 @@ class _StudyResultDetailPageState extends State<StudyResultDetailPage> {
                     ),
                     const SizedBox(width: 16),
                   ],
-                  if (ref != null && !crossChapter)
+                  if (ref != null)
                     Expanded(
                       child: FilledButton(
                         onPressed: () =>

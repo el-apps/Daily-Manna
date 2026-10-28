@@ -49,7 +49,10 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
     _resultsService = ResultsService(_database);
     _studyNotesService = StudyNotesService(_database);
     _errorLoggerService = ErrorLoggerService();
-    _spacedRepetitionService = SpacedRepetitionService(_database);
+    _spacedRepetitionService = SpacedRepetitionService(
+      _database,
+      _bibleService,
+    );
     _streakService = StreakService(_database);
     _notificationService = NotificationService(
       settingsService: _settingsService,

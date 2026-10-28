@@ -2,6 +2,7 @@ import 'package:bible_parser_flutter/bible_parser_flutter.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class BibleService {
   late BibleParser _parser;
@@ -13,10 +14,11 @@ class BibleService {
   List<Book> get books => _books;
   Map<String, Book> get booksMap => _booksMap;
 
-  Future load(BuildContext context) async {
-    final xmlString = await DefaultAssetBundle.of(
-      context,
-    ).loadString('assets/kjv.xml');
+  Future load([BuildContext? context]) async {
+    final bundle = context == null
+        ? rootBundle
+        : DefaultAssetBundle.of(context);
+    final xmlString = await bundle.loadString('assets/kjv.xml');
     _parser = BibleParser.fromString(xmlString, format: 'OSIS');
     _books = (await _parser.books.toList())
         .where((b) => b.title != 'Unknown')
@@ -46,8 +48,22 @@ class BibleService {
     String bookId,
     int chapter,
     int startVerse, {
+    int? endChapter,
     int? endVerse,
   }) {
+    if (endChapter != null && endChapter != chapter) {
+      return [
+        for (var current = chapter; current <= endChapter; current++)
+          getPassageRange(
+            bookId,
+            current,
+            current == chapter ? startVerse : 1,
+            endVerse: current == endChapter
+                ? endVerse ?? startVerse
+                : getVerses(bookId, current).length,
+          ),
+      ].join('\n');
+    }
     // If no end specified, just return the single verse
     if (endVerse == null) {
       return getVerse(bookId, chapter, startVerse);
@@ -73,9 +89,16 @@ class BibleService {
   );
 
   String getRangeRefName(ScriptureRangeRef ref) {
-    final bookTitle = _booksMap.isNotEmpty
-        ? (_booksMap[ref.bookId]?.title ?? 'Unknown')
-        : 'Unknown';
+    if (ref.endChapter != null && ref.endChapter != ref.chapter) {
+      return getReadingName(
+        bookId: ref.bookId,
+        startChapter: ref.chapter,
+        startVerse: ref.startVerse,
+        endChapter: ref.endChapter!,
+        endVerse: ref.endVerse ?? ref.startVerse,
+      );
+    }
+    final bookTitle = booksMap[ref.bookId]?.title ?? 'Unknown';
 
     if (ref.endVerse == null || ref.endVerse == ref.startVerse) {
       return '$bookTitle ${ref.chapter}:${ref.startVerse}';

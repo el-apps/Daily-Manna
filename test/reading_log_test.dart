@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:bible_parser_flutter/bible_parser_flutter.dart';
 import 'package:daily_manna/home_page.dart';
+import 'package:daily_manna/models/concept_map.dart';
+import 'package:daily_manna/models/recitation_result.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
@@ -10,6 +12,7 @@ import 'package:daily_manna/services/reading_reference_parser.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/services/streak_service.dart';
+import 'package:daily_manna/services/study_notes_service.dart';
 import 'package:daily_manna/ui/memorization/interact_result.dart';
 import 'package:daily_manna/ui/verse_selection/reference_tab.dart';
 import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
@@ -26,10 +29,6 @@ class _Bible extends BibleService {
   Map<String, Book> get booksMap => {for (final b in books) b.id: b};
   @override
   List<Chapter> getChapters(String id) => booksMap[id]!.chapters;
-  @override
-  String getRangeRefName(ScriptureRangeRef ref) =>
-      '${booksMap[ref.bookId]!.title} ${ref.chapter}:${ref.startVerse}'
-      '${ref.endVerse != null && ref.endVerse != ref.startVerse ? '-${ref.endVerse}' : ''}';
 }
 
 void main() {
@@ -286,9 +285,186 @@ void main() {
       Provider<AppDatabase>.value(value: db),
       Provider(create: (_) => ResultsService(db)),
       Provider(create: (_) => StreakService(db)),
-      Provider(create: (_) => SpacedRepetitionService(db)),
+      Provider(create: (_) => StudyNotesService(db)),
+      Provider(create: (_) => SpacedRepetitionService(db, bible)),
     ],
     child: MaterialApp(home: home),
+  );
+
+  testWidgets(
+    'four-tap Interact flow records complete cross-chapter readings',
+    (tester) async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      await tester.runAsync(() => db.getAllResults());
+      await tester.pumpWidget(host(db, const HomePage()));
+      await tester.pumpAndSettle();
+
+      for (final (input, label, endpoints) in [
+        ('Deut 1-4', 'Deuteronomy 1–4', (1, 1, 4, 49)),
+        ('John 1-4', 'John 1–4', (1, 1, 4, 54)),
+        ('John 1:1-2:4', 'John 1:1–2:4', (1, 1, 2, 4)),
+      ]) {
+        await tester.tap(find.text('Interact'));
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<EditableText>(find.byType(EditableText))
+              .focusNode
+              .hasFocus,
+          isTrue,
+        );
+        await tester.enterText(find.byType(TextField), input);
+        await tester.pump();
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+        expect(find.text(label), findsOneWidget);
+        await tester.tap(find.text('Study'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Record without a note'));
+        await tester.runAsync(() async {
+          final stored = (await db.getAllResults()).reduce(
+            (a, b) => a.id > b.id ? a : b,
+          );
+          expect((
+            stored.startChapter,
+            stored.startVerse,
+            stored.endChapter,
+            stored.endVerse,
+          ), endpoints);
+          expect(stored.type, ResultType.study);
+          expect(stored.studyNoteId, isNull);
+        });
+        await tester.pumpAndSettle();
+        expect(find.text('Study session recorded'), findsOneWidget);
+      }
+
+      await tester.runAsync(() async {
+        expect(await db.getAllResults(), hasLength(3));
+        expect(await db.select(db.syncOutbox).get(), hasLength(3));
+        expect(await db.getStudyNotes(), isEmpty);
+        expect(
+          await SpacedRepetitionService(db, bible).getVersesByReviewDate(),
+          isEmpty,
+        );
+        final sections = await ResultsService(db).getTodaySections(bible);
+        expect(
+          sections.single.items.map((item) => item.reference),
+          containsAll(['Deuteronomy 1–4', 'John 1–4', 'John 1:1–2:4']),
+        );
+      });
+
+      await tester.tap(find.text('Interact'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Suggestions'));
+      await tester.runAsync(() => db.getAllResults());
+      await tester.pumpAndSettle();
+      expect(find.text('Deuteronomy 5:1-33'), findsOneWidget);
+      expect(find.text('Deuteronomy 1–4'), findsOneWidget);
+      await tester.tap(find.text('Deuteronomy 1–4'));
+      await tester.pumpAndSettle();
+      expect(find.text('Deuteronomy 1–4'), findsOneWidget);
+      expect(find.text('Study'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 1));
+    },
+  );
+
+  test(
+    'cross-chapter text and recitation review use every included verse',
+    () async {
+      final john = bible.books.firstWhere((b) => b.title == 'John').id;
+      final ref = ScriptureRangeRef(
+        bookId: john,
+        chapter: 1,
+        startVerse: 50,
+        endChapter: 2,
+        endVerse: 2,
+      );
+      expect(bible.getRangeRefName(ref), 'John 1:50–2:2');
+      expect(
+        bible
+            .getPassageRange(john, 1, 50, endChapter: 2, endVerse: 2)
+            .split('\n'),
+        [
+          bible.getVerse(john, 1, 50),
+          bible.getVerse(john, 1, 51),
+          bible.getVerse(john, 2, 1),
+          bible.getVerse(john, 2, 2),
+        ],
+      );
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      await ResultsService(
+        db,
+      ).addRecitationResult(RecitationResult(ref: ref, score: 1));
+      final stored = (await db.getAllResults()).single;
+      expect(
+        (
+          stored.startChapter,
+          stored.startVerse,
+          stored.endChapter,
+          stored.endVerse,
+        ),
+        (1, 50, 2, 2),
+      );
+      final states = await SpacedRepetitionService(
+        db,
+        bible,
+      ).getVersesByReviewDate();
+      expect(
+        states.map((state) => (state.ref.chapterNumber, state.ref.verseNumber)),
+        [(1, 50), (1, 51), (2, 1), (2, 2)],
+      );
+    },
+  );
+
+  test(
+    'study notes and map links retain cross-chapter passage boundaries',
+    () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      final service = StudyNotesService(db);
+      final john = bible.books.firstWhere((b) => b.title == 'John').id;
+      final ref = ScriptureRangeRef(
+        bookId: john,
+        chapter: 1,
+        startVerse: 50,
+        endChapter: 3,
+        endVerse: 2,
+      );
+      var note = await service.createNote(title: 'Reading', passage: ref);
+      expect(service.passagesFor(note), [ref]);
+      final map = ConceptMapDocument.fromMermaid(note.conceptMap!);
+      expect(map.nodes.single.passage, ref);
+      await service.updateConceptMap(
+        note.id,
+        map
+            .addPassage(
+              ScriptureRangeRef(bookId: john, chapter: 2, startVerse: 20),
+            )
+            .toMermaid(),
+      );
+      note = (await service.getNote(note.id))!;
+      expect(service.passagesFor(note), [ref]);
+      for (final (chapter, verse, matches) in [
+        (1, 49, false),
+        (1, 50, true),
+        (2, 20, true),
+        (3, 2, true),
+        (3, 3, false),
+        (4, 1, false),
+      ]) {
+        final found = await service.findByPassage(
+          ScriptureRangeRef(bookId: john, chapter: chapter, startVerse: verse),
+        );
+        expect(
+          found.map((n) => n.id),
+          matches ? [note.id] : isEmpty,
+          reason: '$chapter:$verse',
+        );
+      }
+    },
   );
 
   testWidgets('Interact selects passage titles immediately without logging', (
@@ -379,7 +555,7 @@ void main() {
     expect(find.text('Review'), findsOneWidget);
     expect(find.text('Suggestions'), findsOneWidget);
     expect(find.text('Select passage'), findsNothing);
-    for (final input in ['John 3:16–4:12', 'John 3:37']) {
+    for (final input in ['John 3:37']) {
       await tester.enterText(find.byType(TextField), input);
       await tester.pump();
       expect(find.byType(ListTile), findsNothing);
@@ -543,7 +719,12 @@ void main() {
     expect(find.text('Search'), findsOneWidget);
     expect(find.text('Log reading'), findsNothing);
     expect(find.text('Select verse'), findsNothing);
-    for (final input in ['John 3', 'John 3:16-18']) {
+    for (final input in [
+      'John 3',
+      'John 3:16-18',
+      'John 1-4',
+      'John 1:1-2:4',
+    ]) {
       await tester.enterText(find.byType(TextField), input);
       await tester.pump();
       expect(find.byType(ListTile), findsNothing);

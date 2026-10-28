@@ -27,8 +27,9 @@ class _ReferenceTabState extends State<ReferenceTab>
   bool get wantKeepAlive => true;
 
   bool _canSelect(ReadingPassage passage) =>
-      passage.startChapter == passage.endChapter &&
-      (widget.rangeMode || passage.startVerse == passage.endVerse);
+      widget.rangeMode ||
+      (passage.startChapter == passage.endChapter &&
+          passage.startVerse == passage.endVerse);
 
   void _updateReference(String input) {
     var passages = <ReadingPassage>[];
@@ -105,6 +106,9 @@ class _ReferenceTabState extends State<ReferenceTab>
                       bookId: passage.bookId,
                       chapter: passage.startChapter,
                       startVerse: passage.startVerse,
+                      endChapter: passage.endChapter == passage.startChapter
+                          ? null
+                          : passage.endChapter,
                       endVerse: passage.endVerse,
                     ),
                   ),
@@ -113,10 +117,7 @@ class _ReferenceTabState extends State<ReferenceTab>
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Text(
-                  widget.rangeMode
-                      ? 'To select a passage, enter one chapter or a verse range '
-                            'within a chapter.'
-                      : 'To select a verse, enter one verse, such as John 3:16.',
+                  'To select a verse, enter one verse, such as John 3:16.',
                 ),
               ),
             ],

@@ -113,13 +113,7 @@ class StudyNotesService {
         continue;
       }
       // Existing chapter/range links already cover their individual map verses.
-      final covered = passages.any(
-        (existing) =>
-            existing.overlaps(reference) &&
-            existing.startVerse <= reference.startVerse &&
-            (existing.endVerse ?? existing.startVerse) >=
-                (reference.endVerse ?? reference.startVerse),
-      );
+      final covered = passages.any((existing) => existing.contains(reference));
       if (!covered) passages.add(reference);
     }
     return passages;
@@ -132,6 +126,7 @@ class StudyNotesService {
             'bookId': passage.bookId,
             'chapter': passage.chapter,
             'startVerse': passage.startVerse,
+            if (passage.endChapter != null) 'endChapter': passage.endChapter,
             'endVerse': passage.endVerse,
           },
         )
@@ -147,6 +142,7 @@ class StudyNotesService {
           bookId: json['bookId'] as String,
           chapter: (json['chapter'] as num).toInt(),
           startVerse: (json['startVerse'] as num).toInt(),
+          endChapter: (json['endChapter'] as num?)?.toInt(),
           endVerse: (json['endVerse'] as num?)?.toInt(),
         );
       }).toList();

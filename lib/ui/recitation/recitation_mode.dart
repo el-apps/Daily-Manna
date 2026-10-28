@@ -523,6 +523,7 @@ class _RecitationModeState extends State<RecitationMode> {
         passageRef.bookId,
         passageRef.chapter,
         passageRef.startVerse,
+        endChapter: passageRef.endChapter,
         endVerse: passageRef.endVerse,
       );
 
