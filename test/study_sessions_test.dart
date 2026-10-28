@@ -660,6 +660,93 @@ flowchart TD
     expect(find.text('Delete'), findsOneWidget);
   });
 
+  testWidgets('key points move with their branches and retain saved order', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    late StudyNote note;
+    const source = '''
+flowchart TD
+  background[Background]:::keyPoint
+  forget[Do Not Forget God]:::keyPoint
+  verse[Deuteronomy 8:11-20]:::passage
+  class verse showPassage
+  click verse "passage://Deut/8/11/20"
+  humbles[God Humbles and Tests]:::keyPoint
+  provides[God Provides]:::keyPoint
+  forget ---> verse
+''';
+    await tester.runAsync(() async {
+      note = await notesService.createNote(title: 'Deuteronomy 8');
+      await notesService.updateConceptMap(note.id, source);
+      note = (await notesService.getNote(note.id))!;
+    });
+    await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+    await tester.tap(find.text('Concept Map'));
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    await selectCard(tester, 'Background');
+    TextButton button(String label) => tester.widget<TextButton>(
+      find
+          .ancestor(
+            of: find.text(label),
+            matching: find.byWidgetPredicate((widget) => widget is TextButton),
+          )
+          .first,
+    );
+    expect(button('Move up').onPressed, isNull);
+    await selectCard(tester, 'Do Not Forget God');
+    for (var i = 0; i < 2; i++) {
+      await tester.tap(find.text('Move down'));
+      await tester.pumpAndSettle();
+    }
+    expect(button('Move down').onPressed, isNull);
+    expect(
+      tester.getTopLeft(find.text('Do Not Forget God')).dy,
+      greaterThan(tester.getTopLeft(find.text('God Provides')).dy),
+    );
+    await tester.tap(find.text('Move up'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getTopLeft(find.text('Do Not Forget God')).dy,
+      lessThan(tester.getTopLeft(find.text('God Provides')).dy),
+    );
+    await tester.tap(find.text('Move down'));
+    await tester.pumpAndSettle();
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    await tester.pumpAndSettle();
+    expect(find.text('Move up').hitTestable(), findsOneWidget);
+    expect(find.text('Move down').hitTestable(), findsOneWidget);
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.byTooltip('Save'));
+      note = (await notesService.getNote(note.id))!;
+    });
+    await tester.pumpAndSettle();
+    final saved = ConceptMapDocument.fromMermaid(note.conceptMap!);
+    expect(
+      saved.nodes
+          .where((n) => n.type == ConceptMapNodeType.keyPoint)
+          .map((n) => n.id),
+      ['background', 'humbles', 'provides', 'forget'],
+    );
+    final original = ConceptMapDocument.fromMermaid(source);
+    expect(saved.edges.single.from, original.edges.single.from);
+    expect(saved.edges.single.to, original.edges.single.to);
+    final verse = saved.nodes.singleWhere((n) => n.id == 'verse');
+    expect(verse.passage, original.nodes[2].passage);
+    expect(verse.showPassage, isTrue);
+    final positions = conceptMapLayout(saved);
+    expect(positions['verse']!.dy, greaterThan(positions['provides']!.dy));
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    await selectCard(tester, 'Deut 8:11-20');
+    expect(find.text('Move up'), findsNothing);
+    expect(find.text('Move down'), findsNothing);
+  });
+
   test('map layout leaves room for expanded cards in each column', () {
     const document = ConceptMapDocument(
       nodes: [

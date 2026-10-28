@@ -303,6 +303,31 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
             ),
           ]
         : [
+            for (final node in _conceptMap.nodes)
+              if (node.id == _selectedMapNodeId &&
+                  node.type == ConceptMapNodeType.keyPoint) ...[
+                for (final (offset, label, icon) in [
+                  (-1, 'Move up', Icons.arrow_upward),
+                  (1, 'Move down', Icons.arrow_downward),
+                ])
+                  TextButton.icon(
+                    onPressed:
+                        identical(
+                          _conceptMap.moveKeyPoint(node.id, offset),
+                          _conceptMap,
+                        )
+                        ? null
+                        : () => setState(() {
+                            _conceptMap = _conceptMap.moveKeyPoint(
+                              node.id,
+                              offset,
+                            );
+                          }),
+                    icon: Icon(icon),
+                    label: Text(label),
+                  ),
+                const SizedBox(height: 24, child: VerticalDivider()),
+              ],
             TextButton.icon(
               onPressed: () => _conceptMapKey.currentState?.addNode(
                 ConceptMapNodeType.keyPoint,
