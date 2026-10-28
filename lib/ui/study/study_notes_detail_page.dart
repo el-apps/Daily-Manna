@@ -8,12 +8,15 @@ import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/study/concept_map_editor.dart';
 import 'package:daily_manna/ui/study/study_markdown_preview.dart';
+import 'package:daily_manna/ui/study/study_notes_pdf_dialog.dart';
 import 'package:daily_manna/ui/edit_toolbar.dart';
 import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:drift/drift.dart' show Value;
 
 /// Persistent workspace for a titled study note.
@@ -150,42 +153,36 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   void _enterEditMode() => setState(() => _isEditing = true);
 
   Future<void> _exportPdf() async {
-    final halfLetter = await showDialog<bool>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('Generate PDF'),
-        children: [
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Letter · 8.5 × 11 in · 11 pt'),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Half-letter · 5.5 × 8.5 in · 8 pt'),
-          ),
-          const Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
-              'Sequential pages with page numbers. Exports the current '
-              'draft without saving it. Cut-and-stack printing is not included.',
-            ),
-          ),
-        ],
-      ),
-    );
-    if (halfLetter == null || !mounted) return;
+    final options =
+        await showDialog<({StudyNotesPdfFormat format, bool automaticDuplex})>(
+          context: context,
+          builder: (_) => const StudyNotesPdfDialog(),
+        );
+    if (options == null || !mounted) return;
     setState(() => _exporting = true);
     try {
-      final bytes = await buildStudyNotesPdf(
+      final files = await buildStudyNotesPdfs(
         title: widget.note.title,
         source: _notesController.text,
-        halfLetter: halfLetter,
+        format: options.format,
+        automaticDuplex: options.automaticDuplex,
       );
-      final name = widget.note.title.replaceAll(RegExp(r'[^\w\- ]'), '').trim();
-      await Printing.sharePdf(
-        bytes: bytes,
-        filename: '${name.isEmpty ? 'study-notes' : name}.pdf',
-      );
+      if (kIsWeb || files.length == 1) {
+        for (final file in files.entries) {
+          await Printing.sharePdf(bytes: file.value, filename: file.key);
+        }
+      } else {
+        // Share both manual-duplex files in one native share sheet.
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [
+              for (final file in files.entries)
+                XFile.fromData(file.value, mimeType: 'application/pdf'),
+            ],
+            fileNameOverrides: files.keys.toList(),
+          ),
+        );
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

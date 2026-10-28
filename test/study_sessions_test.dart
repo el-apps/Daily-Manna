@@ -10,9 +10,11 @@ import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/services/study_notes_service.dart';
+import 'package:daily_manna/services/study_notes_pdf.dart';
 import 'package:daily_manna/ui/study/study_note_picker.dart';
 import 'package:daily_manna/ui/study/concept_map_editor.dart';
 import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
+import 'package:daily_manna/ui/study/study_notes_pdf_dialog.dart';
 import 'package:daily_manna/ui/study/study_result_detail_page.dart';
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart' show Value;
@@ -305,8 +307,31 @@ void main() {
     expect(find.byTooltip('Preview Markdown'), findsNothing);
     await tester.tap(find.byTooltip('Generate PDF'));
     await tester.pumpAndSettle();
-    expect(find.text('Half-letter · 5.5 × 8.5 in · 8 pt'), findsOneWidget);
-    await tester.tapAt(const Offset(5, 5));
+    expect(find.text('Format'), findsOneWidget);
+    expect(find.byType(SwitchListTile), findsNothing);
+    await tester.tap(find.text('Sequential').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Opening').last);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Two consecutive'), findsOneWidget);
+    expect(find.byType(SwitchListTile), findsNothing);
+    await tester.tap(find.text('Opening').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cut-and-stack').last);
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      false,
+    );
+    expect(find.textContaining('Separate fronts and backs'), findsOneWidget);
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      true,
+    );
+    expect(find.textContaining('One PDF.'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(controller.text, '> First\n> Second\n**Third**');
     await tester.tap(find.byTooltip('Save'));
@@ -318,6 +343,42 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(TextField), findsNothing);
     expect(find.textContaining('Third', findRichText: true), findsOneWidget);
+  });
+
+  testWidgets('PDF dialog returns the selected format and duplex choice', (
+    tester,
+  ) async {
+    Object? result;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async {
+              result = await showDialog<Object>(
+                context: context,
+                builder: (_) => const StudyNotesPdfDialog(),
+              );
+            },
+            child: const Text('Export'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Export'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sequential').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cut-and-stack').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Generate'));
+    await tester.pumpAndSettle();
+    expect(result, (
+      format: StudyNotesPdfFormat.cutAndStack,
+      automaticDuplex: true,
+    ));
+    expect(find.byType(StudyNotesPdfDialog), findsNothing);
   });
 
   testWidgets('Markdown lists continue and indent with the keyboard', (

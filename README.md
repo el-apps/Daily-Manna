@@ -19,10 +19,12 @@ An app for building strong daily habits in interacting with the Word of God.
 - Use `**bold**` for steel-blue emphasis, nested `- ` lists for subpoints, and `> ` for green-outlined blockquotes.
 - Start a paragraph or list item with the whole word `Read` to color it red; bold text within it stays blue. `Reader` does not trigger this styling.
 - A standalone `\newpage` forces a PDF page break and appears as a divider in the notes view.
-- Select **Generate PDF** (the PDF icon in the app bar) for Letter (11 pt, 1-inch margins) or sequential half-letter (8 pt, 0.75-inch margins), both with page numbers.
-- Export uses the current draft without saving it or recording a study session. On web it downloads a PDF; on Android it opens the share sheet.
+- Select **Generate PDF** (the PDF icon in the app bar), choose **Sequential**, **Opening**, or **Cut-and-stack**, then select **Generate**. All use numbered half-letter pages (8 pt, 0.75-inch margins).
+- **Sequential** exports one half-letter page at a time. **Opening** places consecutive pages side by side on landscape Letter. **Cut-and-stack** arranges landscape Letter sheets so you can cut vertically and stack the right halves on the left halves.
+- For Cut-and-stack, **Automatic duplex** off exports separate `-fronts.pdf` and `-backs.pdf` files for manual double-sided printing; on exports one interleaved PDF for an automatic duplex printer. Use landscape, 100% scale, and short-edge flip for either printing method.
+- Export uses the current draft without saving it or recording a study session. On web it downloads the PDF file(s); on Android it opens one share sheet, including both files for manual duplex.
 - PDF generation runs locally with bundled DejaVu Serif fonts, including bold and italic. It does not require Pandoc, LaTeX, a conversion server, or a font download.
-- PDF output follows the sermon styling conventions, but is not a pixel-identical LaTeX rendering. Cut-and-stack fronts/backs, duplex imposition, and two-up openings are not currently supported.
+- PDF output follows the sermon styling and page-order conventions, but is not a pixel-identical LaTeX rendering.
 
 ## Editing concept maps
 
