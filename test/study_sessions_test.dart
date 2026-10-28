@@ -10,9 +10,11 @@ import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/services/study_notes_service.dart';
+import 'package:daily_manna/services/study_notes_pdf.dart';
 import 'package:daily_manna/ui/study/study_note_picker.dart';
 import 'package:daily_manna/ui/study/concept_map_editor.dart';
 import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
+import 'package:daily_manna/ui/study/study_notes_pdf_dialog.dart';
 import 'package:daily_manna/ui/study/study_result_detail_page.dart';
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart' show Value;
@@ -236,6 +238,215 @@ void main() {
       expect(find.byTooltip('Note actions'), findsNothing);
     },
   );
+
+  testWidgets('Markdown toolbar edits selections and keeps PDF in app bar', (
+    tester,
+  ) async {
+    late StudyNote note;
+    await tester.runAsync(() async {
+      note = await notesService.createNote(title: 'Outline');
+    });
+    await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byTooltip('Generate PDF'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    final editor = find.byType(TextField);
+    expect(tester.widget<TextField>(editor).style?.fontFamily, 'monospace');
+    final controller = tester.widget<TextField>(editor).controller!;
+    await tester.enterText(editor, '##### Heading');
+    await tester.tap(find.byTooltip('Increase heading'));
+    expect(controller.text, '###### Heading');
+    await tester.tap(find.byTooltip('Increase heading'));
+    expect(controller.text, '###### Heading');
+    await tester.enterText(editor, '      + Deep point');
+    await tester.tap(find.byTooltip('Increase bullet indent'));
+    expect(controller.text, '        - Deep point');
+    await tester.tap(find.byTooltip('Decrease bullet indent'));
+    expect(controller.text, '      - Deep point');
+    await tester.enterText(editor, 'First\nSecond\nThird');
+    controller.selection = const TextSelection(baseOffset: 0, extentOffset: 13);
+    await tester.tap(find.byTooltip('Blockquote'));
+    expect(controller.text, '> First\n> Second\nThird');
+    controller.selection = const TextSelection(
+      baseOffset: 17,
+      extentOffset: 22,
+    );
+    await tester.tap(find.byTooltip('Bold (blue) · Ctrl+B / ⌘B'));
+    expect(controller.text, '> First\n> Second\n**Third**');
+    for (final modifier in [
+      LogicalKeyboardKey.controlLeft,
+      LogicalKeyboardKey.metaLeft,
+    ]) {
+      await tester.enterText(editor, '> First\n> Second\nThird');
+      controller.selection = const TextSelection(
+        baseOffset: 22,
+        extentOffset: 17,
+      );
+      await tester.sendKeyDownEvent(modifier);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
+      await tester.sendKeyUpEvent(modifier);
+      await tester.pump();
+      expect(controller.text, '> First\n> Second\n**Third**');
+      expect(controller.selection.textInside(controller.text), 'Third');
+    }
+    await tester.tap(find.text('Concept Map'));
+    await tester.pumpAndSettle();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    expect(controller.text, '> First\n> Second\n**Third**');
+    await tester.tap(find.text('Notes'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Read passage (red)'), findsNothing);
+    expect(find.byTooltip('Preview Markdown'), findsNothing);
+    await tester.tap(find.byTooltip('Generate PDF'));
+    await tester.pumpAndSettle();
+    expect(find.text('Format'), findsOneWidget);
+    expect(find.byType(SwitchListTile), findsNothing);
+    await tester.tap(find.text('Sequential').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Opening').last);
+    await tester.pumpAndSettle();
+    expect(find.byType(SwitchListTile), findsNothing);
+    await tester.tap(find.text('Opening').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cut-and-stack').last);
+    await tester.pumpAndSettle();
+    expect(find.byType(SwitchListTile), findsNothing);
+    expect(find.textContaining('fronts PDF'), findsOneWidget);
+    await tester.tap(find.text('Cut-and-stack').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cut-and-stack Duplex').last);
+    await tester.pumpAndSettle();
+    expect(find.byType(SwitchListTile), findsNothing);
+    expect(find.textContaining('For double-sided printers.'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(controller.text, '> First\n> Second\n**Third**');
+    await tester.tap(find.byTooltip('Save'));
+    await tester.runAsync(() async {
+      await database.watchStudyNotes().firstWhere(
+        (notes) => notes.single.notes == '> First\n> Second\n**Third**',
+      );
+    });
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsNothing);
+    expect(find.textContaining('Third', findRichText: true), findsOneWidget);
+  });
+
+  testWidgets('PDF dialog returns the selected duplex format', (tester) async {
+    Object? result;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async {
+              result = await showDialog<Object>(
+                context: context,
+                builder: (_) => const StudyNotesPdfDialog(),
+              );
+            },
+            child: const Text('Export'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Export'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sequential').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cut-and-stack Duplex').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Generate'));
+    await tester.pumpAndSettle();
+    expect(result, StudyNotesPdfFormat.cutAndStackDuplex);
+    expect(find.byType(StudyNotesPdfDialog), findsNothing);
+  });
+
+  testWidgets('Markdown lists continue and indent with the keyboard', (
+    tester,
+  ) async {
+    late StudyNote note;
+    await tester.runAsync(() async {
+      note = await notesService.createNote(title: 'Lists');
+    });
+    await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    final editor = find.byType(TextField);
+    final controller = tester.widget<TextField>(editor).controller!;
+
+    // Send the editing value a soft or hardware keyboard sends for Enter.
+    for (final (before, offset, after, caret) in [
+      ('- First', 7, '- First\n- ', 10),
+      ('  + Child', 9, '  + Child\n  + ', 14),
+      ('    * Deep', 10, '    * Deep\n    * ', 17),
+      ('- First tail', 7, '- First\n-  tail', 10),
+      ('- First\n  - ', 12, '- First\n', 8),
+      ('- ', 2, '', 0),
+      ('Normal text', 11, 'Normal text\n', 12),
+    ]) {
+      await tester.enterText(editor, before);
+      controller.selection = TextSelection.collapsed(offset: offset);
+      tester.testTextInput.updateEditingValue(
+        TextEditingValue(
+          text: before.replaceRange(offset, offset, '\n'),
+          selection: TextSelection.collapsed(offset: offset + 1),
+        ),
+      );
+      await tester.pump();
+      expect(controller.text, after);
+      expect(controller.selection, TextSelection.collapsed(offset: caret));
+    }
+
+    await tester.enterText(editor, '- First');
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(
+        text: '- First\nPasted paragraph',
+        selection: TextSelection.collapsed(offset: 24),
+      ),
+    );
+    expect(controller.text, '- First\nPasted paragraph');
+
+    await tester.enterText(editor, '- First\n  - Child\n- Last');
+    controller.selection = const TextSelection.collapsed(offset: 14);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    expect(controller.text, '- First\n    - Child\n- Last');
+    expect(controller.selection, const TextSelection.collapsed(offset: 16));
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    expect(controller.text, '- First\n  - Child\n- Last');
+    expect(controller.selection, const TextSelection.collapsed(offset: 14));
+
+    // Keep a backwards multiline selection so repeated Tab affects the same lines.
+    controller.selection = const TextSelection(baseOffset: 20, extentOffset: 2);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    expect(controller.text, '  - First\n    - Child\n  - Last');
+    expect(
+      controller.selection,
+      const TextSelection(baseOffset: 26, extentOffset: 4),
+    );
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    expect(controller.text, '- First\n  - Child\n- Last');
+    expect(
+      controller.selection,
+      const TextSelection(baseOffset: 20, extentOffset: 2),
+    );
+
+    await tester.tap(find.text('Concept Map'));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    expect(controller.text, '- First\n  - Child\n- Last');
+  });
 
   test('multiline card labels survive Mermaid saves, including old maps', () {
     final legacy = ConceptMapDocument.fromMermaid('''
