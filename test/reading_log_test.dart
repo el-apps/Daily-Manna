@@ -10,6 +10,7 @@ import 'package:daily_manna/services/reading_reference_parser.dart';
 import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/services/streak_service.dart';
+import 'package:daily_manna/ui/memorization/interact_result.dart';
 import 'package:daily_manna/ui/verse_selection/reference_tab.dart';
 import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:drift/native.dart';
@@ -27,7 +28,8 @@ class _Bible extends BibleService {
   List<Chapter> getChapters(String id) => booksMap[id]!.chapters;
   @override
   String getRangeRefName(ScriptureRangeRef ref) =>
-      '${booksMap[ref.bookId]!.title} ${ref.chapter}:${ref.startVerse}';
+      '${booksMap[ref.bookId]!.title} ${ref.chapter}:${ref.startVerse}'
+      '${ref.endVerse != null && ref.endVerse != ref.startVerse ? '-${ref.endVerse}' : ''}';
 }
 
 void main() {
@@ -156,38 +158,32 @@ void main() {
     },
   );
 
-  testWidgets('live preview enables logging only when every passage is valid', (
+  testWidgets('live preview clears selection when the input becomes invalid', (
     tester,
   ) async {
-    final db = AppDatabase.forTesting(NativeDatabase.memory());
-    addTearDown(db.close);
+    ScriptureRangeRef? selected;
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          Provider<BibleService>.value(value: bible),
-          Provider(create: (_) => ResultsService(db)),
-        ],
+      Provider<BibleService>.value(
+        value: bible,
         child: MaterialApp(
           home: Scaffold(
-            body: ReferenceTab(
-              onSelected: (_) {},
-              onLogReading: ResultsService(db).addReading,
-            ),
+            body: ReferenceTab(onChanged: (ref) => selected = ref),
           ),
         ),
       ),
     );
-    final save = find.widgetWithText(FilledButton, 'Log reading');
-    expect(tester.widget<FilledButton>(save).onPressed, isNull);
+    expect(find.text('Log reading'), findsNothing);
     await tester.enterText(find.byType(TextField), 'John 1,3');
     await tester.pump();
     expect(find.text('John 1'), findsOneWidget);
     expect(find.text('John 3'), findsOneWidget);
-    expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
+    expect(selected, isNull);
+    await tester.enterText(find.byType(TextField), 'jhn3:16-18');
+    await tester.pump();
+    expect((selected!.startVerse, selected!.endVerse), (16, 18));
     await tester.enterText(find.byType(TextField), 'John 1,999');
     await tester.pump();
-    expect(tester.widget<FilledButton>(save).onPressed, isNull);
-    expect(await db.getAllResults(), isEmpty);
+    expect(selected, isNull);
     await tester.enterText(find.byType(TextField), '1 jhn 2');
     await tester.pump();
     expect(find.text('1 John 2'), findsOneWidget);
@@ -205,7 +201,7 @@ void main() {
   );
 
   testWidgets(
-    'Interact offers logging in Reference, closes after save, and keeps browsing',
+    'Interact confirms selections before showing actions and never logs them',
     (tester) async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(db.close);
@@ -225,29 +221,17 @@ void main() {
             .hasFocus,
         isTrue,
       );
-      await tester.enterText(find.byType(TextField), 'Deut 1–4');
+      await tester.enterText(find.byType(TextField), '1 jhn 2');
       await tester.pump();
-      expect(find.text('Deuteronomy 1–4'), findsOneWidget);
-      await tester.runAsync(() async {
-        await tester.tap(find.widgetWithText(FilledButton, 'Log reading'));
-      });
-      // Let real database work and Flutter's fake-async callbacks both advance.
-      for (
-        var attempt = 0;
-        attempt < 100 && find.byType(ReferenceTab).evaluate().isNotEmpty;
-        attempt++
-      ) {
-        await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 10)),
-        );
-        await tester.pump(const Duration(milliseconds: 50));
-      }
+      expect(find.text('1 John 2'), findsOneWidget);
+      expect(find.text('Log reading'), findsNothing);
+      expect(find.text('Memorize'), findsNothing);
+      await tester.tap(find.widgetWithText(FilledButton, 'Select passage'));
       await tester.pumpAndSettle();
       expect(find.byType(ReferenceTab), findsNothing);
-      expect(find.text('Memorize'), findsNothing);
-      await tester.runAsync(() async {
-        expect((await db.getAllResults()).single.endChapter, 4);
-      });
+      expect(find.text('Memorize'), findsOneWidget);
+      tester.state<NavigatorState>(find.byType(Navigator)).pop();
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pumpAndSettle();
       expect(find.byType(ReferenceTab), findsOneWidget);
@@ -259,9 +243,16 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Select entire chapter'));
       await tester.pumpAndSettle();
+      expect(find.text('Memorize'), findsNothing);
+      expect(find.byType(ReferenceTab), findsNothing);
+      await tester.tap(find.widgetWithText(FilledButton, 'Select passage'));
+      await tester.pumpAndSettle();
       expect(find.text('Memorize'), findsOneWidget);
       expect(find.text('Recite'), findsOneWidget);
       expect(find.text('Study'), findsOneWidget);
+      await tester.runAsync(() async {
+        expect(await db.getAllResults(), isEmpty);
+      });
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(const Duration(milliseconds: 1));
     },
@@ -270,6 +261,11 @@ void main() {
   testWidgets('shared passage selectors return typed ranges without logging', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetViewInsets);
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
     ScriptureRangeRef? selected;
@@ -305,8 +301,12 @@ void main() {
       expect(selected, isNull);
     }
     await tester.enterText(find.byType(TextField), 'jhn 3:16-18');
-    await tester.pump();
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pumpAndSettle();
+    expect(tester.getBottomRight(select).dy, lessThanOrEqualTo(544));
     await tester.tap(select);
+    await tester.pumpAndSettle();
+    tester.view.resetViewInsets();
     await tester.pumpAndSettle();
     expect(
       selected,
@@ -334,6 +334,105 @@ void main() {
     );
     expect(await db.getAllResults(), isEmpty);
   });
+
+  testWidgets(
+    'all tabs stage their own selection for the shared confirm button',
+    (tester) async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      final john = bible.books.firstWhere((b) => b.title == 'John').id;
+      await tester.runAsync(() async {
+        for (final verse in [18, 21]) {
+          await ResultsService(db).addMemorizationResult(
+            MemorizationResult(
+              ref: ScriptureRef(
+                bookId: john,
+                chapterNumber: 3,
+                verseNumber: verse,
+              ),
+              attempts: 1,
+              score: 1,
+            ),
+          );
+        }
+      });
+      ScriptureRangeRef? selected;
+      await tester.pumpWidget(
+        host(
+          db,
+          Builder(
+            builder: (context) => Scaffold(
+              body: FilledButton(
+                onPressed: () async {
+                  selected = await showPassageSelector(context);
+                },
+                child: const Text('Choose passage'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Choose passage'));
+      await tester.pumpAndSettle();
+      final confirm = find.widgetWithText(FilledButton, 'Select passage');
+      expect(confirm, findsOneWidget);
+      expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+      await tester.enterText(find.byType(TextField), 'jhn3:16-18');
+      await tester.pump();
+      expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
+      await tester.tap(find.text('Books'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+      await tester.tap(find.text('Deuteronomy'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('1').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('3').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('7').first);
+      await tester.pumpAndSettle();
+      expect(selected, isNull);
+      expect(find.text('Deuteronomy 1:3-7'), findsOneWidget);
+      expect(confirm, findsOneWidget);
+      expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
+
+      for (final tab in ['Review', 'Suggestions']) {
+        await tester.tap(find.text(tab));
+        await tester.pumpAndSettle();
+        await tester.runAsync(() => db.getAllResults());
+        await tester.pumpAndSettle();
+        expect(confirm, findsOneWidget);
+        expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+        await tester.tap(find.text('John 3:${tab == 'Review' ? 18 : 21}'));
+        await tester.pumpAndSettle();
+        expect(selected, isNull);
+        expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
+        expect(find.text('Log reading'), findsNothing);
+      }
+
+      await tester.tap(find.text('Reference'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<EditableText>(find.byType(EditableText)).controller.text,
+        'jhn3:16-18',
+      );
+      expect(find.text('John 3:16-18'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'John 3:37');
+      await tester.pump();
+      expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+      await tester.tap(find.text('Suggestions'));
+      await tester.pumpAndSettle();
+      await tester.tap(confirm);
+      await tester.pumpAndSettle();
+      expect(
+        selected,
+        ScriptureRangeRef(bookId: john, chapter: 3, startVerse: 21),
+      );
+      await tester.runAsync(() async {
+        expect(await db.getAllResults(), hasLength(2));
+      });
+    },
+  );
 
   testWidgets('single verse selectors never silently shorten a typed range', (
     tester,

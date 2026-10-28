@@ -1,56 +1,50 @@
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
-import 'package:daily_manna/ui/app_scaffold.dart';
-import 'package:daily_manna/ui/verse_selection/reference_tab.dart';
-import 'package:daily_manna/ui/verse_selection/books_tab.dart';
-import 'package:daily_manna/ui/verse_selection/suggestions_tab.dart';
-import 'package:daily_manna/ui/verse_selection/review_tab.dart';
 import 'package:daily_manna/services/bible_service.dart';
-import 'package:daily_manna/services/reading_reference_parser.dart';
-import 'package:daily_manna/services/results_service.dart';
+import 'package:daily_manna/ui/app_scaffold.dart';
+import 'package:daily_manna/ui/verse_selection/books_tab.dart';
+import 'package:daily_manna/ui/verse_selection/reference_tab.dart';
+import 'package:daily_manna/ui/verse_selection/review_tab.dart';
+import 'package:daily_manna/ui/verse_selection/suggestions_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-Future<ScriptureRangeRef?> showPassageSelector(
-  BuildContext context, {
-  bool allowReadingLog = false,
-}) => showModalBottomSheet<ScriptureRangeRef>(
-  context: context,
-  useRootNavigator: true,
-  isScrollControlled: true,
-  useSafeArea: true,
-  constraints: BoxConstraints(
-    maxHeight: MediaQuery.sizeOf(context).height * 0.9,
-  ),
-  shape: const RoundedRectangleBorder(
-    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-  ),
-  clipBehavior: Clip.antiAlias,
-  builder: (sheetContext) => Padding(
-    padding: EdgeInsets.only(
-      bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
-    ),
-    child: VerseSelectionPage(
-      rangeMode: true,
-      allowReadingLog: allowReadingLog,
-    ),
-  ),
-);
+Future<ScriptureRangeRef?> showPassageSelector(BuildContext context) =>
+    showModalBottomSheet<ScriptureRangeRef>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+      ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+        ),
+        child: MediaQuery.removeViewInsets(
+          context: sheetContext,
+          removeBottom: true,
+          child: const VerseSelectionPage(rangeMode: true),
+        ),
+      ),
+    );
 
-/// Shared reference entry and browsing, with optional logging for Interact.
+/// Shared passage selection with one confirmation action for every tab.
 class VerseSelectionPage extends StatefulWidget {
   const VerseSelectionPage({
     super.key,
     this.rangeMode = false,
-    this.allowReadingLog = false,
     this.initialBookId,
     this.initialChapter,
     this.initialTabIndex = 0,
   });
 
   final bool rangeMode;
-  // Reference entry is always available; only Interact offers activity logging.
-  final bool allowReadingLog;
   final String? initialBookId;
   final int? initialChapter;
   final int initialTabIndex;
@@ -59,135 +53,145 @@ class VerseSelectionPage extends StatefulWidget {
   State<VerseSelectionPage> createState() => _VerseSelectionPageState();
 }
 
-class _VerseSelectionPageState extends State<VerseSelectionPage> {
-  late String _title = widget.rangeMode ? 'Select Passage' : 'Select Verse';
-  bool _hasSelectedBook = false;
+class _VerseSelectionPageState extends State<VerseSelectionPage>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs;
+  late int _tabIndex;
+  String? _bookTitle;
+  final _selections = List<ScriptureRangeRef?>.filled(4, null);
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (widget.initialBookId != null) {
-      final book = context.read<BibleService>().books.firstWhere(
-        (book) => book.id == widget.initialBookId,
-      );
-      _title = book.title;
-      if (widget.initialChapter != null) {
-        _title = '${book.title} ${widget.initialChapter}';
-      }
-    }
+  void initState() {
+    super.initState();
+    _tabIndex = widget.initialBookId != null ? 1 : widget.initialTabIndex;
+    _tabs = TabController(length: 4, initialIndex: _tabIndex, vsync: this)
+      ..addListener(_tabChanged);
   }
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-    initialIndex: widget.initialBookId != null ? 1 : widget.initialTabIndex,
-    length: 4,
-    child: AppScaffold(
-      title: _title,
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  void _tabChanged() {
+    if (_tabs.index == _tabIndex) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _tabIndex = _tabs.index);
+  }
+
+  void _choose(int tab, ScriptureRangeRef? ref) {
+    setState(() {
+      _selections[tab] = !widget.rangeMode && ref != null
+          ? ref.copyWith(endVerse: null)
+          : ref;
+    });
+  }
+
+  void _browseTitleChanged(String title) {
+    setState(() {
+      _bookTitle = title;
+      _selections[1] = null;
+    });
+  }
+
+  void _confirm() {
+    final ref = _selections[_tabIndex];
+    if (ref == null) return;
+    FocusScope.of(context).unfocus();
+    Navigator.of(context, rootNavigator: true).pop(
+      widget.rangeMode
+          ? ref
+          : ScriptureRef(
+              bookId: ref.bookId,
+              chapterNumber: ref.chapter,
+              verseNumber: ref.startVerse,
+            ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bible = context.read<BibleService>();
+    final selected = _selections[_tabIndex];
+    final title = widget.rangeMode ? 'Select Passage' : 'Select Verse';
+    return AppScaffold(
+      title: _tabIndex == 1 ? (_bookTitle ?? title) : title,
       showShareButton: false,
-      bottom: (_hasSelectedBook || widget.initialBookId != null)
-          ? null
-          : TabBar(
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              tabs: const [
-                Tab(text: 'Reference'),
-                Tab(text: 'Books'),
-                Tab(text: 'Review'),
-                Tab(text: 'Suggestions'),
+      bottom: TabBar(
+        controller: _tabs,
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
+        tabs: const [
+          Tab(text: 'Reference'),
+          Tab(text: 'Books'),
+          Tab(text: 'Review'),
+          Tab(text: 'Suggestions'),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: TabBarView(
+              controller: _tabs,
+              children: [
+                ReferenceTab(
+                  rangeMode: widget.rangeMode,
+                  onChanged: (ref) => _choose(0, ref),
+                ),
+                if (widget.rangeMode)
+                  BooksTab.range(
+                    initialBookId: widget.initialBookId,
+                    initialChapter: widget.initialChapter,
+                    onSelectionChanged: _browseTitleChanged,
+                    onRangeSelected: (ref) => _choose(1, ref),
+                  )
+                else
+                  BooksTab(
+                    initialBookId: widget.initialBookId,
+                    initialChapter: widget.initialChapter,
+                    onSelectionChanged: _browseTitleChanged,
+                    onVerseSelected: (ref) => _choose(
+                      1,
+                      ScriptureRangeRef(
+                        bookId: ref.bookId!,
+                        chapter: ref.chapterNumber!,
+                        startVerse: ref.verseNumber!,
+                      ),
+                    ),
+                  ),
+                ReviewTab(onPassageSelected: (ref) => _choose(2, ref)),
+                SuggestionsTab(onPassageSelected: (ref) => _choose(3, ref)),
               ],
             ),
-      body: widget.rangeMode
-          ? _buildRangeModeBody(context)
-          : _buildNormalBody(context),
-    ),
-  );
-
-  Widget _buildRangeModeBody(BuildContext context) => TabBarView(
-    children: [
-      ReferenceTab(
-        onSelected: (ref) =>
-            Navigator.of(context, rootNavigator: true).pop(ref),
-        onLogReading: widget.allowReadingLog ? _logReading : null,
-      ),
-      BooksTab.range(
-        initialBookId: widget.initialBookId,
-        initialChapter: widget.initialChapter,
-        onSelectionChanged: _updateTitle,
-        onRangeSelected: (ref) =>
-            Navigator.of(context, rootNavigator: true).pop(ref),
-      ),
-      ReviewTab(
-        onPassageSelected: (ref) =>
-            Navigator.of(context, rootNavigator: true).pop(ref),
-      ),
-      SuggestionsTab(
-        onPassageSelected: (ref) =>
-            Navigator.of(context, rootNavigator: true).pop(ref),
-      ),
-    ],
-  );
-
-  Widget _buildNormalBody(BuildContext context) => TabBarView(
-    children: [
-      ReferenceTab(
-        rangeMode: false,
-        onSelected: (ref) => _selectVerse(
-          context,
-          ScriptureRef(
-            bookId: ref.bookId,
-            chapterNumber: ref.chapter,
-            verseNumber: ref.startVerse,
           ),
-        ),
-      ),
-      BooksTab(
-        initialBookId: widget.initialBookId,
-        initialChapter: widget.initialChapter,
-        onSelectionChanged: _updateTitle,
-        onVerseSelected: (ref) => _selectVerse(context, ref),
-      ),
-      ReviewTab(
-        onPassageSelected: (ref) => _selectVerse(
-          context,
-          ScriptureRef(
-            bookId: ref.bookId,
-            chapterNumber: ref.chapter,
-            verseNumber: ref.startVerse,
+          SafeArea(
+            top: false,
+            minimum: const EdgeInsets.all(16),
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (selected != null) ...[
+                    Text(bible.getRangeRefName(selected)),
+                    const SizedBox(height: 8),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: selected == null ? null : _confirm,
+                      child: Text(
+                        widget.rangeMode ? 'Select passage' : 'Select verse',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
+        ],
       ),
-      SuggestionsTab(
-        onPassageSelected: (ref) => _selectVerse(
-          context,
-          ScriptureRef(
-            bookId: ref.bookId,
-            chapterNumber: ref.chapter,
-            verseNumber: ref.startVerse,
-          ),
-        ),
-      ),
-    ],
-  );
-
-  void _selectVerse(BuildContext context, ScriptureRef ref) {
-    Navigator.of(context, rootNavigator: true).pop(ref);
-  }
-
-  Future<void> _logReading(List<ReadingPassage> passages) async {
-    await context.read<ResultsService>().addReading(passages);
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Reading logged')));
-    Navigator.of(context, rootNavigator: true).pop();
-  }
-
-  void _updateTitle(String title) {
-    if (mounted) {
-      setState(() {
-        _title = title;
-        _hasSelectedBook = true;
-      });
-    }
+    );
   }
 }
