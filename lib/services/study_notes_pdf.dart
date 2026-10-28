@@ -16,7 +16,8 @@ import 'package:pdf/widgets.dart' as pw;
 enum StudyNotesPdfFormat {
   sequential('Sequential'),
   opening('Opening'),
-  cutAndStack('Cut-and-stack');
+  cutAndStack('Cut-and-stack'),
+  cutAndStackDuplex('Cut-and-stack Duplex');
 
   const StudyNotesPdfFormat(this.label);
   final String label;
@@ -27,7 +28,6 @@ Future<Map<String, Uint8List>> buildStudyNotesPdfs({
   required String title,
   required String source,
   StudyNotesPdfFormat format = StudyNotesPdfFormat.sequential,
-  bool automaticDuplex = false,
 }) async {
   // Bundle fonts so export works offline and preserves curly quotes and arrows.
   final theme = pw.ThemeData.withFont(
@@ -108,7 +108,9 @@ Future<Map<String, Uint8List>> buildStudyNotesPdfs({
     addSheet(late, early);
     addSheet(early + 1, late + 1);
   }
-  if (automaticDuplex) return {'$basename.pdf': await pdf.save()};
+  if (format == StudyNotesPdfFormat.cutAndStackDuplex) {
+    return {'$basename.pdf': await pdf.save()};
+  }
 
   final imposed = pages.toList();
   pages

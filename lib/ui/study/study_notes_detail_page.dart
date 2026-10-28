@@ -153,19 +153,17 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   void _enterEditMode() => setState(() => _isEditing = true);
 
   Future<void> _exportPdf() async {
-    final options =
-        await showDialog<({StudyNotesPdfFormat format, bool automaticDuplex})>(
-          context: context,
-          builder: (_) => const StudyNotesPdfDialog(),
-        );
-    if (options == null || !mounted) return;
+    final format = await showDialog<StudyNotesPdfFormat>(
+      context: context,
+      builder: (_) => const StudyNotesPdfDialog(),
+    );
+    if (format == null || !mounted) return;
     setState(() => _exporting = true);
     try {
       final files = await buildStudyNotesPdfs(
         title: widget.note.title,
         source: _notesController.text,
-        format: options.format,
-        automaticDuplex: options.automaticDuplex,
+        format: format,
       );
       if (kIsWeb || files.length == 1) {
         for (final file in files.entries) {

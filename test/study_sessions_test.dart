@@ -313,24 +313,19 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Opening').last);
     await tester.pumpAndSettle();
-    expect(find.textContaining('Two consecutive'), findsOneWidget);
     expect(find.byType(SwitchListTile), findsNothing);
     await tester.tap(find.text('Opening').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Cut-and-stack').last);
     await tester.pumpAndSettle();
-    expect(
-      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
-      false,
-    );
-    expect(find.textContaining('Separate fronts and backs'), findsOneWidget);
-    await tester.tap(find.byType(SwitchListTile));
+    expect(find.byType(SwitchListTile), findsNothing);
+    expect(find.textContaining('fronts PDF'), findsOneWidget);
+    await tester.tap(find.text('Cut-and-stack').first);
     await tester.pumpAndSettle();
-    expect(
-      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
-      true,
-    );
-    expect(find.textContaining('One PDF.'), findsOneWidget);
+    await tester.tap(find.text('Cut-and-stack Duplex').last);
+    await tester.pumpAndSettle();
+    expect(find.byType(SwitchListTile), findsNothing);
+    expect(find.textContaining('For double-sided printers.'), findsOneWidget);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(controller.text, '> First\n> Second\n**Third**');
@@ -345,9 +340,7 @@ void main() {
     expect(find.textContaining('Third', findRichText: true), findsOneWidget);
   });
 
-  testWidgets('PDF dialog returns the selected format and duplex choice', (
-    tester,
-  ) async {
+  testWidgets('PDF dialog returns the selected duplex format', (tester) async {
     Object? result;
     await tester.pumpWidget(
       MaterialApp(
@@ -368,16 +361,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Sequential').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Cut-and-stack').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.text('Cut-and-stack Duplex').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Generate'));
     await tester.pumpAndSettle();
-    expect(result, (
-      format: StudyNotesPdfFormat.cutAndStack,
-      automaticDuplex: true,
-    ));
+    expect(result, StudyNotesPdfFormat.cutAndStackDuplex);
     expect(find.byType(StudyNotesPdfDialog), findsNothing);
   });
 

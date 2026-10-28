@@ -1,8 +1,30 @@
+import 'package:daily_manna/services/study_notes_pdf.dart';
 import 'package:daily_manna/ui/study/study_markdown_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('cut-and-stack splits files only for manual printing', () async {
+    for (final format in [
+      StudyNotesPdfFormat.cutAndStack,
+      StudyNotesPdfFormat.cutAndStackDuplex,
+    ]) {
+      final files = await buildStudyNotesPdfs(
+        title: 'Outline',
+        source: 'First page\n\n\\newpage\n\nSecond page',
+        format: format,
+      );
+      expect(
+        files.keys,
+        format == StudyNotesPdfFormat.cutAndStack
+            ? ['Outline-fronts.pdf', 'Outline-backs.pdf']
+            : ['Outline.pdf'],
+      );
+    }
+  });
+
   testWidgets('sermon Markdown preserves nesting, emphasis and reading cues', (
     tester,
   ) async {

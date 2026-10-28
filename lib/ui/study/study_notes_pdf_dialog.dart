@@ -10,7 +10,6 @@ class StudyNotesPdfDialog extends StatefulWidget {
 
 class _StudyNotesPdfDialogState extends State<StudyNotesPdfDialog> {
   StudyNotesPdfFormat _format = StudyNotesPdfFormat.sequential;
-  bool _automaticDuplex = false;
 
   @override
   Widget build(BuildContext context) => AlertDialog(
@@ -35,32 +34,22 @@ class _StudyNotesPdfDialogState extends State<StudyNotesPdfDialog> {
           const SizedBox(height: 16),
           Text(switch (_format) {
             StudyNotesPdfFormat.sequential =>
-              'Half-letter pages in reading order, one page at a time.',
+              'Half-letter pages (5.5 × 8.5 in), one at a time. '
+                  'For reading on screen.',
             StudyNotesPdfFormat.opening =>
-              'Two consecutive half-letter pages side by side on landscape Letter.',
+              'Two half-letter pages side by side on each landscape Letter page. '
+                  'For reading a spread on screen.',
             StudyNotesPdfFormat.cutAndStack =>
-              'Landscape Letter sheets arranged for cutting vertically. '
-                  'Stack the right halves on top of the left halves.',
+              'For printers without double-sided printing. '
+                  'Print the fronts PDF in landscape at 100%, flip the stack '
+                  'on the short edge, then print the backs PDF. '
+                  'Cut each sheet down the middle and stack the right halves '
+                  'on top of the left halves.',
+            StudyNotesPdfFormat.cutAndStackDuplex =>
+              'For double-sided printers. Print the PDF in landscape at 100% '
+                  'with short-edge flip. Cut each sheet down the middle and '
+                  'stack the right halves on top of the left halves.',
           }),
-          if (_format == StudyNotesPdfFormat.cutAndStack) ...[
-            const SizedBox(height: 16),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Automatic duplex'),
-              subtitle: Text(
-                _automaticDuplex
-                    ? 'One PDF. Print double-sided with short-edge flip.'
-                    : 'Separate fronts and backs PDFs. Flip the stack on the short edge between passes.',
-              ),
-              value: _automaticDuplex,
-              onChanged: (value) => setState(() => _automaticDuplex = value),
-            ),
-          ],
-          const SizedBox(height: 16),
-          Text(
-            'Exports your current draft without saving it.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
         ],
       ),
     ),
@@ -70,10 +59,7 @@ class _StudyNotesPdfDialogState extends State<StudyNotesPdfDialog> {
         child: const Text('Cancel'),
       ),
       FilledButton(
-        onPressed: () => Navigator.pop(context, (
-          format: _format,
-          automaticDuplex: _automaticDuplex,
-        )),
+        onPressed: () => Navigator.pop(context, _format),
         child: const Text('Generate'),
       ),
     ],
