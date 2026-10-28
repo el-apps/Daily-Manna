@@ -101,6 +101,11 @@ void main() {
       }
       expect(labels('jhn 3:16, lk 4:2'), ['John 3:16', 'Luke 4:2']);
       expect(labels('Deuter 2'), ['Deuteronomy 2']);
+      expect(labels('D 8'), ['Deuteronomy 8']);
+      expect(labels('d.8'), ['Deuteronomy 8']);
+      expect(labels('Dan 8'), ['Daniel 8']);
+      expect(labels('Jo 1'), ['Joshua 1']);
+      expect(labels('John 1'), ['John 1']);
     },
   );
 
@@ -110,27 +115,23 @@ void main() {
     expect(labels('John 1:5–2:5'), ['John 1:5–2:5']);
   });
 
-  test(
-    'ambiguity, partial input and invalid passages reject the entire submission',
-    () {
-      for (final input in [
-        'Jo 1',
-        'John 22',
-        'John 3:37',
-        'John 4:2–3:9',
-        'John 0',
-        'John 3:0',
-        'John 1,',
-        'John 1,,3',
-        'John 1; bogus',
-        'John 1,999',
-      ]) {
-        expect(() => parser.parse(input), throwsFormatException, reason: input);
-      }
-      expect(labels('John 3:36'), ['John 3:36']);
-      expect(labels('John 3:16;4'), ['John 3:16', 'John 4']);
-    },
-  );
+  test('partial input and invalid passages reject the entire submission', () {
+    for (final input in [
+      'John 22',
+      'John 3:37',
+      'John 4:2–3:9',
+      'John 0',
+      'John 3:0',
+      'John 1,',
+      'John 1,,3',
+      'John 1; bogus',
+      'John 1,999',
+    ]) {
+      expect(() => parser.parse(input), throwsFormatException, reason: input);
+    }
+    expect(labels('John 3:36'), ['John 3:36']);
+    expect(labels('John 3:16;4'), ['John 3:16', 'John 4']);
+  });
 
   test(
     'one reading submission persists complete passages and share labels',
@@ -158,36 +159,59 @@ void main() {
     },
   );
 
-  testWidgets('live preview clears selection when the input becomes invalid', (
-    tester,
-  ) async {
-    ScriptureRangeRef? selected;
-    await tester.pumpWidget(
-      Provider<BibleService>.value(
-        value: bible,
-        child: MaterialApp(
-          home: Scaffold(
-            body: ReferenceTab(onChanged: (ref) => selected = ref),
+  testWidgets(
+    'reference titles select only when tapped and clear invalid matches',
+    (tester) async {
+      ScriptureRangeRef? selected;
+      await tester.pumpWidget(
+        Provider<BibleService>.value(
+          value: bible,
+          child: MaterialApp(
+            home: Scaffold(
+              body: ReferenceTab(onSelected: (ref) => selected = ref),
+            ),
           ),
         ),
-      ),
-    );
-    expect(find.text('Log reading'), findsNothing);
-    await tester.enterText(find.byType(TextField), 'John 1,3');
-    await tester.pump();
-    expect(find.text('John 1'), findsOneWidget);
-    expect(find.text('John 3'), findsOneWidget);
-    expect(selected, isNull);
-    await tester.enterText(find.byType(TextField), 'jhn3:16-18');
-    await tester.pump();
-    expect((selected!.startVerse, selected!.endVerse), (16, 18));
-    await tester.enterText(find.byType(TextField), 'John 1,999');
-    await tester.pump();
-    expect(selected, isNull);
-    await tester.enterText(find.byType(TextField), '1 jhn 2');
-    await tester.pump();
-    expect(find.text('1 John 2'), findsOneWidget);
-  });
+      );
+      expect(find.text('Log reading'), findsNothing);
+      await tester.enterText(find.byType(TextField), 'John 1,3');
+      await tester.pump();
+      expect(find.text('Preview'), findsNothing);
+      expect(find.byType(Divider), findsNothing);
+      expect(find.text('John 1'), findsOneWidget);
+      expect(find.text('John 3'), findsOneWidget);
+      expect(selected, isNull);
+      await tester.enterText(find.byType(TextField), 'jhn3:16-18');
+      await tester.pump();
+      expect(find.text('John 3:16–18'), findsOneWidget);
+      expect(selected, isNull);
+      await tester.enterText(find.byType(TextField), 'John 1,999');
+      await tester.pump();
+      expect(selected, isNull);
+      expect(find.byType(ListTile), findsNothing);
+      await tester.enterText(find.byType(TextField), '1 jhn 2');
+      await tester.pump();
+      await tester.tap(find.text('1 John 2'));
+      expect(
+        (selected!.chapter, selected!.startVerse, selected!.endVerse),
+        (2, 1, 29),
+      );
+      await tester.enterText(find.byType(TextField), 'D 8');
+      await tester.pump();
+      await tester.tap(find.text('Deuteronomy 8'));
+      expect(
+        selected,
+        ScriptureRangeRef(
+          bookId: bible.books
+              .firstWhere((book) => book.title == 'Deuteronomy')
+              .id,
+          chapter: 8,
+          startVerse: 1,
+          endVerse: 20,
+        ),
+      );
+    },
+  );
 
   Widget host(AppDatabase db, Widget home) => MultiProvider(
     providers: [
@@ -200,63 +224,57 @@ void main() {
     child: MaterialApp(home: home),
   );
 
-  testWidgets(
-    'Interact confirms selections before showing actions and never logs them',
-    (tester) async {
-      final db = AppDatabase.forTesting(NativeDatabase.memory());
-      addTearDown(db.close);
-      await tester.runAsync(() => db.getAllResults());
-      await tester.pumpWidget(host(db, const HomePage()));
-      await tester.pumpAndSettle();
-      expect(find.text('Log reading'), findsNothing);
-      await tester.tap(find.text('Interact'));
-      await tester.pumpAndSettle();
-      expect(find.text('Reference'), findsOneWidget);
-      expect(find.byType(ReferenceTab), findsOneWidget);
-      expect(find.byType(ActionChip), findsNothing);
-      expect(
-        tester
-            .widget<EditableText>(find.byType(EditableText))
-            .focusNode
-            .hasFocus,
-        isTrue,
-      );
-      await tester.enterText(find.byType(TextField), '1 jhn 2');
-      await tester.pump();
-      expect(find.text('1 John 2'), findsOneWidget);
-      expect(find.text('Log reading'), findsNothing);
-      expect(find.text('Memorize'), findsNothing);
-      await tester.tap(find.widgetWithText(FilledButton, 'Select passage'));
-      await tester.pumpAndSettle();
-      expect(find.byType(ReferenceTab), findsNothing);
-      expect(find.text('Memorize'), findsOneWidget);
-      tester.state<NavigatorState>(find.byType(Navigator)).pop();
-      await tester.pumpAndSettle();
-      await tester.tap(find.byType(FloatingActionButton));
-      await tester.pumpAndSettle();
-      expect(find.byType(ReferenceTab), findsOneWidget);
-      await tester.tap(find.text('Books'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Deuteronomy'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('1').first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Select entire chapter'));
-      await tester.pumpAndSettle();
-      expect(find.text('Memorize'), findsNothing);
-      expect(find.byType(ReferenceTab), findsNothing);
-      await tester.tap(find.widgetWithText(FilledButton, 'Select passage'));
-      await tester.pumpAndSettle();
-      expect(find.text('Memorize'), findsOneWidget);
-      expect(find.text('Recite'), findsOneWidget);
-      expect(find.text('Study'), findsOneWidget);
-      await tester.runAsync(() async {
-        expect(await db.getAllResults(), isEmpty);
-      });
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pump(const Duration(milliseconds: 1));
-    },
-  );
+  testWidgets('Interact selects passage titles immediately without logging', (
+    tester,
+  ) async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    await tester.runAsync(() => db.getAllResults());
+    await tester.pumpWidget(host(db, const HomePage()));
+    await tester.pumpAndSettle();
+    expect(find.text('Log reading'), findsNothing);
+    await tester.tap(find.text('Interact'));
+    await tester.pumpAndSettle();
+    expect(find.text('Reference'), findsOneWidget);
+    expect(find.byType(ReferenceTab), findsOneWidget);
+    expect(find.byType(ActionChip), findsNothing);
+    expect(
+      tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus,
+      isTrue,
+    );
+    await tester.enterText(find.byType(TextField), '1 jhn 2');
+    await tester.pump();
+    expect(find.text('1 John 2'), findsOneWidget);
+    expect(find.text('Log reading'), findsNothing);
+    expect(find.text('Memorize'), findsNothing);
+    expect(find.text('Select passage'), findsNothing);
+    await tester.tap(find.text('1 John 2'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ReferenceTab), findsNothing);
+    expect(find.text('Memorize'), findsOneWidget);
+    tester.state<NavigatorState>(find.byType(Navigator)).pop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(ReferenceTab), findsOneWidget);
+    await tester.tap(find.text('Books'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Deuteronomy'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('1').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Select entire chapter'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ReferenceTab), findsNothing);
+    expect(find.text('Memorize'), findsOneWidget);
+    expect(find.text('Recite'), findsOneWidget);
+    expect(find.text('Study'), findsOneWidget);
+    await tester.runAsync(() async {
+      expect(await db.getAllResults(), isEmpty);
+    });
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
 
   testWidgets('shared passage selectors return typed ranges without logging', (
     tester,
@@ -293,18 +311,19 @@ void main() {
     expect(find.text('Books'), findsOneWidget);
     expect(find.text('Review'), findsOneWidget);
     expect(find.text('Suggestions'), findsOneWidget);
-    final select = find.widgetWithText(FilledButton, 'Select passage');
-    for (final input in ['John 1,3', 'John 3:16–4:12', 'John 3:37']) {
+    expect(find.text('Select passage'), findsNothing);
+    for (final input in ['John 3:16–4:12', 'John 3:37']) {
       await tester.enterText(find.byType(TextField), input);
       await tester.pump();
-      expect(tester.widget<FilledButton>(select).onPressed, isNull);
+      expect(find.byType(ListTile), findsNothing);
       expect(selected, isNull);
     }
     await tester.enterText(find.byType(TextField), 'jhn 3:16-18');
     tester.view.viewInsets = const FakeViewPadding(bottom: 300);
     await tester.pumpAndSettle();
-    expect(tester.getBottomRight(select).dy, lessThanOrEqualTo(544));
-    await tester.tap(select);
+    final match = find.text('John 3:16–18');
+    expect(tester.getBottomRight(match).dy, lessThanOrEqualTo(544));
+    await tester.tap(match);
     await tester.pumpAndSettle();
     tester.view.resetViewInsets();
     await tester.pumpAndSettle();
@@ -321,7 +340,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '1 jhn 2');
     await tester.pump();
-    await tester.tap(select);
+    await tester.tap(find.text('1 John 2'));
     await tester.pumpAndSettle();
     expect(
       selected,
@@ -336,7 +355,7 @@ void main() {
   });
 
   testWidgets(
-    'all tabs stage their own selection for the shared confirm button',
+    'each tab returns its tapped passage immediately without logging',
     (tester) async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(db.close);
@@ -372,62 +391,57 @@ void main() {
           ),
         ),
       );
-      await tester.tap(find.text('Choose passage'));
-      await tester.pumpAndSettle();
-      final confirm = find.widgetWithText(FilledButton, 'Select passage');
-      expect(confirm, findsOneWidget);
-      expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
-      await tester.enterText(find.byType(TextField), 'jhn3:16-18');
-      await tester.pump();
-      expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
-      await tester.tap(find.text('Books'));
-      await tester.pumpAndSettle();
-      expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
-      await tester.tap(find.text('Deuteronomy'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('1').first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('3').first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('7').first);
-      await tester.pumpAndSettle();
-      expect(selected, isNull);
-      expect(find.text('Deuteronomy 1:3-7'), findsOneWidget);
-      expect(confirm, findsOneWidget);
-      expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
-
-      for (final tab in ['Review', 'Suggestions']) {
-        await tester.tap(find.text(tab));
+      for (final tab in ['Reference', 'Books', 'Review', 'Suggestions']) {
+        selected = null;
+        await tester.tap(find.text('Choose passage'));
         await tester.pumpAndSettle();
-        await tester.runAsync(() => db.getAllResults());
+        expect(find.text('Select passage'), findsNothing);
+        if (tab != 'Reference') {
+          await tester.tap(find.text(tab));
+          await tester.pumpAndSettle();
+        }
+        ScriptureRangeRef expected;
+        if (tab == 'Reference') {
+          await tester.enterText(find.byType(TextField), 'John 1,3');
+          await tester.pump();
+          expect(selected, isNull);
+          await tester.tap(find.text('John 3'));
+          expected = ScriptureRangeRef(
+            bookId: john,
+            chapter: 3,
+            startVerse: 1,
+            endVerse: 36,
+          );
+        } else if (tab == 'Books') {
+          await tester.tap(find.text('Deuteronomy'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('1').first);
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('3').first);
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('7').first);
+          expected = ScriptureRangeRef(
+            bookId: bible.books.firstWhere((b) => b.title == 'Deuteronomy').id,
+            chapter: 1,
+            startVerse: 3,
+            endVerse: 7,
+          );
+        } else {
+          await tester.runAsync(() => db.getAllResults());
+          await tester.pumpAndSettle();
+          final verse = tab == 'Review' ? 18 : 21;
+          await tester.tap(find.text('John 3:$verse'));
+          expected = ScriptureRangeRef(
+            bookId: john,
+            chapter: 3,
+            startVerse: verse,
+          );
+        }
         await tester.pumpAndSettle();
-        expect(confirm, findsOneWidget);
-        expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
-        await tester.tap(find.text('John 3:${tab == 'Review' ? 18 : 21}'));
-        await tester.pumpAndSettle();
-        expect(selected, isNull);
-        expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
+        expect(selected, expected, reason: tab);
+        expect(find.byType(VerseSelectionPage), findsNothing);
         expect(find.text('Log reading'), findsNothing);
       }
-
-      await tester.tap(find.text('Reference'));
-      await tester.pumpAndSettle();
-      expect(
-        tester.widget<EditableText>(find.byType(EditableText)).controller.text,
-        'jhn3:16-18',
-      );
-      expect(find.text('John 3:16-18'), findsOneWidget);
-      await tester.enterText(find.byType(TextField), 'John 3:37');
-      await tester.pump();
-      expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
-      await tester.tap(find.text('Suggestions'));
-      await tester.pumpAndSettle();
-      await tester.tap(confirm);
-      await tester.pumpAndSettle();
-      expect(
-        selected,
-        ScriptureRangeRef(bookId: john, chapter: 3, startVerse: 21),
-      );
       await tester.runAsync(() async {
         expect(await db.getAllResults(), hasLength(2));
       });
@@ -461,15 +475,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Reference'), findsOneWidget);
     expect(find.text('Log reading'), findsNothing);
-    final select = find.widgetWithText(FilledButton, 'Select verse');
-    for (final input in ['John 3', 'John 3:16-18', 'John 3:16,18']) {
+    expect(find.text('Select verse'), findsNothing);
+    for (final input in ['John 3', 'John 3:16-18']) {
       await tester.enterText(find.byType(TextField), input);
       await tester.pump();
-      expect(tester.widget<FilledButton>(select).onPressed, isNull);
+      expect(find.byType(ListTile), findsNothing);
     }
     await tester.enterText(find.byType(TextField), 'jhn3:18');
     await tester.pump();
-    await tester.tap(select);
+    await tester.tap(find.text('John 3:18'));
     await tester.pumpAndSettle();
     expect(
       selected,

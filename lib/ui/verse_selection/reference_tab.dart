@@ -7,11 +7,11 @@ import 'package:provider/provider.dart';
 class ReferenceTab extends StatefulWidget {
   const ReferenceTab({
     super.key,
-    required this.onChanged,
+    required this.onSelected,
     this.rangeMode = true,
   });
 
-  final ValueChanged<ScriptureRangeRef?> onChanged;
+  final ValueChanged<ScriptureRangeRef> onSelected;
   final bool rangeMode;
 
   @override
@@ -26,22 +26,9 @@ class _ReferenceTabState extends State<ReferenceTab>
   @override
   bool get wantKeepAlive => true;
 
-  ScriptureRangeRef? get _selection {
-    final passage = _passages.length == 1 ? _passages.single : null;
-    // Existing selector consumers accept one chapter range (or one verse).
-    // Never discard extra passages or silently shorten a cross-chapter range.
-    if (passage == null ||
-        passage.startChapter != passage.endChapter ||
-        (!widget.rangeMode && passage.startVerse != passage.endVerse)) {
-      return null;
-    }
-    return ScriptureRangeRef(
-      bookId: passage.bookId,
-      chapter: passage.startChapter,
-      startVerse: passage.startVerse,
-      endVerse: passage.endVerse,
-    );
-  }
+  bool _canSelect(ReadingPassage passage) =>
+      passage.startChapter == passage.endChapter &&
+      (widget.rangeMode || passage.startVerse == passage.endVerse);
 
   void _updateReference(String input) {
     var passages = <ReadingPassage>[];
@@ -57,7 +44,6 @@ class _ReferenceTabState extends State<ReferenceTab>
       _passages = passages;
       _parseError = error;
     });
-    widget.onChanged(_selection);
   }
 
   @override
@@ -82,6 +68,8 @@ class _ReferenceTabState extends State<ReferenceTab>
                 labelText: 'Passage reference',
                 hintText: 'e.g. $example',
                 alignLabelWithHint: true,
+                errorText: _parseError,
+                errorMaxLines: 3,
               ),
               onChanged: _updateReference,
             ),
@@ -91,46 +79,29 @@ class _ReferenceTabState extends State<ReferenceTab>
                   ? 'Enter a chapter or verse range. Abbreviations work.'
                   : 'Enter one verse. Abbreviations work.',
             ),
-            const SizedBox(height: 20),
-            const Divider(),
-            const SizedBox(height: 12),
-            Semantics(
-              liveRegion: true,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Preview',
-                    style: Theme.of(context).textTheme.titleSmall,
+            for (final passage in _passages)
+              if (_canSelect(passage))
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    bible.getReadingName(
+                      bookId: passage.bookId,
+                      startChapter: passage.startChapter,
+                      startVerse: passage.startVerse,
+                      endChapter: passage.endChapter,
+                      endVerse: passage.endVerse,
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  if (_parseError != null)
-                    Text(
-                      _parseError!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    )
-                  else if (_passages.isEmpty)
-                    const Text('Enter a reference to preview the passage.')
-                  else
-                    for (final passage in _passages)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(
-                          bible.getReadingName(
-                            bookId: passage.bookId,
-                            startChapter: passage.startChapter,
-                            startVerse: passage.startVerse,
-                            endChapter: passage.endChapter,
-                            endVerse: passage.endVerse,
-                          ),
-                        ),
-                      ),
-                ],
-              ),
-            ),
-            if (_passages.isNotEmpty && _selection == null) ...[
+                  onTap: () => widget.onSelected(
+                    ScriptureRangeRef(
+                      bookId: passage.bookId,
+                      chapter: passage.startChapter,
+                      startVerse: passage.startVerse,
+                      endVerse: passage.endVerse,
+                    ),
+                  ),
+                ),
+            if (_passages.any((passage) => !_canSelect(passage))) ...[
               const SizedBox(height: 12),
               Text(
                 widget.rangeMode

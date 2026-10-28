@@ -1,13 +1,11 @@
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
-import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/verse_selection/books_tab.dart';
 import 'package:daily_manna/ui/verse_selection/reference_tab.dart';
 import 'package:daily_manna/ui/verse_selection/review_tab.dart';
 import 'package:daily_manna/ui/verse_selection/suggestions_tab.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 Future<ScriptureRangeRef?> showPassageSelector(BuildContext context) =>
     showModalBottomSheet<ScriptureRangeRef>(
@@ -34,7 +32,7 @@ Future<ScriptureRangeRef?> showPassageSelector(BuildContext context) =>
       ),
     );
 
-/// Shared passage selection with one confirmation action for every tab.
+/// Shared reference entry and passage browsing with tap-to-select results.
 class VerseSelectionPage extends StatefulWidget {
   const VerseSelectionPage({
     super.key,
@@ -58,7 +56,6 @@ class _VerseSelectionPageState extends State<VerseSelectionPage>
   late final TabController _tabs;
   late int _tabIndex;
   String? _bookTitle;
-  final _selections = List<ScriptureRangeRef?>.filled(4, null);
 
   @override
   void initState() {
@@ -80,24 +77,11 @@ class _VerseSelectionPageState extends State<VerseSelectionPage>
     setState(() => _tabIndex = _tabs.index);
   }
 
-  void _choose(int tab, ScriptureRangeRef? ref) {
-    setState(() {
-      _selections[tab] = !widget.rangeMode && ref != null
-          ? ref.copyWith(endVerse: null)
-          : ref;
-    });
-  }
-
   void _browseTitleChanged(String title) {
-    setState(() {
-      _bookTitle = title;
-      _selections[1] = null;
-    });
+    setState(() => _bookTitle = title);
   }
 
-  void _confirm() {
-    final ref = _selections[_tabIndex];
-    if (ref == null) return;
+  void _select(ScriptureRangeRef ref) {
     FocusScope.of(context).unfocus();
     Navigator.of(context, rootNavigator: true).pop(
       widget.rangeMode
@@ -112,8 +96,6 @@ class _VerseSelectionPageState extends State<VerseSelectionPage>
 
   @override
   Widget build(BuildContext context) {
-    final bible = context.read<BibleService>();
-    final selected = _selections[_tabIndex];
     final title = widget.rangeMode ? 'Select Passage' : 'Select Verse';
     return AppScaffold(
       title: _tabIndex == 1 ? (_bookTitle ?? title) : title,
@@ -129,67 +111,32 @@ class _VerseSelectionPageState extends State<VerseSelectionPage>
           Tab(text: 'Suggestions'),
         ],
       ),
-      body: Column(
+      body: TabBarView(
+        controller: _tabs,
         children: [
-          Expanded(
-            child: TabBarView(
-              controller: _tabs,
-              children: [
-                ReferenceTab(
-                  rangeMode: widget.rangeMode,
-                  onChanged: (ref) => _choose(0, ref),
+          ReferenceTab(rangeMode: widget.rangeMode, onSelected: _select),
+          if (widget.rangeMode)
+            BooksTab.range(
+              initialBookId: widget.initialBookId,
+              initialChapter: widget.initialChapter,
+              onSelectionChanged: _browseTitleChanged,
+              onRangeSelected: _select,
+            )
+          else
+            BooksTab(
+              initialBookId: widget.initialBookId,
+              initialChapter: widget.initialChapter,
+              onSelectionChanged: _browseTitleChanged,
+              onVerseSelected: (ref) => _select(
+                ScriptureRangeRef(
+                  bookId: ref.bookId!,
+                  chapter: ref.chapterNumber!,
+                  startVerse: ref.verseNumber!,
                 ),
-                if (widget.rangeMode)
-                  BooksTab.range(
-                    initialBookId: widget.initialBookId,
-                    initialChapter: widget.initialChapter,
-                    onSelectionChanged: _browseTitleChanged,
-                    onRangeSelected: (ref) => _choose(1, ref),
-                  )
-                else
-                  BooksTab(
-                    initialBookId: widget.initialBookId,
-                    initialChapter: widget.initialChapter,
-                    onSelectionChanged: _browseTitleChanged,
-                    onVerseSelected: (ref) => _choose(
-                      1,
-                      ScriptureRangeRef(
-                        bookId: ref.bookId!,
-                        chapter: ref.chapterNumber!,
-                        startVerse: ref.verseNumber!,
-                      ),
-                    ),
-                  ),
-                ReviewTab(onPassageSelected: (ref) => _choose(2, ref)),
-                SuggestionsTab(onPassageSelected: (ref) => _choose(3, ref)),
-              ],
-            ),
-          ),
-          SafeArea(
-            top: false,
-            minimum: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (selected != null) ...[
-                    Text(bible.getRangeRefName(selected)),
-                    const SizedBox(height: 8),
-                  ],
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: selected == null ? null : _confirm,
-                      child: Text(
-                        widget.rangeMode ? 'Select passage' : 'Select verse',
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ),
-          ),
+          ReviewTab(onPassageSelected: _select),
+          SuggestionsTab(onPassageSelected: _select),
         ],
       ),
     );

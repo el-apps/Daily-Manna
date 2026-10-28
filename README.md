@@ -3,11 +3,10 @@ An app for building strong daily habits in interacting with the Word of God.
 
 ## Recording study sessions
 
-- Every passage selector opens with a **Reference** tab for typing a reference, alongside **Books**, **Review**, and **Suggestions**. Use **Select passage** to return a chapter or verse range to the current flow without logging activity; single-verse selectors require one verse. These existing flows accept one chapter at a time, so longer or multiple references are previewed but cannot be selected or silently shortened.
-- **Reference**, **Books**, **Review**, and **Suggestions** all use the same **Select passage** button. Choosing a reference, chapter, verse range, or suggested passage stages it for confirmation; it does not close the selector or log activity. Each tab retains its own selection when switching tabs.
-- Open **Interact**, choose a passage, and confirm with **Select passage** to choose Memorize, Recite, or Study. To record reading without notes, choose **Study → Record without a note**.
-- Enter a chapter (`1 jhn 2`) or verse range (`John 3:16–18`). Chapter-only references include their last verse automatically. Longer inputs such as `Deut 1–4` or `John 1,3` can be parsed and previewed but cannot be selected by these single-chapter flows.
-- Book names accept case-insensitive abbreviations, periods, spaces, numbered books, and unambiguous prefixes. The live preview must resolve a valid selectable passage before confirmation is enabled; ambiguous names need a longer spelling.
+- Every passage selector opens with a **Reference** tab for typing a reference, alongside **Books**, **Review**, and **Suggestions**. Tap a matching passage title to select it immediately; the other tabs retain their direct-selection behavior. There is no separate Preview section or confirmation button, and selection does not log activity.
+- Open **Interact**, select a passage, then choose Memorize, Recite, or Study. To record reading without notes, choose **Study → Record without a note**.
+- Enter a chapter (`1 jhn 2`) or verse range (`John 3:16–18`). Chapter-only references include their last verse automatically. Lists such as `John 1,3` offer each passage as a separate selectable title. Existing flows accept one within-chapter range at a time; cross-chapter ranges cannot be selected or silently shortened, and single-verse selectors require a single verse per result.
+- Book names accept case-insensitive abbreviations, periods, spaces, numbered books, and single-letter prefixes (`D 8` resolves to Deuteronomy 8). Exact aliases take precedence; ambiguous prefixes resolve in Bible order without asking for a longer spelling. Invalid references show an inline error and no selectable results.
 - Existing multi-chapter reading records remain intact in History, details, and shared results.
 - Create a study note with a title; passages are optional and can be added later.
 - Saving changes to note text, concept-map cards, or passages automatically records one study session per note per local calendar day.

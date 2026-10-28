@@ -9,7 +9,7 @@ typedef ReadingPassage = ({
   int endVerse,
 });
 
-/// Parses human-entered references without doing I/O or guessing ambiguous books.
+/// Parses human-entered references without doing I/O.
 class ReadingReferenceParser {
   ReadingReferenceParser(this.bible);
 
@@ -147,18 +147,10 @@ class ReadingReferenceParser {
         .toList();
     if (exact.length == 1) return exact.single;
     final prefixes = bible.books
-        .where(
-          (book) =>
-              query.length >= 2 &&
-              names(book).any((name) => name.startsWith(query)),
-        )
+        .where((book) => names(book).any((name) => name.startsWith(query)))
         .toList();
-    if (prefixes.length == 1) return prefixes.single;
-    if (prefixes.length > 1) {
-      throw FormatException(
-        '“$text” could mean ${prefixes.map((b) => b.title).join(', ')}. Use a longer name.',
-      );
-    }
+    // Prefer exact abbreviations, then use Bible order to resolve short prefixes.
+    if (prefixes.isNotEmpty) return prefixes.first;
     throw FormatException('Book “$text” not recognized. Try a longer name.');
   }
 }
