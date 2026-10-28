@@ -37,16 +37,15 @@ class _StudyNotesPdfDialogState extends State<StudyNotesPdfDialog> {
               'Half-letter pages (5.5 × 8.5 in), one at a time. '
                   'For reading on screen.',
             StudyNotesPdfFormat.opening =>
-              'Two half-letter pages side by side on each landscape Letter page. '
-                  'For reading a spread on screen.',
+              'For printing a two-page spread on one landscape Letter sheet.',
             StudyNotesPdfFormat.cutAndStack =>
               'For printers without double-sided printing. '
-                  'Print the fronts PDF in landscape at 100%, flip the stack '
+                  'Print the fronts PDF in landscape, flip the stack '
                   'on the short edge, then print the backs PDF. '
                   'Cut each sheet down the middle and stack the right halves '
                   'on top of the left halves.',
             StudyNotesPdfFormat.cutAndStackDuplex =>
-              'For double-sided printers. Print the PDF in landscape at 100% '
+              'For double-sided printers. Print the PDF in landscape '
                   'with short-edge flip. Cut each sheet down the middle and '
                   'stack the right halves on top of the left halves.',
           }),
