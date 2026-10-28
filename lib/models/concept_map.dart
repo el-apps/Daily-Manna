@@ -173,20 +173,6 @@ class ConceptMapDocument {
     edges: edges,
   );
 
-  ConceptMapDocument moveKeyPoint(String id, int offset) {
-    final indices = [
-      for (var i = 0; i < nodes.length; i++)
-        if (nodes[i].type == ConceptMapNodeType.keyPoint) i,
-    ];
-    final current = indices.indexWhere((index) => nodes[index].id == id);
-    final target = current + offset;
-    if (current == -1 || target < 0 || target >= indices.length) return this;
-    final reordered = nodes.toList();
-    reordered[indices[current]] = nodes[indices[target]];
-    reordered[indices[target]] = nodes[indices[current]];
-    return ConceptMapDocument(nodes: reordered, edges: edges);
-  }
-
   ConceptMapDocument deleteNode(String id) => ConceptMapDocument(
     nodes: nodes.where((node) => node.id != id).toList(),
     edges: edges.where((edge) => edge.from != id && edge.to != id).toList(),

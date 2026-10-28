@@ -660,7 +660,7 @@ flowchart TD
     expect(find.text('Delete'), findsOneWidget);
   });
 
-  testWidgets('key points move with their branches and retain saved order', (
+  testWidgets('all card types reorder among siblings and retain saved order', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
@@ -675,7 +675,9 @@ flowchart TD
   click verse "passage://Deut/8/11/20"
   humbles[God Humbles and Tests]:::keyPoint
   provides[God Provides]:::keyPoint
+  explanation[Remember]:::note
   forget ---> verse
+  explanation ---> forget
 ''';
     await tester.runAsync(() async {
       note = await notesService.createNote(title: 'Deuteronomy 8');
@@ -687,18 +689,15 @@ flowchart TD
     await tester.tap(find.byTooltip('Edit'));
     await tester.pumpAndSettle();
     await selectCard(tester, 'Background');
-    TextButton button(String label) => tester.widget<TextButton>(
-      find
-          .ancestor(
-            of: find.text(label),
-            matching: find.byWidgetPredicate((widget) => widget is TextButton),
-          )
-          .first,
+    IconButton button(String label) => tester.widget<IconButton>(
+      find.byWidgetPredicate(
+        (widget) => widget is IconButton && widget.tooltip == label,
+      ),
     );
     expect(button('Move up').onPressed, isNull);
     await selectCard(tester, 'Do Not Forget God');
     for (var i = 0; i < 2; i++) {
-      await tester.tap(find.text('Move down'));
+      await tester.tap(find.byTooltip('Move down'));
       await tester.pumpAndSettle();
     }
     expect(button('Move down').onPressed, isNull);
@@ -706,18 +705,18 @@ flowchart TD
       tester.getTopLeft(find.text('Do Not Forget God')).dy,
       greaterThan(tester.getTopLeft(find.text('God Provides')).dy),
     );
-    await tester.tap(find.text('Move up'));
+    await tester.tap(find.byTooltip('Move up'));
     await tester.pumpAndSettle();
     expect(
       tester.getTopLeft(find.text('Do Not Forget God')).dy,
       lessThan(tester.getTopLeft(find.text('God Provides')).dy),
     );
-    await tester.tap(find.text('Move down'));
+    await tester.tap(find.byTooltip('Move down'));
     await tester.pumpAndSettle();
     await tester.binding.setSurfaceSize(const Size(390, 844));
     await tester.pumpAndSettle();
-    expect(find.text('Move up').hitTestable(), findsOneWidget);
-    expect(find.text('Move down').hitTestable(), findsOneWidget);
+    expect(find.byTooltip('Move up').hitTestable(), findsOneWidget);
+    expect(find.byTooltip('Move down').hitTestable(), findsOneWidget);
     await tester.binding.setSurfaceSize(const Size(1400, 1000));
     await tester.pumpAndSettle();
     await tester.runAsync(() async {
@@ -733,8 +732,10 @@ flowchart TD
       ['background', 'humbles', 'provides', 'forget'],
     );
     final original = ConceptMapDocument.fromMermaid(source);
-    expect(saved.edges.single.from, original.edges.single.from);
-    expect(saved.edges.single.to, original.edges.single.to);
+    expect(
+      saved.edges.map((edge) => (edge.from, edge.to, edge.length)),
+      original.edges.map((edge) => (edge.from, edge.to, edge.length)),
+    );
     final verse = saved.nodes.singleWhere((n) => n.id == 'verse');
     expect(verse.passage, original.nodes[2].passage);
     expect(verse.showPassage, isTrue);
@@ -743,8 +744,69 @@ flowchart TD
     await tester.tap(find.byTooltip('Edit'));
     await tester.pumpAndSettle();
     await selectCard(tester, 'Deut 8:11-20');
-    expect(find.text('Move up'), findsNothing);
-    expect(find.text('Move down'), findsNothing);
+    expect(button('Move up').onPressed, isNull);
+    await tester.tap(find.byTooltip('Move down'));
+    await tester.pumpAndSettle();
+    expect(button('Move down').onPressed, isNull);
+    expect(
+      tester.getTopLeft(find.text('Deut 8:11-20')).dy,
+      greaterThan(tester.getTopLeft(find.text('Remember')).dy),
+    );
+    await selectCard(tester, 'Remember');
+    await tester.tap(find.byTooltip('Move down'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getTopLeft(find.text('Remember')).dy,
+      greaterThan(tester.getTopLeft(find.text('Deut 8:11-20')).dy),
+    );
+  });
+
+  test('card ordering respects branches and works at deeper levels', () {
+    final original = ConceptMapDocument.fromMermaid('''
+flowchart TD
+  a[First point]:::keyPoint
+  b[Second point]:::keyPoint
+  first[First note]:::note
+  other[Other branch]:::note
+  second[Second passage]:::passage
+  deepFirst[Deep note]:::note
+  deepSecond[Deep passage]:::passage
+  a ---> first
+  second ---> a
+  b ---> other
+  first ---> deepFirst
+  deepSecond ---> first
+''');
+    for (final (id, offset, neighbor) in [
+      ('first', 1, 'second'),
+      ('second', -1, 'first'),
+      ('deepFirst', 1, 'deepSecond'),
+      ('deepSecond', -1, 'deepFirst'),
+    ]) {
+      final moved = ConceptMapDocument.fromMermaid(
+        conceptMapMoveNode(original, id, offset).toMermaid(),
+      );
+      final positions = conceptMapLayout(moved);
+      expect(
+        (positions[id]!.dy - positions[neighbor]!.dy).sign,
+        offset.toDouble(),
+      );
+      expect(
+        moved.edges.map((edge) => (edge.from, edge.to, edge.length)),
+        original.edges.map((edge) => (edge.from, edge.to, edge.length)),
+      );
+    }
+    for (final (id, offset) in [
+      ('first', -1),
+      ('second', 1),
+      ('other', -1),
+      ('other', 1),
+    ]) {
+      expect(
+        conceptMapMoveNode(original, id, offset).toMermaid(),
+        original.toMermaid(),
+      );
+    }
   });
 
   test('map layout leaves room for expanded cards in each column', () {

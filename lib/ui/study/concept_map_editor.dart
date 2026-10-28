@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:daily_manna/models/concept_map.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -141,6 +142,43 @@ Map<String, Offset> conceptMapLayout(
   // Shared destinations are placed between their sources, but must not pull
   // those sources out of the branch bands reserved above.
   return positions;
+}
+
+/// Reorder a card among siblings without changing its connections or column.
+ConceptMapDocument conceptMapMoveNode(
+  ConceptMapDocument document,
+  String id,
+  int offset,
+) {
+  final positions = conceptMapLayout(document);
+  final position = positions[id];
+  if (position == null) return document;
+  Set<String> parents(String nodeId) => {
+    for (final edge in document.edges)
+      if (edge.from == nodeId &&
+          positions.containsKey(edge.to) &&
+          positions[edge.to]!.dx < positions[nodeId]!.dx)
+        edge.to,
+    for (final edge in document.edges)
+      if (edge.to == nodeId &&
+          positions.containsKey(edge.from) &&
+          positions[edge.from]!.dx < positions[nodeId]!.dx)
+        edge.from,
+  };
+  final sources = parents(id);
+  final indices = [
+    for (var i = 0; i < document.nodes.length; i++)
+      if (positions[document.nodes[i].id]!.dx == position.dx &&
+          setEquals(parents(document.nodes[i].id), sources))
+        i,
+  ];
+  final current = indices.indexWhere((index) => document.nodes[index].id == id);
+  final target = current + offset;
+  if (target < 0 || target >= indices.length) return document;
+  final nodes = document.nodes.toList();
+  nodes[indices[current]] = document.nodes[indices[target]];
+  nodes[indices[target]] = document.nodes[indices[current]];
+  return ConceptMapDocument(nodes: nodes, edges: document.edges);
 }
 
 List<Offset> conceptMapConnector(
