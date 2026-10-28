@@ -1,10 +1,8 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:daily_manna/models/concept_map.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -300,54 +298,58 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
   final _nodeSizes = <String, Size>{};
   final _viewportKey = GlobalKey();
   final _transform = TransformationController();
-  final _cancelLabelHolds = ValueNotifier(0);
-  final _pointers = <int>{};
   String? _pendingCenterId;
 
   @override
   void dispose() {
-    _cancelLabelHolds.dispose();
     _transform.dispose();
     super.dispose();
   }
 
   void addNode([ConceptMapNodeType type = ConceptMapNodeType.note]) {
     final id = widget.document.nextNodeId;
-    widget.onChanged(
-      widget.document.addNode(
-        ConceptMapNode(id: id, type: type, label: _labelFor(type)),
-      ),
+    _addNode(
+      ConceptMapNode(id: id, type: type, label: _labelFor(type)),
+      widget.selectedNodeId,
     );
   }
 
   Future<void> addPassage() async {
     if (!widget.editing) return;
+    final selectedNodeId = widget.selectedNodeId;
     final passage = await showPassageSelector(context);
     if (passage == null || !mounted) return;
     final bibleService = context.read<BibleService>();
     final id = widget.document.nextNodeId;
-    widget.onChanged(
-      widget.document.addNode(
-        ConceptMapNode(
-          id: id,
-          type: ConceptMapNodeType.passage,
-          label: bibleService.getRangeRefName(passage),
-          passage: passage,
-        ),
+    _addNode(
+      ConceptMapNode(
+        id: id,
+        type: ConceptMapNodeType.passage,
+        label: bibleService.getRangeRefName(passage),
+        passage: passage,
       ),
+      selectedNodeId,
     );
   }
 
-  void _startConnecting(String id) {
+  void _addNode(ConceptMapNode node, String? connectFrom) {
+    var document = widget.document.addNode(node);
+    if (connectFrom != null) {
+      document = document.addEdge(
+        ConceptMapEdge(from: connectFrom, to: node.id),
+      );
+    }
+    setState(() => _connectingFrom = null);
+    widget.onChanged(document);
+  }
+
+  void startConnecting(String id) {
     if (!widget.editing) return;
     FocusScope.of(context).unfocus();
     setState(() => _connectingFrom = id);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tap another card to connect it.')),
-    );
   }
 
-  Future<void> _disconnectMenu(String selected) async {
+  Future<void> removeConnection(String selected) async {
     if (!widget.editing) return;
     setState(() => _connectingFrom = null);
     final neighbors = <String>{
@@ -362,7 +364,7 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
         child: ListView(
           shrinkWrap: true,
           children: [
-            const ListTile(title: Text('Remove connection')),
+            const ListTile(title: Text('Disconnect')),
             for (final node in widget.document.nodes)
               if (neighbors.contains(node.id))
                 ListTile(
@@ -398,7 +400,10 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
   @override
   void didUpdateWidget(covariant ConceptMapEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!widget.editing) _connectingFrom = null;
+    if (!widget.editing ||
+        !widget.document.nodes.any((node) => node.id == _connectingFrom)) {
+      _connectingFrom = null;
+    }
     final previousIds = oldWidget.document.nodes.map((node) => node.id).toSet();
     for (final node in widget.document.nodes) {
       if (!previousIds.contains(node.id)) _pendingCenterId = node.id;
@@ -428,65 +433,49 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
           );
       });
     }
-    return Listener(
-      onPointerDown: (event) {
-        _pointers.add(event.pointer);
-        if (_pointers.length > 1) _cancelLabelHolds.value++;
-      },
-      onPointerUp: (event) => _pointers.remove(event.pointer),
-      onPointerCancel: (event) => _pointers.remove(event.pointer),
-      child: InteractiveViewer(
-        key: _viewportKey,
-        transformationController: _transform,
-        onInteractionUpdate: (_) => _cancelLabelHolds.value++,
-        constrained: false,
-        boundaryMargin: const EdgeInsets.all(double.infinity),
-        minScale: .25,
-        maxScale: 4,
-        child: SizedBox(
-          width: positions.entries.fold<double>(
-            900,
-            (width, entry) => math.max(
-              width,
-              entry.value.dx +
-                  (_nodeSizes[entry.key]?.width ?? _cardWidth) +
-                  80,
-            ),
+    return InteractiveViewer(
+      key: _viewportKey,
+      transformationController: _transform,
+      constrained: false,
+      boundaryMargin: const EdgeInsets.all(double.infinity),
+      minScale: .25,
+      maxScale: 4,
+      child: SizedBox(
+        width: positions.entries.fold<double>(
+          900,
+          (width, entry) => math.max(
+            width,
+            entry.value.dx + (_nodeSizes[entry.key]?.width ?? _cardWidth) + 80,
           ),
-          height: positions.entries.fold<double>(
-            700,
-            (height, entry) => math.max(
-              height,
-              entry.value.dy + (_nodeSizes[entry.key]?.height ?? 90) + 80,
-            ),
+        ),
+        height: positions.entries.fold<double>(
+          700,
+          (height, entry) => math.max(
+            height,
+            entry.value.dy + (_nodeSizes[entry.key]?.height ?? 90) + 80,
           ),
-          child: CustomPaint(
-            painter: _ConceptMapEdgesPainter(
-              widget.document,
-              Map.of(_nodeSizes),
-            ),
-            child: Stack(
-              children: [
-                for (final entry in positions.entries)
-                  _ConceptMapNodeWidget(
-                    key: ValueKey(entry.key),
-                    node: widget.document.nodes.firstWhere(
-                      (node) => node.id == entry.key,
-                    ),
-                    position: entry.value,
-                    editing: widget.editing,
-                    connecting: _connectingFrom != null,
-                    selected:
-                        widget.editing && widget.selectedNodeId == entry.key,
-                    onTap: () => _selectNode(entry.key),
-                    onLongPress: () => _showNodeMenu(entry.key),
-                    cancelLabelHolds: _cancelLabelHolds,
-                    onSizeChanged: _updateNodeSize,
-                    onChanged: (node) =>
-                        widget.onChanged(widget.document.updateNode(node)),
+        ),
+        child: CustomPaint(
+          painter: _ConceptMapEdgesPainter(widget.document, Map.of(_nodeSizes)),
+          child: Stack(
+            children: [
+              for (final entry in positions.entries)
+                _ConceptMapNodeWidget(
+                  key: ValueKey(entry.key),
+                  node: widget.document.nodes.firstWhere(
+                    (node) => node.id == entry.key,
                   ),
-              ],
-            ),
+                  position: entry.value,
+                  editing: widget.editing,
+                  connecting: _connectingFrom != null,
+                  selected:
+                      widget.editing && widget.selectedNodeId == entry.key,
+                  onTap: () => _selectNode(entry.key),
+                  onSizeChanged: _updateNodeSize,
+                  onChanged: (node) =>
+                      widget.onChanged(widget.document.updateNode(node)),
+                ),
+            ],
           ),
         ),
       ),
@@ -511,85 +500,10 @@ class ConceptMapEditorState extends State<ConceptMapEditor> {
     setState(() => _connectingFrom = null);
   }
 
-  Future<void> _showNodeMenu(String id) async {
-    if (!widget.editing || _connectingFrom != null) return;
-    widget.onNodeSelected?.call(id);
-    FocusScope.of(context).unfocus();
-    final node = widget.document.nodes.firstWhere((node) => node.id == id);
-    final targetType = node.type == ConceptMapNodeType.keyPoint
-        ? ConceptMapNodeType.note
-        : ConceptMapNodeType.keyPoint;
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            if (node.type == ConceptMapNodeType.passage)
-              ListTile(
-                leading: const Icon(Icons.article_outlined),
-                title: Text(node.showPassage ? 'Hide passage' : 'Show passage'),
-                onTap: () => Navigator.pop(context, 'visibility'),
-              ),
-            ListTile(
-              leading: const Icon(Icons.account_tree_outlined),
-              title: const Text('Add connection'),
-              onTap: () => Navigator.pop(context, 'connect'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.link_off),
-              title: const Text('Remove connection'),
-              onTap:
-                  widget.document.edges.any(
-                    (edge) => edge.from == id || edge.to == id,
-                  )
-                  ? () => Navigator.pop(context, 'disconnect')
-                  : null,
-            ),
-            if (node.type != ConceptMapNodeType.passage)
-              ListTile(
-                leading: Icon(_iconFor(targetType)),
-                title: Text('Change to ${_labelFor(targetType).toLowerCase()}'),
-                onTap: () => Navigator.pop(context, 'convert'),
-              ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: const Text('Delete box'),
-              onTap: () => Navigator.pop(context, 'delete'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (!mounted) return;
-    if (action == 'connect') {
-      _startConnecting(id);
-    } else if (action == 'disconnect') {
-      await _disconnectMenu(id);
-    } else if (action == 'convert' || action == 'visibility') {
-      final current = widget.document.nodes.firstWhere((node) => node.id == id);
-      widget.onChanged(
-        widget.document.updateNode(
-          action == 'convert'
-              ? current.copyWith(type: targetType)
-              : current.copyWith(showPassage: !current.showPassage),
-        ),
-      );
-    } else if (action == 'delete') {
-      widget.onChanged(widget.document.deleteNode(id));
-    }
-  }
-
   static String _labelFor(ConceptMapNodeType type) => switch (type) {
     ConceptMapNodeType.keyPoint => 'Key point',
     ConceptMapNodeType.note => 'Note',
     ConceptMapNodeType.passage => 'Passage',
-  };
-
-  static IconData _iconFor(ConceptMapNodeType type) => switch (type) {
-    ConceptMapNodeType.keyPoint => Icons.star_outline,
-    ConceptMapNodeType.note => Icons.note_outlined,
-    ConceptMapNodeType.passage => Icons.menu_book_outlined,
   };
 }
 
@@ -602,8 +516,6 @@ class _ConceptMapNodeWidget extends StatefulWidget {
     required this.connecting,
     required this.selected,
     required this.onTap,
-    required this.onLongPress,
-    required this.cancelLabelHolds,
     required this.onSizeChanged,
     required this.onChanged,
   });
@@ -614,8 +526,6 @@ class _ConceptMapNodeWidget extends StatefulWidget {
   final bool connecting;
   final bool selected;
   final VoidCallback onTap;
-  final Future<void> Function() onLongPress;
-  final Listenable cancelLabelHolds;
   final void Function(String id, Size size) onSizeChanged;
   final ValueChanged<ConceptMapNode> onChanged;
 
@@ -626,21 +536,11 @@ class _ConceptMapNodeWidget extends StatefulWidget {
 class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
   late final TextEditingController _controller;
   final _focusNode = FocusNode();
-  Timer? _longPress;
-  Offset? _pressOrigin;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.node.label);
-    widget.cancelLabelHolds.addListener(_cancelHold);
-  }
-
-  void _cancelHold() => _longPress?.cancel();
-
-  Future<void> _openMenu() async {
-    await widget.onLongPress();
-    if (mounted && widget.editing) _focusNode.requestFocus();
   }
 
   @override
@@ -654,8 +554,6 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
 
   @override
   void dispose() {
-    _longPress?.cancel();
-    widget.cancelLabelHolds.removeListener(_cancelHold);
     _focusNode.dispose();
     _controller.dispose();
     super.dispose();
@@ -686,7 +584,10 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
         focusNode: _focusNode,
         canRequestFocus: widget.editing,
         skipTraversal: widget.node.type != ConceptMapNodeType.passage,
-        onFocusChange: (_) => setState(() {}),
+        onFocusChange: (focused) {
+          setState(() {});
+          if (focused && !widget.connecting) widget.onTap();
+        },
         onKeyEvent: (_, event) {
           if (!widget.editing || event is! KeyDownEvent) {
             return KeyEventResult.ignored;
@@ -698,17 +599,10 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
             widget.onTap();
             return KeyEventResult.handled;
           }
-          if (key == LogicalKeyboardKey.contextMenu ||
-              (key == LogicalKeyboardKey.f10 &&
-                  HardwareKeyboard.instance.isShiftPressed)) {
-            _openMenu();
-            return KeyEventResult.handled;
-          }
           return KeyEventResult.ignored;
         },
         child: GestureDetector(
           onTap: widget.onTap,
-          onLongPress: _openMenu,
           child: Card(
             color: color,
             shape: widget.selected || (widget.editing && _focusNode.hasFocus)
@@ -726,40 +620,17 @@ class _ConceptMapNodeWidgetState extends State<_ConceptMapNodeWidget> {
                       showContent: widget.node.showPassage,
                     )
                   : widget.editing
-                  ? Listener(
-                      // Observe the hold without competing with TextField's
-                      // selection gesture or the canvas's drag gesture.
-                      onPointerDown: (event) {
-                        _longPress?.cancel();
-                        if (widget.connecting ||
-                            event.buttons != kPrimaryButton) {
-                          return;
-                        }
-                        _pressOrigin = event.position;
-                        _longPress = Timer(kLongPressTimeout, _openMenu);
-                      },
-                      onPointerMove: (event) {
-                        if (_pressOrigin != null &&
-                            (event.position - _pressOrigin!).distance >
-                                kTouchSlop) {
-                          _longPress?.cancel();
-                        }
-                      },
-                      onPointerUp: (_) => _longPress?.cancel(),
-                      onPointerCancel: (_) => _longPress?.cancel(),
-                      child: TextField(
-                        controller: _controller,
-                        style: labelStyle,
-                        strutStyle: StrutStyle.disabled,
-                        cursorWidth: _labelCursorWidth,
-                        onTap: widget.onTap,
-                        readOnly: widget.connecting,
-                        maxLines: null,
-                        onChanged: (value) => widget.onChanged(
-                          widget.node.copyWith(label: value),
-                        ),
-                        decoration: null,
-                      ),
+                  ? TextField(
+                      controller: _controller,
+                      style: labelStyle,
+                      strutStyle: StrutStyle.disabled,
+                      cursorWidth: _labelCursorWidth,
+                      onTap: widget.onTap,
+                      readOnly: widget.connecting,
+                      maxLines: null,
+                      onChanged: (value) =>
+                          widget.onChanged(widget.node.copyWith(label: value)),
+                      decoration: null,
                     )
                   : Padding(
                       // RenderEditable reserves the cursor width plus a 1px

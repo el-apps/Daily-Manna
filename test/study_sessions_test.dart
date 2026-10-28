@@ -88,8 +88,8 @@ void main() {
         : MaterialApp.router(routerConfig: router),
   );
 
-  Future<void> openCardMenu(WidgetTester tester, String label) async {
-    await tester.longPress(find.text(label));
+  Future<void> selectCard(WidgetTester tester, String label) async {
+    await tester.tap(find.text(label));
     await tester.pumpAndSettle();
   }
 
@@ -372,7 +372,7 @@ flowchart TD
     expect(document.edges.single.to, 'b');
   });
 
-  testWidgets('card menu converts key points to notes without losing links', (
+  testWidgets('toolbar converts key points to notes without losing links', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 900));
@@ -398,7 +398,7 @@ flowchart TD
     await tester.pumpAndSettle();
     await tester.tap(find.text('The Lowly'));
     await tester.pumpAndSettle();
-    expect(find.text('Change to note'), findsNothing);
+    expect(find.text('Change to note'), findsOneWidget);
     final drag = await tester.startGesture(
       tester.getCenter(find.text('The Lowly')),
     );
@@ -406,8 +406,9 @@ flowchart TD
     await tester.pump(const Duration(milliseconds: 700));
     await drag.up();
     await tester.pumpAndSettle();
-    expect(find.text('Change to note'), findsNothing);
-    await openCardMenu(tester, 'The Lowly');
+    expect(find.byType(BottomSheet), findsNothing);
+    await selectCard(tester, 'The Lowly');
+    await tester.ensureVisible(find.text('Change to note'));
     await tester.tap(find.text('Change to note'));
     await tester.pumpAndSettle();
     ConceptMapDocument currentDocument() =>
@@ -435,16 +436,17 @@ flowchart TD
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Edit'));
     await tester.pumpAndSettle();
-    await openCardMenu(tester, 'The Lowly');
+    await selectCard(tester, 'The Lowly');
+    await tester.ensureVisible(find.text('Change to key point'));
     await tester.tap(find.text('Change to key point'));
     await tester.pumpAndSettle();
     expect(currentDocument().toMermaid(), original);
     await tester.tap(find.text('James 1:9'));
     await tester.pumpAndSettle();
-    await openCardMenu(tester, 'James 1:9');
+    await selectCard(tester, 'James 1:9');
     expect(find.text('Change to note'), findsNothing);
     expect(find.text('Change to key point'), findsNothing);
-    expect(find.text('Delete box'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
   });
 
   test('map layout leaves room for expanded cards in each column', () {
@@ -1017,7 +1019,7 @@ flowchart TD
     }
   });
 
-  testWidgets('pinching with a stationary finger on a label cancels its menu', (
+  testWidgets('pinching and long-pressing labels never open a card menu', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -1057,8 +1059,9 @@ flowchart TD
     await second.up();
     await first.up();
     await tester.pumpAndSettle();
-    await openCardMenu(tester, 'Hold here');
-    expect(find.text('Add connection'), findsOneWidget);
+    await tester.longPress(find.text('Hold here'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BottomSheet), findsNothing);
   });
 
   testWidgets('double-tap selection can copy and paste editable labels', (
@@ -1126,95 +1129,116 @@ flowchart TD
     expect(document.nodes.single.label, 'Alpha Alpha');
   });
 
-  testWidgets('card menu stays usable in landscape with large text', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(640, 360));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    for (final scale in [1.0, 2.0]) {
-      var document = ConceptMapDocument.fromMermaid(
-        'flowchart TD\n a[Landscape]:::note',
-      );
-      await tester.pumpWidget(
-        host(
-          Builder(
-            builder: (context) => MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).copyWith(textScaler: TextScaler.linear(scale)),
-              child: Scaffold(
-                body: StatefulBuilder(
-                  builder: (context, setState) => ConceptMapEditor(
-                    document: document,
-                    editing: true,
-                    onChanged: (value) => setState(() => document = value),
-                  ),
-                ),
+  testWidgets(
+    'selected card toolbar stays usable in landscape with large text',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(640, 360));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      for (final scale in [1.0, 2.0]) {
+        late StudyNote note;
+        await tester.runAsync(() async {
+          note = await notesService.createNote(title: 'Landscape');
+          await notesService.updateConceptMap(
+            note.id,
+            'flowchart TD\n a[Landscape card]:::note',
+          );
+          note = (await notesService.getNote(note.id))!;
+        });
+        await tester.pumpWidget(
+          host(
+            Builder(
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: TextScaler.linear(scale)),
+                child: StudyNotesDetailPage(key: ValueKey(scale), note: note),
               ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      await openCardMenu(tester, 'Landscape');
-      await tester.scrollUntilVisible(
-        find.text('Delete box'),
-        80,
-        scrollable: find.descendant(
-          of: find.byType(BottomSheet),
-          matching: find.byType(Scrollable),
-        ),
-      );
-      expect(tester.takeException(), isNull);
-      await tester.tap(find.text('Delete box'));
-      await tester.pumpAndSettle();
-      expect(document.nodes, isEmpty);
-    }
-  });
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Concept Map'));
+        await tester.tap(find.byTooltip('Edit'));
+        await tester.pumpAndSettle();
+        expect(find.text('Delete'), findsNothing);
+        await selectCard(tester, 'Landscape card');
+        await tester.ensureVisible(find.text('Delete'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.text('Delete'));
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<ConceptMapEditor>(find.byType(ConceptMapEditor))
+              .document
+              .nodes,
+          isEmpty,
+        );
+        expect(find.text('Delete'), findsNothing);
+        expect(find.text('Connect'), findsNothing);
+        expect(find.text('Key point'), findsOneWidget);
+      }
+    },
+  );
 
   testWidgets(
-    'keyboard can open passage menus and connect to an editable label',
+    'keyboard selects cards for toolbar actions and connects to an editable label',
     (tester) async {
-      var document = ConceptMapDocument.fromMermaid('''
+      late StudyNote note;
+      await tester.runAsync(() async {
+        note = await notesService.createNote(title: 'Keyboard');
+        await notesService.updateConceptMap(note.id, '''
 flowchart TD
  a[James 1:9]:::passage
  b[The Lowly]:::note
 ''');
-      await tester.pumpWidget(
-        host(
-          Scaffold(
-            body: StatefulBuilder(
-              builder: (context, setState) => ConceptMapEditor(
-                document: document,
-                editing: true,
-                onChanged: (value) => setState(() => document = value),
-              ),
-            ),
-          ),
-        ),
-      );
+        note = (await notesService.getNote(note.id))!;
+      });
+      await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+      await tester.tap(find.text('Concept Map'));
+      await tester.tap(find.byTooltip('Edit'));
       await tester.pumpAndSettle();
-      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-      await tester.sendKeyEvent(LogicalKeyboardKey.contextMenu);
+      FocusManager.instance.primaryFocus?.unfocus();
+      // Focus the passage through the normal traversal order.
+      for (
+        var i = 0;
+        i < 10 && find.text('Show passage').evaluate().isEmpty;
+        i++
+      ) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pumpAndSettle();
+      }
       await tester.pumpAndSettle();
       expect(find.text('Show passage'), findsOneWidget);
-      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      for (
+        var i = 0;
+        i < 10 && !Focus.of(tester.element(find.text('Connect'))).hasFocus;
+        i++
+      ) {
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+        await tester.pumpAndSettle();
+      }
+      expect(Focus.of(tester.element(find.text('Connect'))).hasFocus, isTrue);
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
-      expect(find.text('Tap another card to connect it.'), findsOneWidget);
-      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      expect(find.byType(SnackBar), findsNothing);
+      final label = tester.widget<EditableText>(find.byType(EditableText));
+      for (var i = 0; i < 10 && !label.focusNode.hasFocus; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pumpAndSettle();
+      }
+      expect(label.focusNode.hasFocus, isTrue);
       await tester.pumpAndSettle();
-      expect(document.edges, isEmpty);
+      ConceptMapDocument document() => tester
+          .widget<ConceptMapEditor>(find.byType(ConceptMapEditor))
+          .document;
+      expect(document().edges, isEmpty);
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
-      expect(document.edges.single.from, 'a');
-      expect(document.edges.single.to, 'b');
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
-      await tester.sendKeyEvent(LogicalKeyboardKey.f10);
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
-      await tester.pumpAndSettle();
-      expect(find.text('Change to key point'), findsOneWidget);
+      expect(document().edges.single.from, 'a');
+      expect(document().edges.single.to, 'b');
     },
   );
 
@@ -1290,6 +1314,70 @@ flowchart TD
     expect(find.widgetWithText(Chip, 'John 3:16-16'), findsOneWidget);
   });
 
+  testWidgets('plus buttons connect new cards only when a card is selected', (
+    tester,
+  ) async {
+    for (final selected in [false, true]) {
+      late StudyNote note;
+      await tester.runAsync(() async {
+        note = await notesService.createNote(title: 'New branches');
+        await notesService.updateConceptMap(note.id, '''
+flowchart TD
+  a[Other card]:::keyPoint
+  b[Selected parent]:::note
+''');
+        note = (await notesService.getNote(note.id))!;
+      });
+      await tester.pumpWidget(
+        host(StudyNotesDetailPage(key: ValueKey(selected), note: note)),
+      );
+      await tester.tap(find.text('Concept Map'));
+      await tester.tap(find.byTooltip('Edit'));
+      await tester.pumpAndSettle();
+      if (selected) {
+        await selectCard(tester, 'Selected parent');
+        await tester.tap(find.text('Connect'));
+        await tester.pumpAndSettle();
+      }
+      ConceptMapEditor editor() =>
+          tester.widget<ConceptMapEditor>(find.byType(ConceptMapEditor));
+      final addedIds = <String>[];
+      for (final type in ['Note', 'Key point', 'Passage']) {
+        await tester.ensureVisible(find.text(type).last);
+        await tester.tap(find.text(type).last);
+        await tester.pumpAndSettle();
+        if (type == 'Passage') {
+          Navigator.of(
+            tester.element(find.byType(StudyNotesDetailPage)),
+          ).pop(otherPassage);
+          await tester.pumpAndSettle();
+        }
+        final document = editor().document;
+        addedIds.add(document.nodes.last.id);
+        expect(document.nodes, hasLength(2 + addedIds.length));
+        expect(document.edges.map((edge) => (edge.from, edge.to)), [
+          if (selected)
+            for (final id in addedIds) ('b', id),
+        ]);
+        expect(editor().selectedNodeId, selected ? 'b' : null);
+      }
+      expect(editor().document.nodes.last.passage, otherPassage);
+      final beforeCancel = editor().document.toMermaid();
+      await tester.ensureVisible(find.text('Passage'));
+      await tester.tap(find.text('Passage'));
+      await tester.pumpAndSettle();
+      Navigator.of(tester.element(find.byType(StudyNotesDetailPage))).pop();
+      await tester.pumpAndSettle();
+      expect(editor().document.toMermaid(), beforeCancel);
+      await tester.runAsync(() async {
+        await tester.tap(find.byTooltip('Save'));
+        final saved = (await notesService.getNote(note.id))!;
+        expect(saved.conceptMap, beforeCancel);
+      });
+      await tester.pumpAndSettle();
+    }
+  });
+
   testWidgets('connect uses the selected card and one destination tap', (
     tester,
   ) async {
@@ -1315,16 +1403,23 @@ flowchart TD
     final cardBounds = [
       for (var i = 0; i < 3; i++) tester.getRect(find.byType(Card).at(i)),
     ];
-    await openCardMenu(tester, 'Source');
+    await selectCard(tester, 'Source');
     expect(
       tester
-          .widget<ListTile>(find.widgetWithText(ListTile, 'Remove connection'))
-          .onTap,
+          .widget<TextButton>(
+            find.ancestor(
+              of: find.text('Disconnect'),
+              matching: find.byWidgetPredicate(
+                (widget) => widget is TextButton,
+              ),
+            ),
+          )
+          .onPressed,
       isNull,
     );
-    await tester.tap(find.text('Add connection'));
+    await tester.tap(find.text('Connect'));
     await tester.pumpAndSettle();
-    expect(find.text('Tap another card to connect it.'), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
     expect(find.text('Passage text'), findsOneWidget);
     expect([
       for (var i = 0; i < 3; i++) tester.getRect(find.byType(Card).at(i)),
@@ -1351,8 +1446,9 @@ flowchart TD
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(TextField, 'Source'));
     await tester.pumpAndSettle();
-    await openCardMenu(tester, 'Source');
-    await tester.tap(find.text('Remove connection'));
+    await selectCard(tester, 'Source');
+    await tester.ensureVisible(find.text('Disconnect'));
+    await tester.tap(find.text('Disconnect'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(ListTile, 'Destination'));
     await tester.pumpAndSettle();
@@ -1494,7 +1590,8 @@ flowchart TD
     await tester.enterText(find.byType(TextField), 'Updated');
     await tester.tap(find.text('Concept Map'));
     await tester.pumpAndSettle();
-    await openCardMenu(tester, 'Jas 1:9-11');
+    await selectCard(tester, 'Jas 1:9-11');
+    await tester.ensureVisible(find.text('Show passage'));
     await tester.tap(find.text('Show passage'));
     await tester.pumpAndSettle();
     await save();
@@ -1660,7 +1757,8 @@ flowchart TD
       await tester.tap(find.byTooltip('Edit'));
       await tester.pumpAndSettle();
       expect(find.text('Show passage'), findsNothing);
-      await openCardMenu(tester, 'John 3:16-16');
+      await selectCard(tester, 'John 3:16-16');
+      await tester.ensureVisible(find.text('Show passage'));
       await tester.tap(find.text('Show passage'));
       await tester.pumpAndSettle();
       expect(find.text('Passage text'), findsOneWidget);
@@ -1672,13 +1770,15 @@ flowchart TD
             .map((node) => node.showPassage),
         [false, true],
       );
-      await openCardMenu(tester, 'Jas 1:9-11');
+      await selectCard(tester, 'Jas 1:9-11');
+      await tester.ensureVisible(find.text('Show passage'));
       await tester.tap(find.text('Show passage'));
       await tester.pumpAndSettle();
       expect(find.text('Passage text'), findsNWidgets(2));
       expect(find.text('Passage'), findsOneWidget);
       expect(find.byTooltip('Save'), findsOneWidget);
-      await openCardMenu(tester, 'John 3:16-16');
+      await selectCard(tester, 'John 3:16-16');
+      await tester.ensureVisible(find.text('Hide passage'));
       await tester.tap(find.text('Hide passage'));
       await tester.pumpAndSettle();
       expect(find.text('Passage text'), findsOneWidget);
