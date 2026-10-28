@@ -14,7 +14,8 @@ An app for building strong daily habits in interacting with the Word of God.
 - Open a study note and select **Edit** to write or paste Markdown; **Save** returns to the formatted notes view.
 - The shared edit toolbar provides heading decrease/increase (levels 1–6), bullet outdent/indent (up to nine levels), **Bold**, **Blockquote**, **Page break**, and **Save**.
 - Select text before using Bold; line actions apply to the current line or all selected lines.
-- With the Markdown text box focused, **Ctrl+B** (or **Cmd+B** on macOS) runs the same Bold action as the toolbar button. Other toolbar actions do not have dedicated shortcuts.
+- With the Markdown text box focused, **Ctrl+B** (or **Cmd+B** on macOS) runs the same Bold action as the toolbar button.
+- **Enter** continues a `-`, `+`, or `*` bullet at the same indentation; Enter on an empty bullet ends the list. **Tab** / **Shift+Tab** run the toolbar's bullet indent/outdent actions on the current or selected lines, keeping your cursor or selection in place.
 - Use `**bold**` for steel-blue emphasis, nested `- ` lists for subpoints, and `> ` for green-outlined blockquotes.
 - Start a paragraph or list item with the whole word `Read` to color it red; bold text within it stays blue. `Reader` does not trigger this styling.
 - A standalone `\newpage` forces a PDF page break and appears as a divider in the notes view.

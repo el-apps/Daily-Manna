@@ -320,6 +320,85 @@ void main() {
     expect(find.textContaining('Third', findRichText: true), findsOneWidget);
   });
 
+  testWidgets('Markdown lists continue and indent with the keyboard', (
+    tester,
+  ) async {
+    late StudyNote note;
+    await tester.runAsync(() async {
+      note = await notesService.createNote(title: 'Lists');
+    });
+    await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    final editor = find.byType(TextField);
+    final controller = tester.widget<TextField>(editor).controller!;
+
+    // Send the editing value a soft or hardware keyboard sends for Enter.
+    for (final (before, offset, after, caret) in [
+      ('- First', 7, '- First\n- ', 10),
+      ('  + Child', 9, '  + Child\n  + ', 14),
+      ('    * Deep', 10, '    * Deep\n    * ', 17),
+      ('- First tail', 7, '- First\n-  tail', 10),
+      ('- First\n  - ', 12, '- First\n', 8),
+      ('- ', 2, '', 0),
+      ('Normal text', 11, 'Normal text\n', 12),
+    ]) {
+      await tester.enterText(editor, before);
+      controller.selection = TextSelection.collapsed(offset: offset);
+      tester.testTextInput.updateEditingValue(
+        TextEditingValue(
+          text: before.replaceRange(offset, offset, '\n'),
+          selection: TextSelection.collapsed(offset: offset + 1),
+        ),
+      );
+      await tester.pump();
+      expect(controller.text, after);
+      expect(controller.selection, TextSelection.collapsed(offset: caret));
+    }
+
+    await tester.enterText(editor, '- First');
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(
+        text: '- First\nPasted paragraph',
+        selection: TextSelection.collapsed(offset: 24),
+      ),
+    );
+    expect(controller.text, '- First\nPasted paragraph');
+
+    await tester.enterText(editor, '- First\n  - Child\n- Last');
+    controller.selection = const TextSelection.collapsed(offset: 14);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    expect(controller.text, '- First\n    - Child\n- Last');
+    expect(controller.selection, const TextSelection.collapsed(offset: 16));
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    expect(controller.text, '- First\n  - Child\n- Last');
+    expect(controller.selection, const TextSelection.collapsed(offset: 14));
+
+    // Keep a backwards multiline selection so repeated Tab affects the same lines.
+    controller.selection = const TextSelection(baseOffset: 20, extentOffset: 2);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    expect(controller.text, '  - First\n    - Child\n  - Last');
+    expect(
+      controller.selection,
+      const TextSelection(baseOffset: 26, extentOffset: 4),
+    );
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    expect(controller.text, '- First\n  - Child\n- Last');
+    expect(
+      controller.selection,
+      const TextSelection(baseOffset: 20, extentOffset: 2),
+    );
+
+    await tester.tap(find.text('Concept Map'));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    expect(controller.text, '- First\n  - Child\n- Last');
+  });
+
   test('multiline card labels survive Mermaid saves, including old maps', () {
     final legacy = ConceptMapDocument.fromMermaid('''
 flowchart TD

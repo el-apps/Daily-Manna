@@ -125,6 +125,8 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
                   bibleService: bibleService,
                   onAddPassage: _addPassage,
                   onBold: _bold,
+                  onIndent: () => _adjustBullets(1),
+                  onDedent: () => _adjustBullets(-1),
                 ),
                 ConceptMapEditor(
                   key: _conceptMapKey,
@@ -392,7 +394,10 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
     onSave: _save,
   );
 
-  void _adjustLine(String Function(String) update) {
+  void _adjustLine(
+    String Function(String) update, {
+    bool preserveSelection = false,
+  }) {
     final value = _notesController.value;
     final text = value.text;
     final offset = value.selection.start.clamp(0, text.length);
@@ -403,14 +408,33 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
         : selectedEnd;
     final lineEnd = text.indexOf('\n', endOffset);
     final end = lineEnd == -1 ? text.length : lineEnd;
-    final updated = text
-        .substring(lineStart, end)
-        .split('\n')
-        .map(update)
-        .join('\n');
+    final lines = text.substring(lineStart, end).split('\n');
+    final updatedLines = lines.map(update).toList();
+    final updated = updatedLines.join('\n');
+    int mapOffset(int position) {
+      var oldStart = lineStart;
+      var newStart = lineStart;
+      for (var i = 0; i < lines.length; i++) {
+        if (position <= oldStart + lines[i].length) {
+          final delta = updatedLines[i].length - lines[i].length;
+          return newStart +
+              (position - oldStart + delta).clamp(0, updatedLines[i].length);
+        }
+        oldStart += lines[i].length + 1;
+        newStart += updatedLines[i].length + 1;
+      }
+      return position + updated.length - (end - lineStart);
+    }
+
     _notesController.value = value.copyWith(
       text: text.replaceRange(lineStart, end, updated),
-      selection: TextSelection.collapsed(offset: lineStart + updated.length),
+      selection: preserveSelection
+          ? TextSelection(
+              baseOffset: mapOffset(value.selection.baseOffset),
+              extentOffset: mapOffset(value.selection.extentOffset),
+            )
+          : TextSelection.collapsed(offset: lineStart + updated.length),
+      composing: TextRange.empty,
     );
   }
 
@@ -448,13 +472,16 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
     return '${level == 0 ? '' : '${'#' * level} '}$content';
   });
 
-  void _adjustBullets(int delta) => _adjustLine((line) {
-    final content = line.replaceFirst(RegExp(r'^\s*[-+*]\s+'), '');
-    final match = RegExp(r'^( *)[-+*]\s+').firstMatch(line);
-    final current = match == null ? 0 : (match.group(1)!.length ~/ 2) + 1;
-    final level = (current + delta).clamp(0, 9);
-    return '${level == 0 ? '' : '${'  ' * (level - 1)}- '}$content';
-  });
+  void _adjustBullets(int delta) {
+    if (!_isEditing || _activeTab != 0) return;
+    _adjustLine((line) {
+      final content = line.replaceFirst(RegExp(r'^\s*[-+*]\s+'), '');
+      final match = RegExp(r'^( *)[-+*]\s+').firstMatch(line);
+      final current = match == null ? 0 : (match.group(1)!.length ~/ 2) + 1;
+      final level = (current + delta).clamp(0, 9);
+      return '${level == 0 ? '' : '${'  ' * (level - 1)}- '}$content';
+    }, preserveSelection: true);
+  }
 }
 
 class _NotesTab extends StatelessWidget {
@@ -466,6 +493,8 @@ class _NotesTab extends StatelessWidget {
     required this.bibleService,
     required this.onAddPassage,
     required this.onBold,
+    required this.onIndent,
+    required this.onDedent,
   });
 
   final String? notes;
@@ -475,6 +504,8 @@ class _NotesTab extends StatelessWidget {
   final BibleService bibleService;
   final VoidCallback onAddPassage;
   final VoidCallback onBold;
+  final VoidCallback onIndent;
+  final VoidCallback onDedent;
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -502,17 +533,19 @@ class _NotesTab extends StatelessWidget {
         const SizedBox(height: 24),
       ],
       if (isEditing) ...[
-        const Text('Markdown · **bold** is blue · Read … is red · > quote'),
-        const SizedBox(height: 8),
         CallbackShortcuts(
           bindings: {
             const SingleActivator(LogicalKeyboardKey.keyB, control: true):
                 onBold,
             const SingleActivator(LogicalKeyboardKey.keyB, meta: true): onBold,
+            const SingleActivator(LogicalKeyboardKey.tab): onIndent,
+            const SingleActivator(LogicalKeyboardKey.tab, shift: true):
+                onDedent,
           },
           child: TextField(
             controller: notesController,
             style: const TextStyle(fontFamily: 'monospace'),
+            inputFormatters: [_BulletContinuationFormatter()],
             autofocus: true,
             maxLines: null,
             minLines: 10,
@@ -534,4 +567,43 @@ class _NotesTab extends StatelessWidget {
         ),
     ],
   );
+}
+
+/// Handles text input rather than only hardware Enter, including mobile keyboards.
+class _BulletContinuationFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final selection = oldValue.selection;
+    if (!selection.isValid || !newValue.composing.isCollapsed) return newValue;
+    final start = selection.start;
+    final end = selection.end;
+    // Leave paste, deletion, and other edits untouched.
+    if (newValue.text != oldValue.text.replaceRange(start, end, '\n')) {
+      return newValue;
+    }
+    final lineStart = start == 0
+        ? 0
+        : oldValue.text.lastIndexOf('\n', start - 1) + 1;
+    final lineEnd = oldValue.text.indexOf('\n', end);
+    final line = oldValue.text.substring(
+      lineStart,
+      lineEnd == -1 ? oldValue.text.length : lineEnd,
+    );
+    final bullet = RegExp(r'^( *[-+*] +)').firstMatch(line);
+    if (bullet == null || start < lineStart + bullet.end) return newValue;
+    final prefix = bullet.group(0)!;
+    if (line.substring(bullet.end).trim().isEmpty) {
+      return TextEditingValue(
+        text: newValue.text.replaceRange(lineStart, start + 1, ''),
+        selection: TextSelection.collapsed(offset: lineStart),
+      );
+    }
+    return TextEditingValue(
+      text: newValue.text.replaceRange(start + 1, start + 1, prefix),
+      selection: TextSelection.collapsed(offset: start + 1 + prefix.length),
+    );
+  }
 }
