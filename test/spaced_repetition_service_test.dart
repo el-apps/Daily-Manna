@@ -1,4 +1,5 @@
 import 'package:daily_manna/models/scripture_ref.dart';
+import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/ui/memorization/interact_result.dart';
@@ -15,7 +16,7 @@ void main() {
 
   setUp(() {
     database = AppDatabase.forTesting(NativeDatabase.memory());
-    srService = SpacedRepetitionService(database);
+    srService = SpacedRepetitionService(database, BibleService());
     resultsService = ResultsService(database);
   });
 
@@ -289,7 +290,7 @@ Future<void> _addResult(
 Future<int> _getIntervalDaysForScores(List<double> scores) async {
   final database = AppDatabase.forTesting(NativeDatabase.memory());
   try {
-    final srService = SpacedRepetitionService(database);
+    final srService = SpacedRepetitionService(database, BibleService());
     final resultsService = ResultsService(database);
 
     for (final score in scores) {

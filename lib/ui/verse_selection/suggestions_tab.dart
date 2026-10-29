@@ -63,6 +63,7 @@ class SuggestionsTab extends StatelessWidget {
         bookId: result.bookId!,
         chapter: result.startChapter!,
         startVerse: result.startVerse!,
+        endChapter: result.endChapter,
         endVerse: result.endVerse,
       );
       final key = _key(ref);
@@ -79,7 +80,10 @@ class SuggestionsTab extends StatelessWidget {
     for (final passage in studyPassages) {
       final chapters = bibleService.getChapters(passage.bookId);
       final nextIndex =
-          chapters.indexWhere((chapter) => chapter.num == passage.chapter) + 1;
+          chapters.indexWhere(
+            (chapter) => chapter.num == (passage.endChapter ?? passage.chapter),
+          ) +
+          1;
       if (nextIndex <= 0 || nextIndex >= chapters.length) continue;
 
       final nextChapter = chapters[nextIndex];
@@ -104,7 +108,7 @@ class SuggestionsTab extends StatelessWidget {
   }
 
   String _key(ScriptureRangeRef ref) =>
-      '${ref.bookId}:${ref.chapter}:${ref.startVerse}:${ref.endVerse}';
+      '${ref.bookId}:${ref.chapter}:${ref.startVerse}:${ref.endChapter ?? ref.chapter}:${ref.endVerse}';
 }
 
 class _Suggestion {

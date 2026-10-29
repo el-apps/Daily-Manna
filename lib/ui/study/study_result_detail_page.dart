@@ -44,6 +44,7 @@ class _StudyResultDetailPageState extends State<StudyResultDetailPage> {
             bookId: widget.result.bookId!,
             chapter: widget.result.startChapter!,
             startVerse: widget.result.startVerse!,
+            endChapter: widget.result.endChapter,
             endVerse: widget.result.endVerse,
           );
     final hasNotes = _notes?.isNotEmpty == true;
@@ -58,7 +59,16 @@ class _StudyResultDetailPageState extends State<StudyResultDetailPage> {
               children: [
                 if (ref != null)
                   Text(
-                    bibleService.getRangeRefName(ref),
+                    widget.result.endChapter != null &&
+                            widget.result.endVerse != null
+                        ? bibleService.getReadingName(
+                            bookId: widget.result.bookId!,
+                            startChapter: widget.result.startChapter!,
+                            startVerse: widget.result.startVerse!,
+                            endChapter: widget.result.endChapter!,
+                            endVerse: widget.result.endVerse!,
+                          )
+                        : bibleService.getRangeRefName(ref),
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                 const SizedBox(height: 8),

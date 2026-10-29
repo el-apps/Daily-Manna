@@ -40,6 +40,7 @@ class _BibleService extends BibleService {
     String bookId,
     int chapter,
     int startVerse, {
+    int? endChapter,
     int? endVerse,
   }) => 'Passage text';
 }
@@ -83,7 +84,9 @@ void main() {
       Provider<StudyNotesService>.value(value: notesService),
       Provider(create: (_) => ResultsService(database)),
       Provider<BibleService>(create: (_) => _BibleService()),
-      Provider(create: (_) => SpacedRepetitionService(database)),
+      Provider(
+        create: (_) => SpacedRepetitionService(database, _BibleService()),
+      ),
     ],
     child: router == null
         ? MaterialApp(home: home)
@@ -120,7 +123,10 @@ void main() {
       expect((await database.getAllResults()).single.clientId, first.clientId);
       expect(await database.getUniqueVersesInteracted(), isEmpty);
       expect(
-        await SpacedRepetitionService(database).getVersesByReviewDate(),
+        await SpacedRepetitionService(
+          database,
+          _BibleService(),
+        ).getVersesByReviewDate(),
         isEmpty,
       );
       final sections = await ResultsService(

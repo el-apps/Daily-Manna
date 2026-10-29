@@ -36,6 +36,7 @@ class _RecitationResultsState extends State<RecitationResults> {
       widget.ref.bookId,
       widget.ref.chapter,
       widget.ref.startVerse,
+      endChapter: widget.ref.endChapter,
       endVerse: widget.ref.endVerse,
     );
     _diff = computeWordDiff(_actualPassage, widget.transcribedText);

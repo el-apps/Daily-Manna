@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 
+import 'bible_service.dart';
 import 'database/database.dart';
 import 'error_logger_service.dart';
 import 'settings_service.dart';
@@ -40,7 +41,9 @@ Future<void> _executeDailyNotificationTask() async {
   // Open database and compute fresh counts
   final database = AppDatabase();
   try {
-    final spacedRepService = SpacedRepetitionService(database);
+    final bible = BibleService();
+    await bible.load();
+    final spacedRepService = SpacedRepetitionService(database, bible);
     final streakService = StreakService(database);
 
     final reviewCount = await spacedRepService.getDueCount();

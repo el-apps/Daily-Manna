@@ -37,11 +37,15 @@ class BooksTab extends StatefulWidget {
   State<BooksTab> createState() => _BooksTabState();
 }
 
-class _BooksTabState extends State<BooksTab> {
+class _BooksTabState extends State<BooksTab>
+    with AutomaticKeepAliveClientMixin {
   String? _selectedBookId;
   String? _selectedBookTitle;
   int? _selectedChapter;
   int? _startVerse; // For range mode: the start verse being selected
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -52,6 +56,7 @@ class _BooksTabState extends State<BooksTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final bibleService = context.read<BibleService>();
     final selectedBook = _selectedBookId == null
         ? null

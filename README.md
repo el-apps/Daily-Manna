@@ -3,11 +3,15 @@ An app for building strong daily habits in interacting with the Word of God.
 
 ## Recording study sessions
 
+- Every passage selector opens with a **Search** tab for typing a reference, alongside **Books**, **Review**, and **Suggestions**. Matching passages use the same list-tile styling as Suggestions, with a divider above the results. Tap a title to select it immediately; the other tabs retain their direct-selection behavior. There is no separate Preview section or confirmation button, and selection does not log activity.
+- Open **Interact**, select a passage, then choose Memorize, Recite, or Study. To record reading without notes, choose **Study → Record without a note**.
+- Enter a chapter (`1 jhn 2`) or verse range (`John 3:16–18`). Chapter-only references include their last verse automatically. Lists such as `John 1,3` offer each passage as a separate selectable title. Existing flows accept one within-chapter range at a time; cross-chapter ranges cannot be selected or silently shortened, and single-verse selectors require a single verse per result.
+- Book names ignore case, spaces, and periods. Search tries exact names/IDs, then prefixes, then letters appearing in order (`jhn`, `dt`, `mrk`, or `hbk`), without a per-book abbreviation table. Ordered-letter matches with fewer skipped letters rank first; ties use Bible order. Book numbers must match, so `jhn` does not include numbered Johns. Only alternative names such as “Song of Songs” are listed explicitly. Ambiguous matches offer all valid passages (`D 8` offers Deuteronomy 8 and Daniel 8); a stronger matching tier suppresses weaker matches (`Dan 8` offers only Daniel 8). Each option uses that book's actual verse counts. Invalid references show an inline error and no selectable results.
+- Existing multi-chapter reading records remain intact in History, details, and shared results.
 - Create a study note with a title; passages are optional and can be added later.
 - Saving changes to note text, concept-map cards, or passages automatically records one study session per note per local calendar day.
 - Repeated edits that day count as the same session; opening an unchanged note or archiving/restoring it does not record activity.
 - History and shared results identify note-based sessions by the note title, without requiring a main passage.
-- To record reading without notes, use **Study → Record without a note** on a passage.
 
 ## Writing Markdown study notes
 

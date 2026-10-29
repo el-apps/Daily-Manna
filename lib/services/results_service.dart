@@ -5,6 +5,7 @@ import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/models/scripture_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart';
+import 'package:daily_manna/services/reading_reference_parser.dart';
 import 'package:daily_manna/ui/memorization/interact_result.dart';
 import 'package:drift/drift.dart';
 
@@ -39,6 +40,7 @@ class ResultsService {
         bookId: Value(result.ref.bookId),
         startChapter: Value(result.ref.chapter),
         startVerse: Value(result.ref.startVerse),
+        endChapter: Value(result.ref.endChapter),
         endVerse: Value(result.ref.endVerse),
         score: result.score,
       ),
@@ -64,12 +66,36 @@ class ResultsService {
         bookId: Value(ref.bookId),
         startChapter: Value(ref.chapter),
         startVerse: Value(ref.startVerse),
+        endChapter: Value(ref.endChapter),
         endVerse: Value(ref.endVerse),
         score: 1,
         notes: Value(notes),
         studyNoteId: Value(studyNoteId),
       ),
     );
+    await onLocalChange?.call();
+  }
+
+  /// Save a submitted reading atomically, with one synced result per passage.
+  Future<void> addReading(List<ReadingPassage> passages) async {
+    if (passages.isEmpty) return;
+    final timestamp = DateTime.now();
+    await _db.transaction(() async {
+      for (final passage in passages) {
+        await _db.insertResult(
+          ResultsCompanion.insert(
+            timestamp: timestamp,
+            type: ResultType.study,
+            bookId: Value(passage.bookId),
+            startChapter: Value(passage.startChapter),
+            startVerse: Value(passage.startVerse),
+            endChapter: Value(passage.endChapter),
+            endVerse: Value(passage.endVerse),
+            score: 1,
+          ),
+        );
+      }
+    });
     await onLocalChange?.call();
   }
 
@@ -144,6 +170,14 @@ class ResultsService {
               verseNumber: r.startVerse,
             ),
           )
+        : r.endChapter != null && r.endVerse != null
+        ? bibleService.getReadingName(
+            bookId: r.bookId!,
+            startChapter: r.startChapter!,
+            startVerse: r.startVerse!,
+            endChapter: r.endChapter!,
+            endVerse: r.endVerse!,
+          )
         : bibleService.getRangeRefName(_toRangeRef(r));
 
     return ResultItem(
@@ -158,6 +192,7 @@ class ResultsService {
     bookId: r.bookId!,
     chapter: r.startChapter!,
     startVerse: r.startVerse!,
+    endChapter: r.endChapter,
     endVerse: r.endVerse,
   );
 

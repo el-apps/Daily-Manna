@@ -1,4 +1,5 @@
 import 'package:daily_manna/models/scripture_ref.dart';
+import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart'
     show AppDatabase, Result, ResultType;
 
@@ -31,8 +32,9 @@ class SpacedRepetitionService {
   static const _maxIntervalDays = 32;
 
   final AppDatabase _db;
+  final BibleService _bible;
 
-  SpacedRepetitionService(this._db);
+  SpacedRepetitionService(this._db, this._bible);
 
   /// Get all interacted verses sorted by next review date.
   Future<List<VerseReviewState>> getVersesByReviewDate() async {
@@ -102,6 +104,7 @@ class SpacedRepetitionService {
     final verseResults = <String, List<Result>>{};
 
     for (final result in allResults) {
+      if (result.type == ResultType.study) continue;
       final verses = _expandRange(result);
       for (final verse in verses) {
         final key =
@@ -113,10 +116,6 @@ class SpacedRepetitionService {
     // Calculate SR state for each unique verse
     final states = <VerseReviewState>[];
     for (final entry in verseResults.entries) {
-      // Skip verses that only have study entries (no interaction results)
-      final hasInteraction = entry.value.any((r) => r.type != ResultType.study);
-      if (!hasInteraction) continue;
-
       final parts = entry.key.split(':');
       final ref = ScriptureRef(
         bookId: parts[0],
@@ -136,14 +135,22 @@ class SpacedRepetitionService {
   /// Expand a result's passage range into individual verse references.
   List<ScriptureRef> _expandRange(Result result) {
     if (result.bookId == null) return [];
-    final endVerse = result.endVerse ?? result.startVerse!;
+    final endChapter = result.endChapter ?? result.startChapter!;
     return [
-      for (int v = result.startVerse!; v <= endVerse; v++)
-        ScriptureRef(
-          bookId: result.bookId,
-          chapterNumber: result.startChapter,
-          verseNumber: v,
-        ),
+      for (var chapter = result.startChapter!; chapter <= endChapter; chapter++)
+        for (
+          var verse = chapter == result.startChapter ? result.startVerse! : 1;
+          verse <=
+              (chapter == endChapter
+                  ? result.endVerse ?? result.startVerse!
+                  : _bible.getVerses(result.bookId!, chapter).length);
+          verse++
+        )
+          ScriptureRef(
+            bookId: result.bookId,
+            chapterNumber: chapter,
+            verseNumber: verse,
+          ),
     ];
   }
 
