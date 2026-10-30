@@ -1207,6 +1207,68 @@ flowchart TD
     },
   );
 
+  test('same-column scripture connections do not cross other branches', () {
+    final document = ConceptMapDocument.fromMermaid(
+      File('test/fixtures/god_provides.mmd').readAsStringSync(),
+    );
+    for (final expanded in [false, true]) {
+      final sizes = {
+        for (final node in document.nodes)
+          node.id: Size(300, expanded && node.id == 'manna' ? 200 : 44),
+        'matthew': Size(300, expanded ? 140 : 44),
+      };
+      final positions = conceptMapLayout(document, nodeSizes: sizes);
+      expect(
+        conceptMapLayout(
+          ConceptMapDocument(
+            nodes: document.nodes,
+            edges: [
+              for (final edge in document.edges.reversed)
+                ConceptMapEdge(from: edge.to, to: edge.from, length: edge.length),
+            ],
+          ),
+          nodeSizes: sizes,
+        ),
+        positions,
+      );
+      final routes = [
+        for (final edge in document.edges)
+          conceptMapConnector(edge, positions, sizes),
+      ];
+      expect(routes, isNotEmpty);
+      for (var a = 0; a < routes.length; a++) {
+        expect(routes[a], isNotEmpty);
+        for (var b = a + 1; b < routes.length; b++) {
+          final first = document.edges[a];
+          final second = document.edges[b];
+          if ({
+            first.from,
+            first.to,
+          }.intersection({second.from, second.to}).isNotEmpty) {
+            continue;
+          }
+          for (var i = 1; i < routes[a].length; i++) {
+            for (var j = 1; j < routes[b].length; j++) {
+              expect(
+                Rect.fromPoints(routes[a][i - 1], routes[a][i])
+                    .inflate(1.5)
+                    .overlaps(
+                      Rect.fromPoints(
+                        routes[b][j - 1],
+                        routes[b][j],
+                      ).inflate(1.5),
+                    ),
+                isFalse,
+                reason:
+                    '${first.from}-${first.to} crosses ${second.from}-${second.to} (expanded: $expanded)',
+              );
+            }
+          }
+        }
+      }
+    }
+  });
+
   test('branches from one card share a trunk without crossing each other', () {
     const positions = {
       'node13': Offset(80, 300),
