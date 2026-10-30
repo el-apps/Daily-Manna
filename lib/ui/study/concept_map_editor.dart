@@ -51,12 +51,68 @@ Map<String, Offset> conceptMapLayout(
   for (final node in document.nodes) {
     groups.putIfAbsent(ranks[node.id] ?? 0, () => []).add(node);
   }
+  final columns = groups.keys.toList()..sort();
+  for (final column in columns) {
+    final nodes = groups[column]!;
+    final links = [
+      for (final node in nodes)
+        for (final id in neighbors[node.id]!.keys)
+          if (ranks[id] == column && node.id.compareTo(id) < 0) (node.id, id),
+    ];
+    if (links.isEmpty) continue;
+    final incoming = [
+      for (final node in nodes)
+        for (final id in neighbors[node.id]!.keys)
+          if (ranks[id]! < column) (node.id, id),
+    ];
+    int crossingCost() {
+      final order = {for (var i = 0; i < nodes.length; i++) nodes[i].id: i};
+      // A same-column connection must detour around every intervening card.
+      var count = links.fold<int>(
+        0,
+        (sum, link) => sum + (order[link.$1]! - order[link.$2]!).abs() - 1,
+      );
+      for (var a = 0; a < incoming.length; a++) {
+        for (var b = a + 1; b < incoming.length; b++) {
+          final (targetA, sourceA) = incoming[a];
+          final (targetB, sourceB) = incoming[b];
+          if (ranks[sourceA] != ranks[sourceB]) continue;
+          final sources = groups[ranks[sourceA]]!;
+          final sourceOrder =
+              sources.indexWhere((n) => n.id == sourceA) -
+              sources.indexWhere((n) => n.id == sourceB);
+          if (sourceOrder * (order[targetA]! - order[targetB]!) < 0) count++;
+        }
+      }
+      return count;
+    }
+
+    // Preserve saved order unless a swap reduces detours and incoming crossings.
+    var count = crossingCost();
+    var improved = true;
+    while (improved) {
+      improved = false;
+      for (var i = 1; i < nodes.length; i++) {
+        final previous = nodes[i - 1];
+        nodes[i - 1] = nodes[i];
+        nodes[i] = previous;
+        final next = crossingCost();
+        if (next < count) {
+          count = next;
+          improved = true;
+        } else {
+          nodes[i] = nodes[i - 1];
+          nodes[i - 1] = previous;
+        }
+      }
+    }
+  }
   final positions = <String, Offset>{};
   double height(String id) => nodeSizes[id]?.height ?? 90;
   final children = <String, List<String>>{
     for (final node in document.nodes)
       node.id: [
-        for (final candidate in document.nodes)
+        for (final candidate in columns.expand((column) => groups[column]!))
           if (ranks[candidate.id]! > ranks[node.id]! &&
               neighbors[node.id]!.containsKey(candidate.id))
             candidate.id,
@@ -81,7 +137,6 @@ Map<String, Offset> conceptMapLayout(
 
   span = (id) =>
       spans.putIfAbsent(id, () => math.max(height(id), childrenSpan(id)));
-  final columns = groups.keys.toList()..sort();
   for (final column in columns) {
     final preferredCenters = <String, double>{};
     final parentCenters = <String, double>{};
