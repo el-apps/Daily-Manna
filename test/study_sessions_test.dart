@@ -666,6 +666,159 @@ flowchart TD
     expect(find.text('Delete'), findsOneWidget);
   });
 
+  testWidgets('all card types reorder among siblings and retain saved order', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    late StudyNote note;
+    const source = '''
+flowchart TD
+  background[Background]:::keyPoint
+  forget[Do Not Forget God]:::keyPoint
+  verse[Deuteronomy 8:11-20]:::passage
+  class verse showPassage
+  click verse "passage://Deut/8/11/20"
+  humbles[God Humbles and Tests]:::keyPoint
+  provides[God Provides]:::keyPoint
+  explanation[Remember]:::note
+  forget ---> verse
+  explanation ---> forget
+''';
+    await tester.runAsync(() async {
+      note = await notesService.createNote(title: 'Deuteronomy 8');
+      await notesService.updateConceptMap(note.id, source);
+      note = (await notesService.getNote(note.id))!;
+    });
+    await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+    await tester.tap(find.text('Concept Map'));
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    await selectCard(tester, 'Background');
+    IconButton button(String label) => tester.widget<IconButton>(
+      find.byWidgetPredicate(
+        (widget) => widget is IconButton && widget.tooltip == label,
+      ),
+    );
+    Future<void> move(String label) async {
+      await tester.ensureVisible(find.byTooltip(label));
+      await tester.tap(find.byTooltip(label));
+      await tester.pumpAndSettle();
+    }
+
+    expect(button('Move up').onPressed, isNull);
+    await selectCard(tester, 'Do Not Forget God');
+    for (var i = 0; i < 2; i++) {
+      await move('Move down');
+    }
+    expect(button('Move down').onPressed, isNull);
+    expect(
+      tester.getTopLeft(find.text('Do Not Forget God')).dy,
+      greaterThan(tester.getTopLeft(find.text('God Provides')).dy),
+    );
+    await move('Move up');
+    expect(
+      tester.getTopLeft(find.text('Do Not Forget God')).dy,
+      lessThan(tester.getTopLeft(find.text('God Provides')).dy),
+    );
+    await move('Move down');
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Delete'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete').hitTestable(), findsOneWidget);
+    expect(find.byTooltip('Move up').hitTestable(), findsOneWidget);
+    expect(find.byTooltip('Move down').hitTestable(), findsOneWidget);
+    await tester.binding.setSurfaceSize(const Size(1400, 1000));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.byTooltip('Save'));
+      note = (await notesService.getNote(note.id))!;
+    });
+    await tester.pumpAndSettle();
+    final saved = ConceptMapDocument.fromMermaid(note.conceptMap!);
+    expect(
+      saved.nodes
+          .where((n) => n.type == ConceptMapNodeType.keyPoint)
+          .map((n) => n.id),
+      ['background', 'humbles', 'provides', 'forget'],
+    );
+    final original = ConceptMapDocument.fromMermaid(source);
+    expect(
+      saved.edges.map((edge) => (edge.from, edge.to, edge.length)),
+      original.edges.map((edge) => (edge.from, edge.to, edge.length)),
+    );
+    final verse = saved.nodes.singleWhere((n) => n.id == 'verse');
+    expect(verse.passage, original.nodes[2].passage);
+    expect(verse.showPassage, isTrue);
+    final positions = conceptMapLayout(saved);
+    expect(positions['verse']!.dy, greaterThan(positions['provides']!.dy));
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    await selectCard(tester, 'Deut 8:11-20');
+    expect(button('Move up').onPressed, isNull);
+    await move('Move down');
+    expect(button('Move down').onPressed, isNull);
+    expect(
+      tester.getTopLeft(find.text('Deut 8:11-20')).dy,
+      greaterThan(tester.getTopLeft(find.text('Remember')).dy),
+    );
+    await selectCard(tester, 'Remember');
+    await move('Move down');
+    expect(
+      tester.getTopLeft(find.text('Remember')).dy,
+      greaterThan(tester.getTopLeft(find.text('Deut 8:11-20')).dy),
+    );
+  });
+
+  test('card ordering respects branches and works at deeper levels', () {
+    final original = ConceptMapDocument.fromMermaid('''
+flowchart TD
+  a[First point]:::keyPoint
+  b[Second point]:::keyPoint
+  first[First note]:::note
+  other[Other branch]:::note
+  second[Second passage]:::passage
+  deepFirst[Deep note]:::note
+  deepSecond[Deep passage]:::passage
+  a ---> first
+  second ---> a
+  b ---> other
+  first ---> deepFirst
+  deepSecond ---> first
+''');
+    for (final (id, offset, neighbor) in [
+      ('first', 1, 'second'),
+      ('second', -1, 'first'),
+      ('deepFirst', 1, 'deepSecond'),
+      ('deepSecond', -1, 'deepFirst'),
+    ]) {
+      final moved = ConceptMapDocument.fromMermaid(
+        conceptMapMoveNode(original, id, offset).toMermaid(),
+      );
+      final positions = conceptMapLayout(moved);
+      expect(
+        (positions[id]!.dy - positions[neighbor]!.dy).sign,
+        offset.toDouble(),
+      );
+      expect(
+        moved.edges.map((edge) => (edge.from, edge.to, edge.length)),
+        original.edges.map((edge) => (edge.from, edge.to, edge.length)),
+      );
+    }
+    for (final (id, offset) in [
+      ('first', -1),
+      ('second', 1),
+      ('other', -1),
+      ('other', 1),
+    ]) {
+      expect(
+        conceptMapMoveNode(original, id, offset).toMermaid(),
+        original.toMermaid(),
+      );
+    }
+  });
+
   test('map layout leaves room for expanded cards in each column', () {
     const document = ConceptMapDocument(
       nodes: [
@@ -1442,7 +1595,7 @@ flowchart TD
       await tester.pumpAndSettle();
       expect(find.byType(SnackBar), findsNothing);
       final label = tester.widget<EditableText>(find.byType(EditableText));
-      for (var i = 0; i < 10 && !label.focusNode.hasFocus; i++) {
+      for (var i = 0; i < 20 && !label.focusNode.hasFocus; i++) {
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
         await tester.pumpAndSettle();
       }
