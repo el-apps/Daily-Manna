@@ -221,6 +221,7 @@ class AppDatabase extends _$AppDatabase {
 
   Future<bool> updateStudyNote(
     int id, {
+    String? title,
     Value<String?> notes = const Value.absent(),
     String? conceptMap,
     String? passages,
@@ -233,10 +234,12 @@ class AppDatabase extends _$AppDatabase {
         (conceptMap != null && conceptMap != row.conceptMap) ||
         (passages != null && passages != row.passages);
     final archiveChanged = archived != null && archived != row.archived;
-    if (!contentChanged && !archiveChanged) return false;
+    final titleChanged = title != null && title != row.title;
+    if (!contentChanged && !archiveChanged && !titleChanged) return false;
     final now = DateTime.now().toUtc();
     await (update(studyNotes)..where((note) => note.id.equals(id))).write(
       StudyNotesCompanion(
+        title: title == null ? const Value.absent() : Value(title),
         notes: notes,
         conceptMap: conceptMap == null
             ? const Value.absent()

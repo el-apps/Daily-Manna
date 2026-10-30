@@ -263,7 +263,10 @@ void main() {
     await tester.tap(find.byTooltip('Edit'));
     await tester.pumpAndSettle();
     final editor = find.byType(TextField);
-    expect(tester.widget<TextField>(editor).style?.fontFamily, 'DejaVuSansMono');
+    expect(
+      tester.widget<TextField>(editor).style?.fontFamily,
+      'DejaVuSansMono',
+    );
     final controller = tester.widget<TextField>(editor).controller!;
     await tester.enterText(editor, '##### Heading');
     await tester.tap(find.byTooltip('Increase heading'));
@@ -1743,7 +1746,7 @@ flowchart TD
     await tester.pumpAndSettle();
     await tester.tap(find.text('Notes'));
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(Chip, 'John 3:16-16'), findsOneWidget);
+    expect(find.widgetWithText(Chip, 'John 3:16-16'), findsNothing);
   });
 
   testWidgets('plus buttons connect new cards only when a card is selected', (
@@ -2156,30 +2159,21 @@ flowchart TD
   });
 
   testWidgets(
-    'add passage records a daily note session and keeps the edit FAB',
+    'Notes omits passages while map passage visibility survives saves',
     (tester) async {
       late StudyNote note;
       await tester.runAsync(() async {
         note = await notesService.createNote(title: 'Wisdom', passage: passage);
+        await notesService.addPassage(note.id, otherPassage);
+        note = (await notesService.getNote(note.id))!;
       });
       await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
       await tester.pumpAndSettle();
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(find.byTooltip('Edit'), findsOneWidget);
-      // Exercise the passage-selector return contract independently of its
-      // range-selection controls, which have their own regression tests.
-      await tester.runAsync(() async {
-        await tester.tap(find.text('Add passage'));
-        Navigator.of(
-          tester.element(find.byType(StudyNotesDetailPage)),
-        ).pop(otherPassage);
-        await database.watchStudyNotes().firstWhere(
-          (notes) =>
-              notesService.passagesFor(notes.single).contains(otherPassage),
-        );
-      });
-      await tester.pumpAndSettle();
-      expect(find.text('John 3:16-16'), findsOneWidget);
+      expect(find.text('Passages'), findsNothing);
+      expect(find.text('Add passage'), findsNothing);
+      expect(find.text('John 3:16-16'), findsNothing);
       await tester.tap(find.text('Concept Map'));
       await tester.pumpAndSettle();
       expect(find.text('John 3:16-16'), findsOneWidget);
@@ -2228,7 +2222,8 @@ flowchart TD
         expect(session.studyNoteId, note.clientId);
         expect(session.bookId, isNull);
       });
-      expect(find.text('Add passage'), findsOneWidget);
+      expect(find.text('Passages'), findsNothing);
+      expect(find.text('Add passage'), findsNothing);
       expect(find.byTooltip('Save'), findsOneWidget);
       await tester.enterText(find.byType(TextField), 'Keep learning');
       await tester.runAsync(() async {
@@ -2264,68 +2259,70 @@ flowchart TD
     },
   );
 
-  testWidgets('adding a passage preserves unsaved map nodes and connections', (
+  testWidgets('renaming uses the title dialog and preserves note content', (
     tester,
   ) async {
     late StudyNote note;
     await tester.runAsync(() async {
       note = await notesService.createNote(title: 'Wisdom', passage: passage);
+      await notesService.updateNotes(note.id, 'Keep learning');
+      note = (await notesService.getNote(note.id))!;
     });
     await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Edit'));
-    await tester.tap(find.text('Concept Map'));
-    await tester.pumpAndSettle();
-    final editor = tester.widget<ConceptMapEditor>(
-      find.byType(ConceptMapEditor),
-    );
-    editor.onChanged(
-      editor.document
-          .addNode(
-            const ConceptMapNode(
-              id: 'node3',
-              type: ConceptMapNodeType.keyPoint,
-              label: 'Unsaved insight\nSecond line',
-            ),
-          )
-          .addEdge(const ConceptMapEdge(from: 'node1', to: 'node3', length: 2)),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Notes'));
-    await tester.pumpAndSettle();
-    await tester.runAsync(() async {
-      await tester.tap(find.text('Add passage'));
-      Navigator.of(
-        tester.element(find.byType(StudyNotesDetailPage)),
-      ).pop(otherPassage);
-      await database.watchStudyNotes().firstWhere(
-        (notes) =>
-            notesService.passagesFor(notes.single).contains(otherPassage),
-      );
-    });
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Concept Map'));
-    await tester.pumpAndSettle();
-    final updated = tester
-        .widget<ConceptMapEditor>(find.byType(ConceptMapEditor))
-        .document;
-    expect(updated.nodes.map((node) => node.id), ['node1', 'node3', 'node4']);
-    expect(updated.nodes[1].label, 'Unsaved insight\nSecond line');
-    expect(updated.nodes.last.passage, otherPassage);
-    expect(updated.edges.single.from, 'node1');
-    expect(updated.edges.single.to, 'node3');
-    expect(updated.edges.single.length, 2);
-    await tester.runAsync(() async {
-      final saved = ConceptMapDocument.fromMermaid(
-        (await notesService.getNote(note.id))!.conceptMap!,
-      );
-      expect(saved.nodes.map((node) => node.id), ['node1', 'node3', 'node4']);
-      expect(saved.nodes[1].label, 'Unsaved insight\nSecond line');
-      expect(saved.edges.single.to, 'node3');
+
+    Future<void> openRename() async {
+      await tester.tap(find.byTooltip('Note actions'));
+      await tester.pumpAndSettle();
       expect(
-        (await database.getAllResults()).single.studyNoteId,
-        note.clientId,
+        tester.getTopLeft(find.text('Rename note')).dy,
+        lessThan(tester.getTopLeft(find.text('Archive note')).dy),
       );
+      await tester.tap(find.text('Rename note'));
+      await tester.pumpAndSettle();
+      expect(find.text('Rename study note'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'Wisdom',
+      );
+    }
+
+    await openRename();
+    await tester.enterText(find.byType(TextField), 'Cancelled title');
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('Wisdom'), findsOneWidget);
+    await openRename();
+    await tester.enterText(find.byType(TextField), '   ');
+    await tester.pump();
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Rename'))
+          .onPressed,
+      isNull,
+    );
+    await tester.enterText(find.byType(TextField), '  Walk in wisdom  ');
+    await tester.pump();
+    final renamed = Completer<void>();
+    notesService.onLocalChange = () async => renamed.complete();
+    await tester.tap(find.text('Rename'));
+    await tester.pumpAndSettle();
+    await tester.runAsync(
+      () => renamed.future.timeout(const Duration(seconds: 5)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Walk in wisdom'), findsOneWidget);
+    expect(find.text('Keep learning', findRichText: true), findsOneWidget);
+    await tester.runAsync(() async {
+      final saved = (await notesService.getNote(note.id))!;
+      expect(saved.title, 'Walk in wisdom');
+      expect(saved.notes, note.notes);
+      expect(saved.conceptMap, note.conceptMap);
+      expect(saved.passages, note.passages);
+      expect(saved.archived, note.archived);
+      expect((await database.getAllResults()).length, 1);
+      await notesService.renameNote(note.id, '  ');
+      expect((await notesService.getNote(note.id))!.title, 'Walk in wisdom');
     });
   });
 }

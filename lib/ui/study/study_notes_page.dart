@@ -3,6 +3,7 @@ import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
 import 'package:daily_manna/services/study_notes_service.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
+import 'package:daily_manna/ui/study/study_note_title_dialog.dart';
 import 'package:daily_manna/ui/study/study_notes_list.dart';
 import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
@@ -130,37 +131,10 @@ class _StudyNotesPageState extends State<StudyNotesPage> {
     if (mounted) context.push('/study-notes/${note.id}', extra: note);
   }
 
-  Future<String?> _askForTitle() async {
-    final controller = TextEditingController();
-    final title = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('New study note'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(labelText: 'Title'),
-          onSubmitted: (_) => Navigator.pop(context, controller.text),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-    // Let the dialog finish its route transition before releasing the
-    // controller used by its TextField.
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-    controller.dispose();
-    return title;
-  }
+  Future<String?> _askForTitle() async => showDialog<String>(
+    context: context,
+    builder: (_) => const StudyNoteTitleDialog(),
+  );
 
   String _passageName(BuildContext context, ScriptureRangeRef passage) =>
       context.read<BibleService>().getRangeRefName(passage);
