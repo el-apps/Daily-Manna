@@ -58,6 +58,11 @@ class _VerseMemorizationState extends State<VerseMemorization> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: 16,
             children: [
+              if (bibleService.hasVerse(_ref))
+                Text(
+                  bibleService.getRefName(_ref),
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
               if (_result != Result.unknown && bibleService.hasVerse(_ref))
                 ThemeCard(
                   style: ThemeCardStyle.brown,

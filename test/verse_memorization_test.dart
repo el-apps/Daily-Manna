@@ -37,6 +37,16 @@ void main() {
 
       await tester.pumpWidget(createTestWidget(initialRef: ref));
 
+      expect(find.text('john 3:16'), findsOneWidget);
+      expect(
+        tester.getBottomLeft(find.byType(AppBar)).dy,
+        lessThan(tester.getTopLeft(find.text('john 3:16')).dy),
+      );
+      expect(
+        tester.getBottomLeft(find.text('john 3:16')).dy,
+        lessThan(tester.getTopLeft(find.byType(TextFormField)).dy),
+      );
+
       // Enter correct text
       await tester.enterText(find.byType(TextFormField), 'Test verse text');
       await tester.pump();
@@ -48,6 +58,13 @@ void main() {
       // Both buttons should be visible
       expect(find.text('Try Again'), findsOneWidget);
       expect(find.text('Next'), findsOneWidget);
+      expect(find.text('john 3:16'), findsOneWidget);
+
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('john 3:16'), findsNothing);
+      expect(find.text('john 3:17'), findsOneWidget);
     });
 
     testWidgets('Try Again resets to allow retry of same verse',
