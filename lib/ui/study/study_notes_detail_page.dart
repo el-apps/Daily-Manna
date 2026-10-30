@@ -2,6 +2,7 @@ import 'package:daily_manna/models/concept_map.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
+import 'package:daily_manna/services/error_logger_service.dart';
 import 'package:daily_manna/services/study_notes_service.dart';
 import 'package:daily_manna/services/study_notes_pdf.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
@@ -181,8 +182,12 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
           ),
         );
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
+        context.read<ErrorLoggerService>().logError(
+          'PDF export failed: $error',
+          context: 'Study notes',
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Could not generate PDF. Please try again.'),
@@ -560,7 +565,7 @@ class _NotesTab extends StatelessWidget {
           },
           child: TextField(
             controller: notesController,
-            style: const TextStyle(fontFamily: 'monospace'),
+            style: const TextStyle(fontFamily: 'DejaVuSansMono'),
             inputFormatters: [_BulletContinuationFormatter()],
             autofocus: true,
             maxLines: null,
