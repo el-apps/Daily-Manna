@@ -1,7 +1,6 @@
 import 'package:daily_manna/models/concept_map.dart';
-import 'package:daily_manna/models/scripture_range_ref.dart';
-import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
+import 'package:daily_manna/services/error_logger_service.dart';
 import 'package:daily_manna/services/study_notes_service.dart';
 import 'package:daily_manna/services/study_notes_pdf.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
@@ -9,8 +8,8 @@ import 'package:daily_manna/ui/empty_state.dart';
 import 'package:daily_manna/ui/study/concept_map_editor.dart';
 import 'package:daily_manna/ui/study/study_markdown_preview.dart';
 import 'package:daily_manna/ui/study/study_notes_pdf_dialog.dart';
+import 'package:daily_manna/ui/study/study_note_title_dialog.dart';
 import 'package:daily_manna/ui/edit_toolbar.dart';
-import 'package:daily_manna/ui/verse_selection/verse_selection_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
@@ -40,16 +39,16 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   bool _isEditing = false;
   bool _exporting = false;
   late bool _archived;
+  late String _title;
   String? _selectedMapNodeId;
   int _activeTab = 0;
-  late List<ScriptureRangeRef> _passages;
 
   @override
   void initState() {
     super.initState();
     _notes = widget.note.notes;
     _archived = widget.note.archived;
-    _passages = context.read<StudyNotesService>().passagesFor(widget.note);
+    _title = widget.note.title;
     _notesController = TextEditingController(text: _notes);
     _conceptMap = ConceptMapDocument.fromMermaid(widget.note.conceptMap ?? '');
     _savedConceptMap = _conceptMap.toMermaid();
@@ -69,86 +68,82 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   }
 
   @override
-  Widget build(BuildContext context) {
-    final bibleService = context.read<BibleService>();
-
-    return AppScaffold(
-      title: widget.note.title,
-      showShareButton: false,
-      appBarActions: [
-        IconButton(
-          tooltip: _exporting ? 'Generating PDF…' : 'Generate PDF',
-          onPressed: _exporting ? null : _exportPdf,
-          icon: const Icon(Icons.picture_as_pdf_outlined),
-        ),
-        if (!_isEditing)
-          PopupMenuButton<bool>(
-            tooltip: 'Note actions',
-            onSelected: _setArchived,
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                value: !_archived,
-                child: Text(_archived ? 'Restore note' : 'Archive note'),
-              ),
-            ],
-          ),
-      ],
-      floatingActionButton: _isEditing
-          ? null
-          : _buildEditToolbar(editing: false),
-      body: Column(
-        children: [
-          if (_archived)
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Chip(
-                avatar: Icon(Icons.archive_outlined),
-                label: Text('Archived'),
-              ),
-            ),
-          TabBar(
-            controller: _tabController,
-            tabs: [
-              Tab(text: 'Notes'),
-              Tab(text: 'Concept Map'),
-            ],
-          ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              // The concept map owns horizontal gestures for panning. Tabs are
-              // switched explicitly so a map swipe cannot leave the editor.
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                _NotesTab(
-                  notes: _notes,
-                  notesController: _notesController,
-                  isEditing: _isEditing,
-                  passages: _passages,
-                  bibleService: bibleService,
-                  onAddPassage: _addPassage,
-                  onBold: _bold,
-                  onIndent: () => _adjustBullets(1),
-                  onDedent: () => _adjustBullets(-1),
-                ),
-                ConceptMapEditor(
-                  key: _conceptMapKey,
-                  document: _conceptMap,
-                  editing: _isEditing,
-                  selectedNodeId: _selectedMapNodeId,
-                  onNodeSelected: (id) =>
-                      setState(() => _selectedMapNodeId = id),
-                  onChanged: (document) =>
-                      setState(() => _conceptMap = document),
-                ),
-              ],
-            ),
-          ),
-          if (_isEditing) _buildEditToolbar(editing: true),
-        ],
+  Widget build(BuildContext context) => AppScaffold(
+    title: _title,
+    showShareButton: false,
+    appBarActions: [
+      IconButton(
+        tooltip: _exporting ? 'Generating PDF…' : 'Generate PDF',
+        onPressed: _exporting ? null : _exportPdf,
+        icon: const Icon(Icons.picture_as_pdf_outlined),
       ),
-    );
-  }
+      if (!_isEditing)
+        PopupMenuButton<String>(
+          tooltip: 'Note actions',
+          onSelected: (action) {
+            if (action == 'rename') {
+              _rename();
+            } else {
+              _setArchived(!_archived);
+            }
+          },
+          itemBuilder: (_) => [
+            const PopupMenuItem(value: 'rename', child: Text('Rename note')),
+            PopupMenuItem(
+              value: 'archive',
+              child: Text(_archived ? 'Restore note' : 'Archive note'),
+            ),
+          ],
+        ),
+    ],
+    floatingActionButton: _isEditing ? null : _buildEditToolbar(editing: false),
+    body: Column(
+      children: [
+        if (_archived)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Chip(
+              avatar: Icon(Icons.archive_outlined),
+              label: Text('Archived'),
+            ),
+          ),
+        TabBar(
+          controller: _tabController,
+          tabs: [
+            Tab(text: 'Notes'),
+            Tab(text: 'Concept Map'),
+          ],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            // The concept map owns horizontal gestures for panning. Tabs are
+            // switched explicitly so a map swipe cannot leave the editor.
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _NotesTab(
+                notes: _notes,
+                notesController: _notesController,
+                isEditing: _isEditing,
+                onBold: _bold,
+                onIndent: () => _adjustBullets(1),
+                onDedent: () => _adjustBullets(-1),
+              ),
+              ConceptMapEditor(
+                key: _conceptMapKey,
+                document: _conceptMap,
+                editing: _isEditing,
+                selectedNodeId: _selectedMapNodeId,
+                onNodeSelected: (id) => setState(() => _selectedMapNodeId = id),
+                onChanged: (document) => setState(() => _conceptMap = document),
+              ),
+            ],
+          ),
+        ),
+        if (_isEditing) _buildEditToolbar(editing: true),
+      ],
+    ),
+  );
 
   void _enterEditMode() => setState(() => _isEditing = true);
 
@@ -161,14 +156,22 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
     setState(() => _exporting = true);
     try {
       final files = await buildStudyNotesPdfs(
-        title: widget.note.title,
+        title: _title,
         source: _notesController.text,
         format: format,
       );
-      if (kIsWeb || files.length == 1) {
+      if (kIsWeb) {
+        // Browser downloads do not need a registered native printing channel.
         for (final file in files.entries) {
-          await Printing.sharePdf(bytes: file.value, filename: file.key);
+          await XFile.fromData(
+            file.value,
+            name: file.key,
+            mimeType: 'application/pdf',
+          ).saveTo(file.key);
         }
+      } else if (files.length == 1) {
+        final file = files.entries.single;
+        await Printing.sharePdf(bytes: file.value, filename: file.key);
       } else {
         // Share both manual-duplex files in one native share sheet.
         await SharePlus.instance.share(
@@ -181,8 +184,12 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
           ),
         );
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
+        context.read<ErrorLoggerService>().logError(
+          'PDF export failed: $error',
+          context: 'Study notes',
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Could not generate PDF. Please try again.'),
@@ -216,19 +223,15 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
       );
   }
 
-  Future<void> _addPassage() async {
+  Future<void> _rename() async {
     final service = context.read<StudyNotesService>();
-    final passage = await showPassageSelector(context);
-    if (!mounted || passage == null) return;
-    await service.addPassage(widget.note.id, passage, conceptMap: _conceptMap);
-    final note = await service.getNote(widget.note.id);
-    if (mounted && note != null) {
-      setState(() {
-        _passages = service.passagesFor(note);
-        _conceptMap = ConceptMapDocument.fromMermaid(note.conceptMap ?? '');
-        _savedConceptMap = _conceptMap.toMermaid();
-      });
-    }
+    final title = await showDialog<String>(
+      context: context,
+      builder: (_) => StudyNoteTitleDialog(initialTitle: _title),
+    );
+    if (!mounted || title == null) return;
+    await service.renameNote(widget.note.id, title);
+    if (mounted) setState(() => _title = title);
   }
 
   Future<void> _save() async {
@@ -250,7 +253,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
       setState(() {
         _notes = saved.notes;
         _notesController.text = saved.notes ?? '';
-        _passages = service.passagesFor(saved);
+        _title = saved.title;
         _archived = saved.archived;
         _conceptMap = ConceptMapDocument.fromMermaid(saved.conceptMap ?? '');
         _savedConceptMap = _conceptMap.toMermaid();
@@ -505,9 +508,6 @@ class _NotesTab extends StatelessWidget {
     required this.notes,
     required this.notesController,
     required this.isEditing,
-    required this.passages,
-    required this.bibleService,
-    required this.onAddPassage,
     required this.onBold,
     required this.onIndent,
     required this.onDedent,
@@ -516,9 +516,6 @@ class _NotesTab extends StatelessWidget {
   final String? notes;
   final TextEditingController notesController;
   final bool isEditing;
-  final List<ScriptureRangeRef> passages;
-  final BibleService bibleService;
-  final VoidCallback onAddPassage;
   final VoidCallback onBold;
   final VoidCallback onIndent;
   final VoidCallback onDedent;
@@ -527,27 +524,6 @@ class _NotesTab extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(16),
     children: [
-      ...[
-        Text('Passages', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final passage in passages)
-              Chip(
-                avatar: const Icon(Icons.menu_book, size: 18),
-                label: Text(bibleService.getRangeRefName(passage)),
-              ),
-            OutlinedButton.icon(
-              onPressed: onAddPassage,
-              icon: const Icon(Icons.add),
-              label: const Text('Add passage'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-      ],
       if (isEditing) ...[
         CallbackShortcuts(
           bindings: {
@@ -560,7 +536,7 @@ class _NotesTab extends StatelessWidget {
           },
           child: TextField(
             controller: notesController,
-            style: const TextStyle(fontFamily: 'monospace'),
+            style: const TextStyle(fontFamily: 'DejaVuSansMono'),
             inputFormatters: [_BulletContinuationFormatter()],
             autofocus: true,
             maxLines: null,

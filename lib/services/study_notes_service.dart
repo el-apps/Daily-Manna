@@ -21,6 +21,14 @@ class StudyNotesService {
     await onLocalChange?.call();
   }
 
+  Future<void> renameNote(int id, String title) async {
+    final trimmed = title.trim();
+    if (trimmed.isEmpty) return;
+    if (await _db.updateStudyNote(id, title: trimmed)) {
+      await onLocalChange?.call();
+    }
+  }
+
   Future<StudyNote?> getNote(int id) => _db.studyNoteById(id);
 
   Future<StudyNote?> getNoteByClientId(String id) =>
