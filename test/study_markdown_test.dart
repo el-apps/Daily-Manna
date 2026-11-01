@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:daily_manna/services/study_notes_pdf.dart';
 import 'package:daily_manna/ui/study/study_markdown_preview.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +7,27 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('PDF embeds Charter faces and a fallback for Unicode symbols', () async {
+    final files = await buildStudyNotesPdfs(
+      title: 'Typography',
+      source: 'Regular **bold** *italic* ***bold italic*** →',
+    );
+    final pdf = latin1.decode(files.values.single);
+    for (final font in [
+      'CharterRegular',
+      'CharterBold',
+      'CharterItalic',
+      'CharterBoldItalic',
+      'DejaVuSerif',
+    ]) {
+      expect(
+        RegExp('/FontName\\s*/$font(?=[\\s/<>])').hasMatch(pdf),
+        isTrue,
+        reason: 'The exported PDF must embed $font',
+      );
+    }
+  });
 
   test('cut-and-stack splits files only for manual printing', () async {
     for (final format in [

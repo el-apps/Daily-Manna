@@ -29,18 +29,20 @@ Future<Map<String, Uint8List>> buildStudyNotesPdfs({
   required String source,
   StudyNotesPdfFormat format = StudyNotesPdfFormat.sequential,
 }) async {
-  // Bundle fonts so export works offline and preserves curly quotes and arrows.
+  // Match the script's Bitstream Charter family, with a Unicode fallback for
+  // symbols such as arrows that Charter does not contain. All fonts are local.
   final theme = pw.ThemeData.withFont(
-    base: pw.Font.ttf(await rootBundle.load('assets/fonts/DejaVuSerif.ttf')),
-    bold: pw.Font.ttf(
-      await rootBundle.load('assets/fonts/DejaVuSerif-Bold.ttf'),
-    ),
+    base: pw.Font.ttf(await rootBundle.load('assets/fonts/Charter.ttf')),
+    bold: pw.Font.ttf(await rootBundle.load('assets/fonts/Charter-Bold.ttf')),
     italic: pw.Font.ttf(
-      await rootBundle.load('assets/fonts/DejaVuSerif-Italic.ttf'),
+      await rootBundle.load('assets/fonts/Charter-Italic.ttf'),
     ),
     boldItalic: pw.Font.ttf(
-      await rootBundle.load('assets/fonts/DejaVuSerif-BoldItalic.ttf'),
+      await rootBundle.load('assets/fonts/Charter-BoldItalic.ttf'),
     ),
+    fontFallback: [
+      pw.Font.ttf(await rootBundle.load('assets/fonts/DejaVuSerif.ttf')),
+    ],
   );
   final document = pw.Document(title: title, theme: theme);
   document.addPage(
@@ -203,22 +205,36 @@ List<pw.Widget> _blocks(List<md.Node> nodes, double size, {int depth = 0}) {
       default:
         final heading = RegExp(r'^h([1-6])$').firstMatch(node.tag);
         final level = heading == null ? null : int.parse(heading.group(1)!);
+        // The script uses extarticle at 8pt: Large=10.95pt, large=10pt,
+        // normalsize=8pt. Match its nominal spacing (Charter's x-height is
+        // 0.481em), without LaTeX's stretch/shrink page-layout adjustments.
+        final ex = size * 0.481;
+        final (fontSize, spaceBefore, spaceAfter) = switch (level) {
+          1 => (10.95, 1.5 * ex, 2.3 * ex),
+          2 => (10.0, 1.5 * ex, 1.5 * ex),
+          3 => (size, 1.5 * ex, 1.5 * ex),
+          4 => (size, 1.5 * ex, 0.8 * ex),
+          5 => (size, 1.2 * ex, 0.6 * ex),
+          6 => (size, 0.35 * 9.5, 4.0),
+          _ => (size, 0.0, 4.0),
+        };
         widgets.add(
           pw.Padding(
             padding: pw.EdgeInsets.only(
               left: depth > 0 ? (depth - 1) * size * 1.8 : 0,
+              top: widgets.isEmpty ? 0 : spaceBefore,
             ),
             child: pw.RichText(
               overflow: pw.TextOverflow.span,
               text: pw.TextSpan(
                 style: pw.TextStyle(
-                  fontSize: level == null
-                      ? size
-                      : size * [1.8, 1.5, 1.2, 1, 1, 1][level - 1],
+                  fontSize: fontSize,
                   fontWeight: level == null
                       ? pw.FontWeight.normal
                       : pw.FontWeight.bold,
-                  color: level != null
+                  // LaTeX section commands are black; only the custom H6
+                  // filter uses the script's blue textbf definition.
+                  color: level == 6
                       ? PdfColor.fromHex('1565C0')
                       : node.tag == 'read'
                       ? PdfColor.fromHex('C00000')
@@ -229,7 +245,7 @@ List<pw.Widget> _blocks(List<md.Node> nodes, double size, {int depth = 0}) {
             ),
           ),
         );
-        widgets.add(pw.SizedBox(height: level == null ? 4 : 8));
+        widgets.add(pw.SizedBox(height: spaceAfter));
     }
   }
   return widgets;
