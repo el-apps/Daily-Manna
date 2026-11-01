@@ -102,7 +102,7 @@ Reader is not a reading cue
     expect(ordinary.style?.color, isNot(const Color(0xFFC00000)));
     expect(find.text('A quotation', findRichText: true), findsOneWidget);
     expect(find.text('Sixth heading', findRichText: true), findsOneWidget);
-    expect(find.text('Page 1/2'), findsOneWidget);
+    expect(find.text('Page 2/2'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -130,12 +130,12 @@ Second page
 
 Third page
 ''');
-    expect(find.text('Page 1/3'), findsOneWidget);
+    expect(find.text('Page 1/3'), findsNothing);
     expect(find.text('Page 2/3'), findsOneWidget);
-    expect(find.text('Page 3/3'), findsNothing);
+    expect(find.text('Page 3/3'), findsOneWidget);
 
     await preview('First\n\n\\newpage\n\nSecond');
-    expect(find.text('Page 1/2'), findsOneWidget);
+    expect(find.text('Page 2/2'), findsOneWidget);
     expect(find.text('Page 2/3'), findsNothing);
 
     await preview('Only one page');

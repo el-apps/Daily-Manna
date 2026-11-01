@@ -73,7 +73,7 @@ class _PageBreakBuilder extends MarkdownElementBuilder {
   _PageBreakBuilder(List<md.Node> nodes) : totalPages = 1 + _countBreaks(nodes);
 
   final int totalPages;
-  int page = 0;
+  int page = 1;
 
   // Count parsed markers so fenced code containing \newpage stays ordinary text.
   static int _countBreaks(List<md.Node> nodes) => nodes.fold(
