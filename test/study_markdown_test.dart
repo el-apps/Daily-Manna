@@ -48,6 +48,22 @@ void main() {
     }
   });
 
+  test('PDF list paragraphs can span multiple pages', () async {
+    final files = await buildStudyNotesPdfs(
+      title: 'Long outline',
+      source:
+          '- Read ${List.filled(1000, 'a supporting **point**').join(' ')}\n'
+          '  - A nested item\n\n'
+          '    A continuation paragraph in the nested item.\n\n'
+          '- The final item',
+    );
+    final pdf = latin1.decode(files.values.single);
+    final pageCount = RegExp(
+      r'/Type/Pages\b[^>]*?/Count\s+(\d+)',
+    ).firstMatch(pdf)!;
+    expect(int.parse(pageCount.group(1)!), greaterThan(1));
+  });
+
   testWidgets('sermon Markdown preserves nesting, emphasis and reading cues', (
     tester,
   ) async {

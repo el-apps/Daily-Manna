@@ -47,16 +47,23 @@ Future<Map<String, Uint8List>> buildStudyNotesPdfs({
   final document = pw.Document(title: title, theme: theme);
   document.addPage(
     pw.MultiPage(
-      pageFormat: const PdfPageFormat(396, 612, marginAll: 54),
-      maxPages: 1000,
-      build: (_) => _blocks(parseStudyMarkdown(source), 8),
-      footer: (context) => pw.Align(
-        alignment: pw.Alignment.center,
-        child: pw.Text(
-          '${context.pageNumber}',
-          style: const pw.TextStyle(fontSize: 8),
+      pageTheme: pw.PageTheme(
+        pageFormat: const PdfPageFormat(396, 612, marginAll: 54),
+        // extarticle's footer baseline sits 30 TeX points below the text
+        // area. Paint it in the margin without reserving body-text space.
+        buildForeground: (context) => pw.Align(
+          alignment: pw.Alignment.bottomCenter,
+          child: pw.Transform.translate(
+            offset: const PdfPoint(0, -30 * 72 / 72.27),
+            child: pw.Text(
+              '${context.pageNumber}',
+              style: const pw.TextStyle(fontSize: 8),
+            ),
+          ),
         ),
       ),
+      maxPages: 1000,
+      build: (_) => _blocks(parseStudyMarkdown(source), 8),
     ),
   );
   final name = title.replaceAll(RegExp(r'[^\w\- ]'), '').trim();
@@ -144,7 +151,13 @@ List<pw.Widget> _blocks(List<md.Node> nodes, double size, {int depth = 0}) {
       case 'ul':
       case 'ol':
         var number = int.tryParse(node.attributes['start'] ?? '') ?? 1;
-        for (final item in children.whereType<md.Element>()) {
+        final items = children.whereType<md.Element>().toList();
+        // Leave enough room for the widest number so 9. and 10. share a
+        // text column and multi-digit markers never wrap onto another line.
+        final markerWidth = node.tag == 'ol'
+            ? size * ((number + items.length - 1).toString().length * 0.6 + 0.8)
+            : size * (depth == 0 ? 1.2 : 1.8);
+        for (final item in items) {
           final parts = item.children ?? <md.Node>[];
           // Tight lists have inline children; loose lists have paragraphs.
           final blocks = <md.Node>[];
@@ -172,14 +185,42 @@ List<pw.Widget> _blocks(List<md.Node> nodes, double size, {int depth = 0}) {
             }
           }
           flush();
-          if (blocks.isNotEmpty && blocks.first is md.Element) {
-            final first = blocks.first as md.Element;
-            first.children?.insert(
-              0,
-              md.Text(node.tag == 'ol' ? '${number++}. ' : '• '),
-            );
-          }
-          widgets.addAll(_blocks(blocks, size, depth: depth + 1));
+          final itemWidgets = _blocks(blocks, size, depth: depth + 1);
+          if (itemWidgets.isEmpty) continue;
+          // Match the script's 1.2em outer and 1.8em nested list margins.
+          // Spanning partitions keep the marker separate from the body while
+          // allowing a long first paragraph to continue on the next page.
+          widgets.add(
+            pw.Partitions(
+              children: [
+                pw.Partition(
+                  width: markerWidth,
+                  child: pw.Padding(
+                    padding: pw.EdgeInsets.only(right: size * 0.4),
+                    child: pw.Text(
+                      node.tag == 'ol' ? '${number++}.' : '•',
+                      style: pw.TextStyle(fontSize: size),
+                      textAlign: pw.TextAlign.right,
+                      overflow: pw.TextOverflow.span,
+                    ),
+                  ),
+                ),
+                pw.Partition(
+                  child: pw.Padding(
+                    padding: pw.EdgeInsets.zero,
+                    child: itemWidgets.first,
+                  ),
+                ),
+              ],
+            ),
+          );
+          widgets.addAll([
+            for (final widget in itemWidgets.skip(1))
+              pw.Padding(
+                padding: pw.EdgeInsets.only(left: markerWidth),
+                child: widget,
+              ),
+          ]);
         }
       case 'blockquote':
         widgets.add(
@@ -220,10 +261,7 @@ List<pw.Widget> _blocks(List<md.Node> nodes, double size, {int depth = 0}) {
         };
         widgets.add(
           pw.Padding(
-            padding: pw.EdgeInsets.only(
-              left: depth > 0 ? (depth - 1) * size * 1.8 : 0,
-              top: widgets.isEmpty ? 0 : spaceBefore,
-            ),
+            padding: pw.EdgeInsets.only(top: widgets.isEmpty ? 0 : spaceBefore),
             child: pw.RichText(
               overflow: pw.TextOverflow.span,
               text: pw.TextSpan(
