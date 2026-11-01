@@ -24,7 +24,10 @@ class StudyMarkdownPreview extends StatelessWidget {
       blockquotePadding: const EdgeInsets.all(10),
       listIndent: 20,
     ),
-    builders: {'read': _ReadBuilder(), 'pagebreak': _PageBreakBuilder()},
+    builders: {
+      'read': _ReadBuilder(),
+      'pagebreak': _PageBreakBuilder(parseStudyMarkdown(source)),
+    },
   );
 }
 
@@ -67,6 +70,21 @@ class _ReadBuilder extends MarkdownElementBuilder {
 }
 
 class _PageBreakBuilder extends MarkdownElementBuilder {
+  _PageBreakBuilder(List<md.Node> nodes) : totalPages = 1 + _countBreaks(nodes);
+
+  final int totalPages;
+  int page = 0;
+
+  // Count parsed markers so fenced code containing \newpage stays ordinary text.
+  static int _countBreaks(List<md.Node> nodes) => nodes.fold(
+    0,
+    (count, node) =>
+        count +
+        (node is md.Element
+            ? (node.tag == 'pagebreak' ? 1 : _countBreaks(node.children ?? []))
+            : 0),
+  );
+
   @override
   bool isBlockElement() => true;
 
@@ -76,14 +94,14 @@ class _PageBreakBuilder extends MarkdownElementBuilder {
     md.Element element,
     TextStyle? preferredStyle,
     TextStyle? parentStyle,
-  ) => const Row(
+  ) => Row(
     children: [
-      Expanded(child: Divider()),
+      const Expanded(child: Divider()),
       Padding(
-        padding: EdgeInsets.symmetric(horizontal: 12),
-        child: Text('Page break'),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Text('Page ${++page}/$totalPages'),
       ),
-      Expanded(child: Divider()),
+      const Expanded(child: Divider()),
     ],
   );
 }
