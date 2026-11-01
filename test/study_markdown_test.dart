@@ -64,6 +64,20 @@ void main() {
     expect(int.parse(pageCount.group(1)!), greaterThan(1));
   });
 
+  test('PDF quotes use compact insets without trailing blank lines', () async {
+    final files = await buildStudyNotesPdfs(
+      title: 'Quotations',
+      // Twenty single-line quotes fit in the 504pt text area with the
+      // script's insets; 7pt padding or trailing blank lines spill over.
+      source: List.filled(20, '> A short quotation.').join('\n\n'),
+    );
+    final pdf = latin1.decode(files.values.single);
+    final pageCount = RegExp(
+      r'/Type/Pages\b[^>]*?/Count\s+(\d+)',
+    ).firstMatch(pdf)!;
+    expect(int.parse(pageCount.group(1)!), 1);
+  });
+
   testWidgets('sermon Markdown preserves nesting, emphasis and reading cues', (
     tester,
   ) async {

@@ -226,7 +226,11 @@ List<pw.Widget> _blocks(List<md.Node> nodes, double size, {int depth = 0}) {
         widgets.add(
           pw.Container(
             margin: const pw.EdgeInsets.symmetric(vertical: 3),
-            padding: const pw.EdgeInsets.all(7),
+            // Match the script's 0.6em horizontal and 0.4em vertical insets.
+            padding: pw.EdgeInsets.symmetric(
+              horizontal: size * 0.6,
+              vertical: size * 0.4,
+            ),
             decoration: pw.BoxDecoration(
               border: pw.Border.all(color: PdfColor.fromHex('009900')),
             ),
@@ -290,7 +294,7 @@ List<pw.Widget> _blocks(List<md.Node> nodes, double size, {int depth = 0}) {
 }
 
 List<pw.InlineSpan> _spans(List<md.Node> nodes) => [
-  for (final node in nodes)
+  for (final (index, node) in nodes.indexed)
     if (node is md.Element)
       pw.TextSpan(
         text: node.tag == 'br' ? '\n' : null,
@@ -310,7 +314,9 @@ List<pw.InlineSpan> _spans(List<md.Node> nodes) => [
         },
         children: [
           ..._spans(node.children ?? []),
-          if (['p', 'read', 'li'].contains(node.tag))
+          // Separate paragraphs without adding blank lines after the quote.
+          if (index < nodes.length - 1 &&
+              ['p', 'read', 'li'].contains(node.tag))
             const pw.TextSpan(text: '\n\n'),
         ],
       )
