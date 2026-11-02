@@ -27,7 +27,9 @@ An app for building strong daily habits in interacting with the Word of God.
 - **Sequential** exports one half-letter page at a time. **Opening** places consecutive pages side by side on landscape Letter. **Cut-and-stack** arranges landscape Letter sheets so you can cut vertically and stack the right halves on the left halves.
 - **Cut-and-stack** exports separate `-fronts.pdf` and `-backs.pdf` files for manual double-sided printing; **Cut-and-stack Duplex** exports one interleaved PDF for a double-sided printer. Use landscape, 100% scale, and short-edge flip for either printing method.
 - Export uses the current draft without saving it or recording a study session. On web it downloads the PDF file(s); on Android it opens one share sheet, including both files for manual duplex.
-- PDF generation runs locally with bundled DejaVu Serif fonts, including bold and italic. It does not require Pandoc, LaTeX, a conversion server, or a font download.
+- PDF generation runs locally with bundled Bitstream Charter fonts, including bold and italic, matching the original sermon script. DejaVu Serif supplies missing symbols such as arrows. It does not require Pandoc, LaTeX, a conversion server, or a font download.
+- PDF headings match the script's 8 pt `extarticle` sizes: H1 is 10.95 pt, H2 is 10 pt, and H3–H6 are 8 pt. H1–H5 are black; H6 and bold emphasis are steel blue. Heading spacing follows the script's nominal values rather than LaTeX's elastic page layout.
+- PDF lists use hanging indents: wrapped lines and continuation paragraphs align with the item text, with deeper indentation for nested lists. Long items can continue across pages. Page numbers sit in the bottom margin, 30 TeX points below the body area, matching the script.
 - PDF output follows the sermon styling and page-order conventions, but is not a pixel-identical LaTeX rendering.
 
 ## Editing concept maps

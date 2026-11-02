@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:daily_manna/services/study_notes_pdf.dart';
 import 'package:daily_manna/ui/study/study_markdown_preview.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +7,27 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('PDF embeds Charter faces and a fallback for Unicode symbols', () async {
+    final files = await buildStudyNotesPdfs(
+      title: 'Typography',
+      source: 'Regular **bold** *italic* ***bold italic*** →',
+    );
+    final pdf = latin1.decode(files.values.single);
+    for (final font in [
+      'CharterRegular',
+      'CharterBold',
+      'CharterItalic',
+      'CharterBoldItalic',
+      'DejaVuSerif',
+    ]) {
+      expect(
+        RegExp('/FontName\\s*/$font(?=[\\s/<>])').hasMatch(pdf),
+        isTrue,
+        reason: 'The exported PDF must embed $font',
+      );
+    }
+  });
 
   test('cut-and-stack splits files only for manual printing', () async {
     for (final format in [
@@ -23,6 +46,36 @@ void main() {
             : ['Outline.pdf'],
       );
     }
+  });
+
+  test('PDF list paragraphs can span multiple pages', () async {
+    final files = await buildStudyNotesPdfs(
+      title: 'Long outline',
+      source:
+          '- Read ${List.filled(1000, 'a supporting **point**').join(' ')}\n'
+          '  - A nested item\n\n'
+          '    A continuation paragraph in the nested item.\n\n'
+          '- The final item',
+    );
+    final pdf = latin1.decode(files.values.single);
+    final pageCount = RegExp(
+      r'/Type/Pages\b[^>]*?/Count\s+(\d+)',
+    ).firstMatch(pdf)!;
+    expect(int.parse(pageCount.group(1)!), greaterThan(1));
+  });
+
+  test('PDF quotes use compact insets without trailing blank lines', () async {
+    final files = await buildStudyNotesPdfs(
+      title: 'Quotations',
+      // Twenty single-line quotes fit in the 504pt text area with the
+      // script's insets; 7pt padding or trailing blank lines spill over.
+      source: List.filled(20, '> A short quotation.').join('\n\n'),
+    );
+    final pdf = latin1.decode(files.values.single);
+    final pageCount = RegExp(
+      r'/Type/Pages\b[^>]*?/Count\s+(\d+)',
+    ).firstMatch(pdf)!;
+    expect(int.parse(pageCount.group(1)!), 1);
   });
 
   testWidgets('sermon Markdown preserves nesting, emphasis and reading cues', (

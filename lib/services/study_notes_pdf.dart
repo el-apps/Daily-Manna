@@ -29,32 +29,41 @@ Future<Map<String, Uint8List>> buildStudyNotesPdfs({
   required String source,
   StudyNotesPdfFormat format = StudyNotesPdfFormat.sequential,
 }) async {
-  // Bundle fonts so export works offline and preserves curly quotes and arrows.
+  // Match the script's Bitstream Charter family, with a Unicode fallback for
+  // symbols such as arrows that Charter does not contain. All fonts are local.
   final theme = pw.ThemeData.withFont(
-    base: pw.Font.ttf(await rootBundle.load('assets/fonts/DejaVuSerif.ttf')),
-    bold: pw.Font.ttf(
-      await rootBundle.load('assets/fonts/DejaVuSerif-Bold.ttf'),
-    ),
+    base: pw.Font.ttf(await rootBundle.load('assets/fonts/Charter.ttf')),
+    bold: pw.Font.ttf(await rootBundle.load('assets/fonts/Charter-Bold.ttf')),
     italic: pw.Font.ttf(
-      await rootBundle.load('assets/fonts/DejaVuSerif-Italic.ttf'),
+      await rootBundle.load('assets/fonts/Charter-Italic.ttf'),
     ),
     boldItalic: pw.Font.ttf(
-      await rootBundle.load('assets/fonts/DejaVuSerif-BoldItalic.ttf'),
+      await rootBundle.load('assets/fonts/Charter-BoldItalic.ttf'),
     ),
+    fontFallback: [
+      pw.Font.ttf(await rootBundle.load('assets/fonts/DejaVuSerif.ttf')),
+    ],
   );
   final document = pw.Document(title: title, theme: theme);
   document.addPage(
     pw.MultiPage(
-      pageFormat: const PdfPageFormat(396, 612, marginAll: 54),
-      maxPages: 1000,
-      build: (_) => _blocks(parseStudyMarkdown(source), 8),
-      footer: (context) => pw.Align(
-        alignment: pw.Alignment.center,
-        child: pw.Text(
-          '${context.pageNumber}',
-          style: const pw.TextStyle(fontSize: 8),
+      pageTheme: pw.PageTheme(
+        pageFormat: const PdfPageFormat(396, 612, marginAll: 54),
+        // extarticle's footer baseline sits 30 TeX points below the text
+        // area. Paint it in the margin without reserving body-text space.
+        buildForeground: (context) => pw.Align(
+          alignment: pw.Alignment.bottomCenter,
+          child: pw.Transform.translate(
+            offset: const PdfPoint(0, -30 * 72 / 72.27),
+            child: pw.Text(
+              '${context.pageNumber}',
+              style: const pw.TextStyle(fontSize: 8),
+            ),
+          ),
         ),
       ),
+      maxPages: 1000,
+      build: (_) => _blocks(parseStudyMarkdown(source), 8),
     ),
   );
   final name = title.replaceAll(RegExp(r'[^\w\- ]'), '').trim();
@@ -142,7 +151,13 @@ List<pw.Widget> _blocks(List<md.Node> nodes, double size, {int depth = 0}) {
       case 'ul':
       case 'ol':
         var number = int.tryParse(node.attributes['start'] ?? '') ?? 1;
-        for (final item in children.whereType<md.Element>()) {
+        final items = children.whereType<md.Element>().toList();
+        // Leave enough room for the widest number so 9. and 10. share a
+        // text column and multi-digit markers never wrap onto another line.
+        final markerWidth = node.tag == 'ol'
+            ? size * ((number + items.length - 1).toString().length * 0.6 + 0.8)
+            : size * (depth == 0 ? 1.2 : 1.8);
+        for (final item in items) {
           final parts = item.children ?? <md.Node>[];
           // Tight lists have inline children; loose lists have paragraphs.
           final blocks = <md.Node>[];
@@ -170,20 +185,52 @@ List<pw.Widget> _blocks(List<md.Node> nodes, double size, {int depth = 0}) {
             }
           }
           flush();
-          if (blocks.isNotEmpty && blocks.first is md.Element) {
-            final first = blocks.first as md.Element;
-            first.children?.insert(
-              0,
-              md.Text(node.tag == 'ol' ? '${number++}. ' : '• '),
-            );
-          }
-          widgets.addAll(_blocks(blocks, size, depth: depth + 1));
+          final itemWidgets = _blocks(blocks, size, depth: depth + 1);
+          if (itemWidgets.isEmpty) continue;
+          // Match the script's 1.2em outer and 1.8em nested list margins.
+          // Spanning partitions keep the marker separate from the body while
+          // allowing a long first paragraph to continue on the next page.
+          widgets.add(
+            pw.Partitions(
+              children: [
+                pw.Partition(
+                  width: markerWidth,
+                  child: pw.Padding(
+                    padding: pw.EdgeInsets.only(right: size * 0.4),
+                    child: pw.Text(
+                      node.tag == 'ol' ? '${number++}.' : '•',
+                      style: pw.TextStyle(fontSize: size),
+                      textAlign: pw.TextAlign.right,
+                      overflow: pw.TextOverflow.span,
+                    ),
+                  ),
+                ),
+                pw.Partition(
+                  child: pw.Padding(
+                    padding: pw.EdgeInsets.zero,
+                    child: itemWidgets.first,
+                  ),
+                ),
+              ],
+            ),
+          );
+          widgets.addAll([
+            for (final widget in itemWidgets.skip(1))
+              pw.Padding(
+                padding: pw.EdgeInsets.only(left: markerWidth),
+                child: widget,
+              ),
+          ]);
         }
       case 'blockquote':
         widgets.add(
           pw.Container(
             margin: const pw.EdgeInsets.symmetric(vertical: 3),
-            padding: const pw.EdgeInsets.all(7),
+            // Match the script's 0.6em horizontal and 0.4em vertical insets.
+            padding: pw.EdgeInsets.symmetric(
+              horizontal: size * 0.6,
+              vertical: size * 0.4,
+            ),
             decoration: pw.BoxDecoration(
               border: pw.Border.all(color: PdfColor.fromHex('009900')),
             ),
@@ -203,22 +250,33 @@ List<pw.Widget> _blocks(List<md.Node> nodes, double size, {int depth = 0}) {
       default:
         final heading = RegExp(r'^h([1-6])$').firstMatch(node.tag);
         final level = heading == null ? null : int.parse(heading.group(1)!);
+        // The script uses extarticle at 8pt: Large=10.95pt, large=10pt,
+        // normalsize=8pt. Match its nominal spacing (Charter's x-height is
+        // 0.481em), without LaTeX's stretch/shrink page-layout adjustments.
+        final ex = size * 0.481;
+        final (fontSize, spaceBefore, spaceAfter) = switch (level) {
+          1 => (10.95, 1.5 * ex, 2.3 * ex),
+          2 => (10.0, 1.5 * ex, 1.5 * ex),
+          3 => (size, 1.5 * ex, 1.5 * ex),
+          4 => (size, 1.5 * ex, 0.8 * ex),
+          5 => (size, 1.2 * ex, 0.6 * ex),
+          6 => (size, 0.35 * 9.5, 4.0),
+          _ => (size, 0.0, 4.0),
+        };
         widgets.add(
           pw.Padding(
-            padding: pw.EdgeInsets.only(
-              left: depth > 0 ? (depth - 1) * size * 1.8 : 0,
-            ),
+            padding: pw.EdgeInsets.only(top: widgets.isEmpty ? 0 : spaceBefore),
             child: pw.RichText(
               overflow: pw.TextOverflow.span,
               text: pw.TextSpan(
                 style: pw.TextStyle(
-                  fontSize: level == null
-                      ? size
-                      : size * [1.8, 1.5, 1.2, 1, 1, 1][level - 1],
+                  fontSize: fontSize,
                   fontWeight: level == null
                       ? pw.FontWeight.normal
                       : pw.FontWeight.bold,
-                  color: level != null
+                  // LaTeX section commands are black; only the custom H6
+                  // filter uses the script's blue textbf definition.
+                  color: level == 6
                       ? PdfColor.fromHex('1565C0')
                       : node.tag == 'read'
                       ? PdfColor.fromHex('C00000')
@@ -229,14 +287,14 @@ List<pw.Widget> _blocks(List<md.Node> nodes, double size, {int depth = 0}) {
             ),
           ),
         );
-        widgets.add(pw.SizedBox(height: level == null ? 4 : 8));
+        widgets.add(pw.SizedBox(height: spaceAfter));
     }
   }
   return widgets;
 }
 
 List<pw.InlineSpan> _spans(List<md.Node> nodes) => [
-  for (final node in nodes)
+  for (final (index, node) in nodes.indexed)
     if (node is md.Element)
       pw.TextSpan(
         text: node.tag == 'br' ? '\n' : null,
@@ -256,7 +314,9 @@ List<pw.InlineSpan> _spans(List<md.Node> nodes) => [
         },
         children: [
           ..._spans(node.children ?? []),
-          if (['p', 'read', 'li'].contains(node.tag))
+          // Separate paragraphs without adding blank lines after the quote.
+          if (index < nodes.length - 1 &&
+              ['p', 'read', 'li'].contains(node.tag))
             const pw.TextSpan(text: '\n\n'),
         ],
       )
