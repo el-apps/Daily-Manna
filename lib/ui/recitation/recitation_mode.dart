@@ -5,6 +5,7 @@ import 'package:daily_manna/services/bible_service.dart';
 import 'package:daily_manna/services/error_logger_service.dart';
 import 'package:daily_manna/services/backend_service.dart';
 import 'package:daily_manna/services/results_service.dart';
+import 'package:daily_manna/services/recitation_recorder.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/loading_section.dart';
 import 'package:daily_manna/ui/recitation/recitation_confirmation_section.dart';
@@ -18,7 +19,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
-import 'package:record/record.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:word_tools/word_tools.dart';
 
@@ -40,9 +40,15 @@ class RecitationMode extends StatefulWidget {
 }
 
 class _RecitationModeState extends State<RecitationMode> {
-  late AudioRecorder _recorder;
+  late RecitationRecorder _recorder;
   late AudioPlayer _audioPlayer;
   late BackendService _backendService;
+  String? _recordingError;
+  bool _loadingRecording = false;
+
+  // Android's foreground service keeps capture alive without keeping the screen on.
+  bool get _keepScreenOn =>
+      kIsWeb || defaultTargetPlatform != TargetPlatform.android;
 
   RecitationStep _step = RecitationStep.idle;
   String? _audioFilePath;
@@ -60,7 +66,7 @@ class _RecitationModeState extends State<RecitationMode> {
   @override
   void initState() {
     super.initState();
-    _recorder = AudioRecorder();
+    _recorder = RecitationRecorder()..addListener(_recordingChanged);
     _audioPlayer = AudioPlayer();
     _backendService = BackendService();
     _transcriptionController = TextEditingController();
@@ -70,14 +76,14 @@ class _RecitationModeState extends State<RecitationMode> {
       startVerse: 1,
     );
 
-    // Keep screen on during recitation flow
-    WakelockPlus.enable();
+    if (_keepScreenOn) WakelockPlus.enable();
   }
 
   @override
   void dispose() {
-    WakelockPlus.disable();
+    if (_keepScreenOn) WakelockPlus.disable();
     _clearAudio();
+    _recorder.removeListener(_recordingChanged);
     _recorder.dispose();
     _audioPlayer.dispose();
     _transcriptionController.dispose();
@@ -130,11 +136,15 @@ class _RecitationModeState extends State<RecitationMode> {
                 onSubmit: _sendForTranscription,
               ),
               RecitationStep.idle || RecitationStep.recording => RecordingCard(
-                state: _step == RecitationStep.recording
+                state: _recorder.isMuted
+                    ? RecordingState.muted
+                    : _step == RecitationStep.recording
                     ? RecordingState.recording
                     : RecordingState.idle,
-                onToggle: _step == RecitationStep.recording
-                    ? _stopRecording
+                isBusy: _recorder.isBusy || _loadingRecording,
+                onToggleMute: _recorder.toggleMute,
+                onToggle: _recorder.isRecording
+                    ? _recorder.stop
                     : _startRecording,
               ),
             },
@@ -145,61 +155,54 @@ class _RecitationModeState extends State<RecitationMode> {
   }
 
   Future<void> _startRecording() async {
-    try {
-      if (await _recorder.hasPermission()) {
-        _clearAudio();
+    _clearAudio();
+    await _recorder.start();
+  }
 
-        // Use WAV format - supported by OpenRouter/Gemini API
-        final config = const RecordConfig(
-          encoder: AudioEncoder.wav,
-          sampleRate: 16000,
-          numChannels: 1,
-        );
-
-        if (kIsWeb) {
-          // The web implementation returns a browser blob URL from stop().
-          await _recorder.start(config, path: '');
-        } else {
-          final path = await recordingPath();
-          debugPrint('[RecitationMode] Starting recording at $path');
-          await _recorder.start(config, path: path);
-        }
-
-        setState(() => _step = RecitationStep.recording);
-      } else {
-        _safeShowError('Microphone permission denied');
+  void _recordingChanged() {
+    if (!mounted) return;
+    setState(() {
+      if (_recorder.isRecording) {
+        _step = RecitationStep.recording;
+      } else if (_recorder.state == RecitationRecordingState.idle) {
+        _step = RecitationStep.idle;
       }
-    } catch (e) {
-      _safeShowError('Failed to start recording: $e');
+    });
+    if (_recorder.error != null && _recorder.error != _recordingError) {
+      _safeShowError(_recorder.error!);
+    }
+    _recordingError = _recorder.error;
+
+    final path = _recorder.path;
+    if (_recorder.state == RecitationRecordingState.saved &&
+        path != null &&
+        path != _audioFilePath &&
+        !_loadingRecording) {
+      unawaited(_loadRecording(path));
     }
   }
 
-  Future<void> _stopRecording() async {
+  Future<void> _loadRecording(String path) async {
+    setState(() => _loadingRecording = true);
+    _audioFilePath = path;
     try {
-      final path = await _recorder.stop();
-
-      if (path == null || path.isEmpty) {
-        _safeShowError('No audio data recorded');
-        return;
-      }
-
-      _audioFilePath = path;
-      _audioData = await readRecordingBytes(path);
-
-      debugPrint('[RecitationMode] AAC file size: ${_audioData!.length} bytes');
+      final data = await readRecordingBytes(path);
+      if (!mounted) return;
+      _audioData = data;
 
       // Set up audio player with the recorded file
-      await _audioPlayer.setAudioSource(
-        await createRecordingAudioSource(_audioFilePath!),
-      );
-      _audioDuration = _audioPlayer.duration;
-      debugPrint('[RecitationMode] Duration: ${_audioDuration?.inSeconds}s');
-
+      final source = await createRecordingAudioSource(path);
       if (!mounted) return;
+      await _audioPlayer.setAudioSource(source);
+      if (!mounted) return;
+      _audioDuration = _audioPlayer.duration;
       setState(() => _step = RecitationStep.playback);
     } catch (e) {
       if (!mounted) return;
-      _safeShowError('Failed to stop recording: $e');
+      setState(() => _step = RecitationStep.idle);
+      _safeShowError('Failed to load recording: $e');
+    } finally {
+      if (mounted) setState(() => _loadingRecording = false);
     }
   }
 
