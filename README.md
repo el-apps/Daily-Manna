@@ -4,9 +4,9 @@ An app for building strong daily habits in interacting with the Word of God.
 ## Recitation controls on Android
 
 - Start a recording from **Recite** and allow microphone and notification access. Notifications must be enabled so the background recording always has accessible controls.
-- Android 12 and later show a native ongoing call-style notification named **Recitation**, with **Mute/Unmute** and **Hang up**. Older supported Android versions show an ongoing recording notification with the same actions.
+- Android shows a native ongoing recording notification named **Recitation**, with **Mute/Unmute** and **Stop Recording**. It uses recording controls rather than Android's call template, whose built-in "Hang up" label cannot be customized.
 - **Mute** pauses recording; **Unmute** resumes it. The same controls are available on the recitation screen. Audio interruptions reported by the recorder also update the muted state; resuming requires an explicit action.
-- **Hang up** ends capture and keeps the recording for the existing playback, transcription, and grading flow. Tap the notification before hanging up, or reopen Daily Manna afterward, to return to that screen.
+- **Stop Recording** ends capture and keeps the recording for the existing playback, transcription, and grading flow. Tap the notification before stopping, or reopen Daily Manna afterward, to return to that screen.
 - A microphone foreground service keeps the session active while another app is open or the screen is locked, without forcing the display to stay on. This is not a carrier/Telecom call and does not use the phone dialer.
 - Leaving the recitation screen cancels an unfinished recording. Removing the app task, destroying its Flutter engine, or force-stopping the app ends the session; recordings are not restored after process death.
 - Web retains the existing foreground recording workflow, with the new in-page mute control but no Android notification.
@@ -15,10 +15,10 @@ An app for building strong daily habits in interacting with the Word of God.
 
 1. Start a recording, lock the screen, and verify that speech still appears in the saved playback after unlocking.
 2. Mute and unmute from both the notification and the app; verify that their states agree and paused speech is excluded from playback.
-3. Hang up while recording and while muted; verify that playback opens with the captured audio and the notification disappears.
+3. Select **Stop Recording** while recording and while muted; verify that playback opens with the captured audio and the notification disappears.
 4. Deny microphone or notification permission, or disable the recitation notification channel in Settings; verify that starting fails visibly without leaving capture or a notification running.
 5. Leave the recitation screen, remove the app task, and interrupt recording with another audio app; verify cleanup and that interrupted capture does not silently resume.
-6. Check Android 12+ call styling and the Android 7–11 notification fallback on real devices. Browser tests do not exercise Android notifications, lock-screen capture, or Bluetooth routing.
+6. Check the notification and both actions on older and newer supported Android devices. Browser tests do not exercise Android notifications, lock-screen capture, or Bluetooth routing.
 
 ## Recording study sessions
 

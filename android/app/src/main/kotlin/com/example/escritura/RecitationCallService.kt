@@ -4,7 +4,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.Person
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -123,7 +122,7 @@ class RecitationCallService : Service() {
             .setContentTitle("Recitation")
             .setContentText(if (current.muted) "Microphone muted" else "Recording recitation")
             .setContentIntent(contentIntent)
-            .setCategory(Notification.CATEGORY_CALL)
+            .setCategory(Notification.CATEGORY_SERVICE)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setShowWhen(false)
@@ -136,19 +135,14 @@ class RecitationCallService : Service() {
                     toggleMute,
                 ).build(),
             )
-        if (Build.VERSION.SDK_INT >= 31) {
-            builder.setStyle(
-                Notification.CallStyle.forOngoingCall(
-                    Person.Builder().setName("Recitation").setImportant(true).build(), hangUp,
-                ),
-            )
-            builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
-        } else {
-            builder.addAction(
+            // CallStyle supplies an unchangeable "Hang up" action; this is a recording.
+            .addAction(
                 Notification.Action.Builder(
-                    android.R.drawable.ic_menu_close_clear_cancel, "Finish recitation", hangUp,
+                    R.drawable.ic_recitation_stop, "Stop Recording", hangUp,
                 ).build(),
             )
+        if (Build.VERSION.SDK_INT >= 31) {
+            builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
         }
         return builder.build()
     }
