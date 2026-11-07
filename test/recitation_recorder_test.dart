@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:daily_manna/services/recitation_audio_input.dart';
 import 'package:daily_manna/services/recitation_call_service.dart';
 import 'package:daily_manna/services/recitation_recorder.dart';
+import 'package:daily_manna/ui/recitation/audio_input_selector.dart';
 import 'package:daily_manna/ui/recitation/recording_card.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -14,14 +16,17 @@ void main() {
   final binding = TestWidgetsFlutterBinding.ensureInitialized();
   late _Recorder audio;
   late _CallService calls;
+  late _AudioInput inputs;
   late RecitationRecorder recorder;
 
   setUp(() {
     audio = _Recorder();
     calls = _CallService();
+    inputs = _AudioInput();
     recorder = RecitationRecorder(
       recorder: audio,
       callService: calls,
+      audioInput: inputs,
       pathProvider: () async => '/recording.wav',
     );
   });
@@ -31,6 +36,207 @@ void main() {
     recorder.dispose();
     await audio.events.close();
   });
+
+  test('selected microphone stays fixed until the recording ends', () async {
+    await recorder.refreshInputs();
+    recorder.selectInput('headset');
+    await recorder.start();
+    expect(audio.config!.device!.id, '42');
+    expect(audio.config!.androidConfig.manageBluetooth, isFalse);
+    expect(audio.config!.encoder, AudioEncoder.wav);
+    expect(audio.config!.sampleRate, 16000);
+    expect(audio.config!.numChannels, 1);
+    expect(recorder.selectedInput.bluetooth, isTrue);
+    recorder.selectInput('phone');
+    expect(recorder.selectedInput.id, 'headset');
+    await recorder.toggleMute();
+    recorder.selectInput('phone');
+    expect(recorder.selectedInput.id, 'headset');
+    await recorder.stop();
+    expect(inputs.active, isFalse);
+    recorder.selectInput('phone');
+    await recorder.start();
+    expect(audio.config!.device!.id, '7');
+    expect(audio.config!.androidConfig.audioSource, AndroidAudioSource.mic);
+    expect(recorder.selectedInput.bluetooth, isFalse);
+  });
+
+  test('disconnected selection never silently falls back to phone', () async {
+    await recorder.refreshInputs();
+    recorder.selectInput('headset');
+    inputs.available = const [RecitationInput.phone];
+    await recorder.refreshInputs();
+    expect(recorder.selectedInput.id, 'headset');
+    expect(recorder.inputAvailable, isFalse);
+    await recorder.start();
+    expect(recorder.error, contains('Microphone disconnected'));
+    expect(audio.active, isFalse);
+    expect(calls.visible, isFalse);
+    expect(inputs.active, isFalse);
+  });
+
+  test(
+    'route verification failure cancels capture and releases routing',
+    () async {
+      inputs.verifyError = StateError(
+        'Android selected a different microphone',
+      );
+      await recorder.start();
+      expect(recorder.state, RecitationRecordingState.idle);
+      expect(recorder.error, contains('different microphone'));
+      expect(recorder.path, isNull);
+      expect(audio.active, isFalse);
+      expect(calls.visible, isFalse);
+      expect(inputs.active, isFalse);
+    },
+  );
+
+  test(
+    'input loss saves captured speech and stops recording even while muted',
+    () async {
+      await recorder.refreshInputs();
+      recorder.selectInput('headset');
+      await recorder.start();
+      audio.speak('Blessed are the peacemakers');
+      await recorder.toggleMute();
+      await inputs.onLost('Bluetooth microphone disconnected.');
+      expect(recorder.state, RecitationRecordingState.saved);
+      expect(audio.saved, ['Blessed are the peacemakers']);
+      expect(recorder.error, contains('Review the saved audio'));
+      expect(audio.active, isFalse);
+      expect(inputs.active, isFalse);
+      expect(calls.visible, isFalse);
+    },
+  );
+
+  test(
+    'leaving while routing starts cannot leave the microphone active',
+    () async {
+      final ready = Completer<void>();
+      inputs.ready = ready.future;
+      final starting = recorder.start();
+      await Future<void>.delayed(Duration.zero);
+      final closing = recorder.close();
+      ready.complete();
+      await Future.wait([starting, closing]);
+      expect(audio.active, isFalse);
+      expect(audio.disposed, isTrue);
+      expect(inputs.active, isFalse);
+      expect(calls.visible, isFalse);
+    },
+  );
+
+  test('closing keeps routing until the capture thread has stopped', () async {
+    await recorder.start();
+    final finished = Completer<void>();
+    audio.stopReady = finished.future;
+    final closing = recorder.close();
+    await Future<void>.delayed(Duration.zero);
+    expect(inputs.active, isTrue);
+    expect(calls.visible, isTrue);
+    finished.complete();
+    await closing;
+    expect(inputs.active, isFalse);
+    expect(audio.active, isFalse);
+    expect(recorder.path, isNull);
+  });
+
+  testWidgets('input selector chooses a headset and locks during capture', (
+    tester,
+  ) async {
+    var selected = RecitationInput.phone;
+    var refreshes = 0;
+    Widget selector({bool recording = false}) => MaterialApp(
+      home: Scaffold(
+        body: AudioInputSelector(
+          inputs: inputs.available,
+          selected: selected,
+          recording: recording,
+          onChanged: (id) =>
+              selected = inputs.available.firstWhere((input) => input.id == id),
+          onRefresh: () => refreshes++,
+        ),
+      ),
+    );
+    await tester.pumpWidget(selector());
+    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bluetooth microphone · Test headset').last);
+    await tester.pumpAndSettle();
+    expect(selected.id, 'headset');
+    await tester.tap(find.byTooltip('Refresh microphones'));
+    expect(refreshes, 1);
+    await tester.pumpWidget(selector(recording: true));
+    expect(
+      tester
+          .widget<DropdownButton<String>>(find.byType(DropdownButton<String>))
+          .onChanged,
+      isNull,
+    );
+    expect(
+      find.text('Stop recording before changing microphones.'),
+      findsOneWidget,
+    );
+    inputs.available = const [RecitationInput.phone];
+    await tester.pumpWidget(selector());
+    expect(find.textContaining('(unavailable)'), findsOneWidget);
+    expect(find.textContaining('Reconnect and refresh'), findsOneWidget);
+  });
+
+  test(
+    'input bridge protects the active route from stale screen cleanup',
+    () async {
+      const channel = MethodChannel('daily_manna/recitation_input');
+      final first = RecitationAudioInput();
+      final second = RecitationAudioInput();
+      var active = false;
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+        call,
+      ) async {
+        switch (call.method) {
+          case 'list':
+            return [
+              {'id': 'phone', 'label': 'Phone microphone', 'bluetooth': false},
+            ];
+          case 'prepare':
+            active = true;
+            return {'id': '7', 'label': 'Built-in mic'};
+          case 'release':
+            active = false;
+          case 'verify':
+            if (!active) throw PlatformException(code: 'input_unavailable');
+        }
+        return null;
+      });
+      try {
+        expect((await first.list()).single.id, 'phone');
+        final device = await first.prepare(
+          RecitationInput.phone,
+          onLost: (_) async {},
+        );
+        expect(device!.id, '7');
+        await first.verify();
+        await expectLater(
+          second.prepare(RecitationInput.phone, onLost: (_) async {}),
+          throwsStateError,
+        );
+        await second.release();
+        expect(active, isTrue);
+        await first.release();
+        expect(active, isFalse);
+        await second.prepare(RecitationInput.phone, onLost: (_) async {});
+        await first.release();
+        expect(active, isTrue);
+        await second.verify();
+      } finally {
+        await first.release();
+        await second.release();
+        binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
+        debugDefaultTargetPlatformOverride = null;
+      }
+    },
+  );
 
   test(
     'screen and notification share mute state and hang up saves audio',
@@ -291,6 +497,8 @@ class _Recorder implements AudioRecorder {
   final events = StreamController<RecordState>.broadcast();
   Future<bool> permission = Future.value(true);
   Object? startError;
+  RecordConfig? config;
+  Future<void>? stopReady;
   bool active = false;
   bool paused = false;
   bool disposed = false;
@@ -308,6 +516,7 @@ class _Recorder implements AudioRecorder {
   @override
   Future<void> start(RecordConfig config, {required String path}) async {
     if (startError != null) throw startError!;
+    this.config = config;
     active = true;
     paused = false;
     captured = [];
@@ -324,6 +533,7 @@ class _Recorder implements AudioRecorder {
   @override
   Future<String?> stop() async {
     if (!active) return null;
+    await stopReady;
     active = false;
     saved = List.of(captured);
     return '/recording.wav';
@@ -374,4 +584,47 @@ class _CallService implements RecitationCallService {
 
   @override
   Future<void> stop() async => visible = false;
+}
+
+class _AudioInput implements RecitationAudioInput {
+  List<RecitationInput> available = const [
+    RecitationInput.phone,
+    RecitationInput(
+      id: 'headset',
+      label: 'Bluetooth microphone · Test headset',
+      bluetooth: true,
+    ),
+  ];
+  bool active = false;
+  Object? verifyError;
+  Future<void>? ready;
+  late Future<void> Function(String) onLost;
+
+  @override
+  bool get isSupported => true;
+
+  @override
+  Future<List<RecitationInput>> list() async => available;
+
+  @override
+  Future<InputDevice?> prepare(
+    RecitationInput input, {
+    required Future<void> Function(String message) onLost,
+  }) async {
+    if (!available.any((device) => device.id == input.id)) {
+      throw StateError('Microphone disconnected');
+    }
+    await ready;
+    this.onLost = onLost;
+    active = true;
+    return InputDevice(id: input.bluetooth ? '42' : '7', label: input.label);
+  }
+
+  @override
+  Future<void> verify() async {
+    if (verifyError != null) throw verifyError!;
+  }
+
+  @override
+  Future<void> release() async => active = false;
 }

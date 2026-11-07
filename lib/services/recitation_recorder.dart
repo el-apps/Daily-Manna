@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:daily_manna/recording_platform.dart';
+import 'package:daily_manna/services/recitation_audio_input.dart';
 import 'package:daily_manna/services/recitation_call_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:record/record.dart';
@@ -19,9 +20,11 @@ class RecitationRecorder extends ChangeNotifier {
   RecitationRecorder({
     AudioRecorder? recorder,
     RecitationCallService? callService,
+    RecitationAudioInput? audioInput,
     Future<String> Function()? pathProvider,
   }) : _recorder = recorder ?? AudioRecorder(),
        _callService = callService ?? RecitationCallService(),
+       _audioInput = audioInput ?? RecitationAudioInput(),
        _pathProvider = pathProvider ?? recordingPath {
     _subscription = _recorder.onStateChanged().listen(
       (_) => unawaited(_run(_refreshState)),
@@ -38,12 +41,23 @@ class RecitationRecorder extends ChangeNotifier {
 
   final AudioRecorder _recorder;
   final RecitationCallService _callService;
+  final RecitationAudioInput _audioInput;
   final Future<String> Function() _pathProvider;
   late final StreamSubscription<RecordState> _subscription;
   Future<void> _pending = Future.value();
   Future<void>? _closeFuture;
   bool _closing = false;
   bool _changingMute = false;
+  bool _loadingInputs = false;
+  List<RecitationInput> _inputs = const [RecitationInput.phone];
+  List<RecitationInput> get inputs => List.unmodifiable(_inputs);
+  RecitationInput _selectedInput = RecitationInput.phone;
+  RecitationInput get selectedInput => _selectedInput;
+  bool get supportsInputSelection => _audioInput.isSupported;
+  bool get loadingInputs => _loadingInputs;
+  bool get inputAvailable =>
+      !supportsInputSelection ||
+      _inputs.any((input) => input.id == _selectedInput.id);
 
   RecitationRecordingState _state = RecitationRecordingState.idle;
   RecitationRecordingState get state => _state;
@@ -57,6 +71,7 @@ class RecitationRecorder extends ChangeNotifier {
   bool get isBusy =>
       state == RecitationRecordingState.starting ||
       state == RecitationRecordingState.stopping ||
+      _loadingInputs ||
       _changingMute;
 
   Future<void> _run(Future<void> Function() operation) {
@@ -69,6 +84,30 @@ class RecitationRecorder extends ChangeNotifier {
 
   void _notify() {
     if (!_closing) notifyListeners();
+  }
+
+  Future<void> refreshInputs() => _run(() async {
+    if (!supportsInputSelection || isRecording) return;
+    _loadingInputs = true;
+    _error = null;
+    _notify();
+    try {
+      _inputs = await _audioInput.list();
+    } catch (error) {
+      _error = 'Failed to list microphones: $error';
+    } finally {
+      _loadingInputs = false;
+      _notify();
+    }
+  });
+
+  void selectInput(String id) {
+    if (_closing || isRecording || isBusy) return;
+    final matching = _inputs.where((input) => input.id == id);
+    if (matching.isEmpty) return;
+    _selectedInput = matching.first;
+    _error = null;
+    _notify();
   }
 
   Future<void> start() => _run(() async {
@@ -87,14 +126,39 @@ class RecitationRecorder extends ChangeNotifier {
       // Enter the foreground while the activity is visible, before capturing.
       await _callService.start(onToggleMute: toggleMute, onHangUp: stop);
       if (_closing) return;
+      final device = await _audioInput.prepare(
+        _selectedInput,
+        onLost: (message) => _run(() async {
+          if (!isRecording) return;
+          await _stop();
+          _error = _path != null
+              ? '$message Recording stopped. Review the saved audio.'
+              : '$message ${_error ?? 'No audio was saved.'}';
+          _notify();
+        }),
+      );
+      if (_closing) return;
+      final bluetooth = supportsInputSelection && _selectedInput.bluetooth;
       await _recorder.start(
-        const RecordConfig(
+        RecordConfig(
           encoder: AudioEncoder.wav,
           sampleRate: 16000,
           numChannels: 1,
+          device: device,
+          androidConfig: AndroidRecordConfig(
+            // Native routing owns the choice; the plugin must not auto-switch.
+            manageBluetooth: !supportsInputSelection,
+            audioSource: bluetooth
+                ? AndroidAudioSource.voiceCommunication
+                : AndroidAudioSource.mic,
+            audioManagerMode: bluetooth
+                ? AudioManagerMode.modeInCommunication
+                : AudioManagerMode.modeNormal,
+          ),
         ),
         path: path,
       );
+      await _audioInput.verify();
       _state = RecitationRecordingState.recording;
     } catch (error) {
       await _cancel();
@@ -165,9 +229,15 @@ class RecitationRecorder extends ChangeNotifier {
       _error = 'Failed to stop recording: $error';
     } finally {
       try {
-        await _callService.stop();
+        await _audioInput.release();
       } catch (error) {
-        _error = 'Failed to close recitation controls: $error';
+        _error = 'Failed to release microphone: $error';
+      } finally {
+        try {
+          await _callService.stop();
+        } catch (error) {
+          _error = 'Failed to close recitation controls: $error';
+        }
       }
     }
     _notify();
@@ -175,14 +245,27 @@ class RecitationRecorder extends ChangeNotifier {
 
   Future<void> _cancel() async {
     try {
+      // Android cancel returns before its capture thread restores audio mode.
+      // Drain an active recorder first so late cleanup cannot undo route release.
+      if (await _recorder.isRecording()) await _recorder.stop();
+    } catch (_) {
+      // Still attempt cancellation if the recorder has already failed.
+    }
+    try {
       await _recorder.cancel();
     } catch (_) {
       // A failed start may not have created a recorder yet.
     } finally {
       try {
-        await _callService.stop();
+        await _audioInput.release();
       } catch (_) {
-        // Native startup failures also tear down their service.
+        // Native lifecycle cleanup also releases routing.
+      } finally {
+        try {
+          await _callService.stop();
+        } catch (_) {
+          // Native startup failures also tear down their service.
+        }
       }
     }
   }

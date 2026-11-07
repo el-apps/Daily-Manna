@@ -14,6 +14,7 @@ import java.lang.ref.WeakReference
 class MainActivity : FlutterActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private var channel: MethodChannel? = null
+    private var audioInput: RecitationAudioInput? = null
     private var attachedEngine: FlutterEngine? = null
     private val engineListener = RecitationEngineListener(this)
     private var resumed = false
@@ -26,6 +27,8 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        audioInput?.dispose()
+        audioInput = RecitationAudioInput(this, flutterEngine)
         attachedEngine = flutterEngine
         flutterEngine.addEngineLifecycleListener(engineListener)
         channel = MethodChannel(
@@ -146,6 +149,8 @@ class MainActivity : FlutterActivity() {
 
     private fun releaseRecitation() {
         cancelStart()
+        audioInput?.dispose()
+        audioInput = null
         RecitationCallService.stop(this)
         channel?.setMethodCallHandler(null)
         channel = null
@@ -174,6 +179,7 @@ class MainActivity : FlutterActivity() {
             // A hot restart discards Dart's recorder/session but keeps the engine/channel.
             activity.get()?.let {
                 it.cancelStart()
+                it.audioInput?.resetForEngineRestart()
                 RecitationCallService.stop(it)
             }
         }
