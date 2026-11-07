@@ -18,6 +18,10 @@ class RecitationInput {
   final String id;
   final String label;
   final bool bluetooth;
+
+  String get displayName => bluetooth
+      ? label.replaceFirst(RegExp(r'^Bluetooth(?: LE)? microphone · '), '')
+      : 'Phone mic';
 }
 
 /// Owns Android routing independently of the foreground notification.

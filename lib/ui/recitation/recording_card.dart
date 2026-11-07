@@ -51,10 +51,6 @@ class RecordingCard extends StatelessWidget {
             const SizedBox(height: 8),
             const Text('Unmute to continue your recitation.'),
           ],
-          if (inputSelector != null) ...[
-            const SizedBox(height: 24),
-            inputSelector!,
-          ],
           const SizedBox(height: 48),
           if (isRecording) ...[
             OutlinedButton.icon(
@@ -69,6 +65,10 @@ class RecordingCard extends StatelessWidget {
             icon: Icon(isRecording ? Icons.stop : Icons.mic),
             label: Text(isRecording ? 'Stop Recording' : 'Start Recording'),
           ),
+          if (inputSelector != null) ...[
+            const SizedBox(height: 8),
+            inputSelector!,
+          ],
         ],
       ),
     );

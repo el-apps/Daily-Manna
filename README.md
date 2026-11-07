@@ -4,7 +4,7 @@ An app for building strong daily habits in interacting with the Word of God.
 ## Recitation controls on Android
 
 - Start a recording from **Recite** and allow microphone and notification access. Notifications must be enabled so the background recording always has accessible controls.
-- Before recording, use **Audio input** to select **Phone microphone** (the default) or a connected Bluetooth headset microphone. Connect or pair headsets in Android Settings, then tap **Refresh microphones**. Playback-only Bluetooth devices are not microphone options; other platforms retain their existing system-selected input.
+- Before recording, tap **Phone mic** (the default) or the headset name beneath the recording controls. A bottom sheet lists microphones with a checkmark on the selection and refreshes each time it opens. Connect or pair headsets in Android Settings, then reopen the sheet. Playback-only Bluetooth devices are not microphone options; other platforms retain their existing system-selected input.
 - Microphone selection is locked while recording or muted. Stop the recording before choosing another microphone; switching does not splice separate recordings together.
 - Android verifies the capture route at startup. If the chosen input cannot be established, startup fails rather than accepting another microphone. If the input disconnects or routing changes during recording, the app stops and saves the captured audio for review. Android reports route changes asynchronously, so a small amount of fallback audio may be captured before the stop completes.
 - Android shows a native ongoing recording notification named **Recitation**, with **Mute/Unmute** and **Stop Recording**. It uses recording controls rather than Android's call template, whose built-in "Hang up" label cannot be customized.
@@ -22,9 +22,9 @@ An app for building strong daily habits in interacting with the Word of God.
 4. Deny microphone or notification permission, or disable the recitation notification channel in Settings; verify that starting fails visibly without leaving capture or a notification running.
 5. Leave the recitation screen, remove the app task, and interrupt recording with another audio app; verify cleanup and that interrupted capture does not silently resume.
 6. Check the notification and both actions on older and newer supported Android devices. Browser tests do not exercise Android notifications, lock-screen capture, or Bluetooth routing.
-7. With a Bluetooth headset connected, select **Phone microphone**, record speech close to the phone and away from the headset, and listen back. Repeat with the headset selected, then return to the phone input for another recording. Check classic Bluetooth and BLE headsets on supported Android versions.
-8. Disconnect the selected headset before starting, while recording, and while muted. Verify that a missing input cannot start, an active recording stops and can be reviewed, and neither case silently selects the phone. Reconnect, refresh, and explicitly select the input for a new recording.
-9. Verify microphone selection and refresh are disabled during startup, capture, and mute; leaving during Bluetooth connection startup must release the route and foreground notification. After stopping or leaving, verify other apps can use their normal audio routes.
+7. With a Bluetooth headset connected, select **Phone mic**, record speech close to the phone and away from the headset, and listen back. Repeat with the headset selected, then return to the phone input for another recording. Check classic Bluetooth and BLE headsets on supported Android versions.
+8. Disconnect the selected headset before starting, while recording, and while muted. Verify that a missing input cannot start, an active recording stops and can be reviewed, and neither case silently selects the phone. Reconnect, reopen the microphone sheet, and explicitly select the input for a new recording.
+9. Verify the microphone button is disabled during startup, capture, and mute; leaving during Bluetooth connection startup must release the route and foreground notification. After stopping or leaving, verify other apps can use their normal audio routes.
 
 ### Recorder dependency maintenance
 

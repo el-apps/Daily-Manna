@@ -147,13 +147,18 @@ class _RecitationModeState extends State<RecitationMode> {
                 canStart: _recorder.inputAvailable,
                 inputSelector: _recorder.supportsInputSelection
                     ? AudioInputSelector(
-                        inputs: _recorder.inputs,
                         selected: _recorder.selectedInput,
                         enabled: !_recorder.isBusy && !_loadingRecording,
-                        loading: _recorder.loadingInputs,
+                        available: _recorder.inputAvailable,
                         recording: _recorder.isRecording,
                         onChanged: _recorder.selectInput,
-                        onRefresh: _recorder.refreshInputs,
+                        loadInputs: () async {
+                          await _recorder.refreshInputs();
+                          if (_recorder.error != null) {
+                            throw StateError(_recorder.error!);
+                          }
+                          return _recorder.inputs;
+                        },
                       )
                     : null,
                 onToggleMute: _recorder.toggleMute,
@@ -507,6 +512,7 @@ class _RecitationModeState extends State<RecitationMode> {
   Future<void> _discardRecording() async {
     await _stopPlayback();
     if (mounted) {
+      _recorder.discard();
       setState(() {
         _step = RecitationStep.idle;
         _clearAudio();
