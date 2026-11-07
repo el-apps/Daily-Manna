@@ -1,6 +1,36 @@
 # Daily Manna 🤗📖
 An app for building strong daily habits in interacting with the Word of God.
 
+## Recitation controls on Android
+
+- Start a recording from **Recite** and allow microphone and notification access. Notifications must be enabled so the background recording always has accessible controls.
+- Before recording, tap **Phone mic** (the default) or the headset name beneath the recording controls. A bottom sheet lists microphones with a checkmark on the selection and refreshes each time it opens. Connect or pair headsets in Android Settings, then reopen the sheet. Playback-only Bluetooth devices are not microphone options; other platforms retain their existing system-selected input.
+- Microphone selection is locked while recording or muted. Stop the recording before choosing another microphone; switching does not splice separate recordings together.
+- Android verifies the capture route at startup. If the chosen input cannot be established, startup fails rather than accepting another microphone. If the input disconnects or routing changes during recording, the app stops and saves the captured audio for review. Android reports route changes asynchronously, so a small amount of fallback audio may be captured before the stop completes.
+- Android shows a native ongoing recording notification named **Recitation**, with **Mute/Unmute** and **Stop Recording**. It uses recording controls rather than Android's call template, whose built-in "Hang up" label cannot be customized.
+- **Mute** pauses recording; **Unmute** resumes it. The same controls are available on the recitation screen. Audio interruptions reported by the recorder also update the muted state; resuming requires an explicit action.
+- **Stop Recording** ends capture and keeps the recording for the existing playback, transcription, and grading flow. Tap the notification before stopping, or reopen Daily Manna afterward, to return to that screen.
+- A microphone foreground service keeps the session active while another app is open or the screen is locked, without forcing the display to stay on. This is not a carrier/Telecom call and does not use the phone dialer.
+- Leaving the recitation screen cancels an unfinished recording. Removing the app task, destroying its Flutter engine, or force-stopping the app ends the session; recordings are not restored after process death.
+- Web retains the existing foreground recording workflow, with the new in-page mute control but no Android notification.
+
+### Android device verification
+
+1. Start a recording, lock the screen, and verify that speech still appears in the saved playback after unlocking.
+2. Mute and unmute from both the notification and the app; verify that their states agree and paused speech is excluded from playback.
+3. Select **Stop Recording** while recording and while muted; verify that playback opens with the captured audio and the notification disappears.
+4. Deny microphone or notification permission, or disable the recitation notification channel in Settings; verify that starting fails visibly without leaving capture or a notification running.
+5. Leave the recitation screen, remove the app task, and interrupt recording with another audio app; verify cleanup and that interrupted capture does not silently resume.
+6. Check the notification and both actions on older and newer supported Android devices. Browser tests do not exercise Android notifications, lock-screen capture, or Bluetooth routing.
+7. With a Bluetooth headset connected, select **Phone mic**, record speech close to the phone and away from the headset, and listen back. Repeat with the headset selected, then return to the phone input for another recording. Check classic Bluetooth and BLE headsets on supported Android versions.
+8. Disconnect the selected headset before starting, while recording, and while muted. Verify that a missing input cannot start, an active recording stops and can be reviewed, and neither case silently selects the phone. Reconnect, reopen the microphone sheet, and explicitly select the input for a new recording.
+9. Verify the microphone button is disabled during startup, capture, and mute; leaving during Bluetooth connection startup must release the route and foreground notification. After stopping or leaving, verify other apps can use their normal audio routes.
+
+### Recorder dependency maintenance
+
+- Native input verification currently adapts `record_android` 1.4.5 through its private recorder fields because that version exposes neither the active `AudioRecord` nor its session ID. It reads the actual capture route and adjusts the plugin's saved audio mode so muting a reused recorder does not undo Bluetooth routing.
+- The adapter fails startup if those fields are unavailable; it does not assume that a preferred-device request succeeded. Its release-build keep rules live in `android/app/recitation-input-rules.pro`. Review the adapter and test a minified build on a device whenever upgrading `record_android`.
+
 ## Recording study sessions
 
 - Every passage selector opens with a **Search** tab for typing a reference, alongside **Books**, **Review**, and **Suggestions**. Matching passages use the same list-tile styling as Suggestions, with a divider above the results. Tap a title to select it immediately; the other tabs retain their direct-selection behavior. There is no separate Preview section or confirmation button, and selection does not log activity.
