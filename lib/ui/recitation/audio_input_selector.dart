@@ -1,97 +1,63 @@
 import 'package:daily_manna/services/recitation_audio_input.dart';
+import 'package:daily_manna/ui/recitation/audio_input_sheet.dart';
 import 'package:flutter/material.dart';
 
 class AudioInputSelector extends StatelessWidget {
   const AudioInputSelector({
     super.key,
-    required this.inputs,
     required this.selected,
     required this.onChanged,
-    required this.onRefresh,
+    required this.loadInputs,
     this.enabled = true,
-    this.loading = false,
     this.recording = false,
+    this.available = true,
   });
 
-  final List<RecitationInput> inputs;
   final RecitationInput selected;
   final ValueChanged<String> onChanged;
-  final VoidCallback onRefresh;
+  final Future<List<RecitationInput>> Function() loadInputs;
   final bool enabled;
-  final bool loading;
   final bool recording;
+  final bool available;
+
+  Future<void> _chooseInput(BuildContext context) async {
+    final id = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      constraints: BoxConstraints(
+        maxWidth: 640,
+        maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+      ),
+      builder: (_) =>
+          AudioInputSheet(selected: selected, loadInputs: loadInputs),
+    );
+    if (id != null && context.mounted) onChanged(id);
+  }
 
   @override
-  Widget build(BuildContext context) {
-    final available = inputs.any((input) => input.id == selected.id);
-    final options = [...inputs, if (!available) selected];
-    final hasBluetooth = inputs.any((input) => input.bluetooth);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: InputDecorator(
-                decoration: InputDecoration(
-                  labelText: 'Audio input',
-                  prefixIcon: Icon(
-                    selected.bluetooth ? Icons.bluetooth_audio : Icons.mic,
-                  ),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: selected.id,
-                    isExpanded: true,
-                    itemHeight: 64,
-                    onChanged: enabled && !loading && !recording
-                        ? (id) {
-                            if (id != null) onChanged(id);
-                          }
-                        : null,
-                    items: options.map((input) {
-                      final missing = !available && input.id == selected.id;
-                      return DropdownMenuItem(
-                        value: input.id,
-                        enabled: !missing,
-                        child: Text(
-                          missing
-                              ? '${input.label} (unavailable)'
-                              : input.label,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              tooltip: 'Refresh microphones',
-              onPressed: enabled && !loading && !recording ? onRefresh : null,
-              icon: loading
-                  ? const SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.refresh),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          recording
-              ? 'Stop recording before changing microphones.'
-              : !available
-              ? 'Microphone disconnected. Reconnect and refresh, or choose another input.'
-              : !hasBluetooth
-              ? 'To use Bluetooth, connect a headset in Android Settings, then refresh.'
-              : 'Choose a microphone before recording.',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Tooltip(
+    message: recording
+        ? 'Stop recording to change microphone'
+        : 'Choose microphone',
+    child: TextButton.icon(
+      onPressed: enabled && !recording ? () => _chooseInput(context) : null,
+      icon: Icon(
+        !available
+            ? Icons.mic_off_outlined
+            : selected.bluetooth
+            ? Icons.bluetooth_audio
+            : Icons.mic_none,
+        size: 18,
+      ),
+      label: Text(
+        available
+            ? selected.displayName
+            : '${selected.displayName} · Disconnected',
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+    ),
+  );
 }

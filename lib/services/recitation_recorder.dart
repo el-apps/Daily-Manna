@@ -54,7 +54,6 @@ class RecitationRecorder extends ChangeNotifier {
   RecitationInput _selectedInput = RecitationInput.phone;
   RecitationInput get selectedInput => _selectedInput;
   bool get supportsInputSelection => _audioInput.isSupported;
-  bool get loadingInputs => _loadingInputs;
   bool get inputAvailable =>
       !supportsInputSelection ||
       _inputs.any((input) => input.id == _selectedInput.id);
@@ -106,6 +105,15 @@ class RecitationRecorder extends ChangeNotifier {
     final matching = _inputs.where((input) => input.id == id);
     if (matching.isEmpty) return;
     _selectedInput = matching.first;
+    _error = null;
+    _notify();
+  }
+
+  /// The screen owns deleting the file and releasing its playback source.
+  void discard() {
+    if (_closing || state != RecitationRecordingState.saved) return;
+    _state = RecitationRecordingState.idle;
+    _path = null;
     _error = null;
     _notify();
   }

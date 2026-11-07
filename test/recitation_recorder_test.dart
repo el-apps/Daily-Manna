@@ -61,6 +61,18 @@ void main() {
     expect(recorder.selectedInput.bluetooth, isFalse);
   });
 
+  test('opening microphone choices cannot revive discarded audio', () async {
+    await recorder.start();
+    await recorder.stop();
+    expect(recorder.path, '/recording.wav');
+    recorder.discard();
+    await recorder.refreshInputs();
+    recorder.selectInput('headset');
+    expect(recorder.state, RecitationRecordingState.idle);
+    expect(recorder.path, isNull);
+    expect(recorder.selectedInput.id, 'headset');
+  });
+
   test('disconnected selection never silently falls back to phone', () async {
     await recorder.refreshInputs();
     recorder.selectInput('headset');
@@ -149,38 +161,93 @@ void main() {
     Widget selector({bool recording = false}) => MaterialApp(
       home: Scaffold(
         body: AudioInputSelector(
-          inputs: inputs.available,
           selected: selected,
+          available: inputs.available.any((input) => input.id == selected.id),
           recording: recording,
           onChanged: (id) =>
               selected = inputs.available.firstWhere((input) => input.id == id),
-          onRefresh: () => refreshes++,
+          loadInputs: () async {
+            refreshes++;
+            return inputs.available;
+          },
         ),
       ),
     );
     await tester.pumpWidget(selector());
-    await tester.tap(find.byType(DropdownButton<String>));
+    expect(find.textContaining('Android Settings'), findsNothing);
+    await tester.tap(find.text('Phone mic'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Bluetooth microphone · Test headset').last);
+    expect(refreshes, 1);
+    expect(
+      tester
+          .widget<ListTile>(find.widgetWithText(ListTile, 'Phone mic'))
+          .selected,
+      isTrue,
+    );
+    await tester.tap(find.text('Test headset'));
     await tester.pumpAndSettle();
     expect(selected.id, 'headset');
-    await tester.tap(find.byTooltip('Refresh microphones'));
-    expect(refreshes, 1);
+    expect(find.text('Microphone'), findsNothing);
     await tester.pumpWidget(selector(recording: true));
     expect(
       tester
-          .widget<DropdownButton<String>>(find.byType(DropdownButton<String>))
-          .onChanged,
+          .widget<TextButton>(
+            find.byWidgetPredicate((widget) => widget is TextButton),
+          )
+          .onPressed,
       isNull,
-    );
-    expect(
-      find.text('Stop recording before changing microphones.'),
-      findsOneWidget,
     );
     inputs.available = const [RecitationInput.phone];
     await tester.pumpWidget(selector());
-    expect(find.textContaining('(unavailable)'), findsOneWidget);
-    expect(find.textContaining('Reconnect and refresh'), findsOneWidget);
+    expect(find.text('Test headset · Disconnected'), findsOneWidget);
+    await tester.tap(find.text('Test headset · Disconnected'));
+    await tester.pumpAndSettle();
+    expect(refreshes, 2);
+    expect(find.textContaining('Android Settings'), findsOneWidget);
+    final missing = tester.widget<ListTile>(
+      find.widgetWithText(ListTile, 'Test headset'),
+    );
+    expect(missing.enabled, isFalse);
+    await tester.tap(find.widgetWithText(ListTile, 'Test headset'));
+    await tester.pumpAndSettle();
+    expect(find.text('Microphone'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ListTile, 'Phone mic'));
+    await tester.pumpAndSettle();
+    expect(selected.id, 'phone');
+  });
+
+  testWidgets('microphone sheet handles loading, failure, and retry', (
+    tester,
+  ) async {
+    final pending = Completer<List<RecitationInput>>();
+    var attempts = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AudioInputSelector(
+            selected: RecitationInput.phone,
+            onChanged: (_) {},
+            loadInputs: () {
+              attempts++;
+              return attempts == 1
+                  ? pending.future
+                  : Future.value(inputs.available);
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Phone mic'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    pending.completeError(StateError('Device query failed'));
+    await tester.pumpAndSettle();
+    expect(find.text('Could not load microphones.'), findsOneWidget);
+    await tester.tap(find.text('Try again'));
+    await tester.pumpAndSettle();
+    expect(find.text('Test headset'), findsOneWidget);
+    expect(find.text('Could not load microphones.'), findsNothing);
   });
 
   test(
