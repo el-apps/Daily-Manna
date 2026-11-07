@@ -8,6 +8,8 @@ class RecordingCard extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback onToggleMute;
   final bool isBusy;
+  final bool canStart;
+  final Widget? inputSelector;
 
   const RecordingCard({
     super.key,
@@ -15,6 +17,8 @@ class RecordingCard extends StatelessWidget {
     required this.onToggle,
     required this.onToggleMute,
     this.isBusy = false,
+    this.canStart = true,
+    this.inputSelector,
   });
 
   @override
@@ -47,6 +51,10 @@ class RecordingCard extends StatelessWidget {
             const SizedBox(height: 8),
             const Text('Unmute to continue your recitation.'),
           ],
+          if (inputSelector != null) ...[
+            const SizedBox(height: 24),
+            inputSelector!,
+          ],
           const SizedBox(height: 48),
           if (isRecording) ...[
             OutlinedButton.icon(
@@ -57,7 +65,7 @@ class RecordingCard extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           FilledButton.icon(
-            onPressed: isBusy ? null : onToggle,
+            onPressed: isBusy || (!isRecording && !canStart) ? null : onToggle,
             icon: Icon(isRecording ? Icons.stop : Icons.mic),
             label: Text(isRecording ? 'Stop Recording' : 'Start Recording'),
           ),

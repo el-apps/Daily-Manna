@@ -8,6 +8,7 @@ import 'package:daily_manna/services/results_service.dart';
 import 'package:daily_manna/services/recitation_recorder.dart';
 import 'package:daily_manna/ui/app_scaffold.dart';
 import 'package:daily_manna/ui/loading_section.dart';
+import 'package:daily_manna/ui/recitation/audio_input_selector.dart';
 import 'package:daily_manna/ui/recitation/recitation_confirmation_section.dart';
 import 'package:daily_manna/ui/recitation/recitation_playback_section.dart';
 import 'package:daily_manna/ui/recitation/recitation_results.dart';
@@ -67,6 +68,7 @@ class _RecitationModeState extends State<RecitationMode> {
   void initState() {
     super.initState();
     _recorder = RecitationRecorder()..addListener(_recordingChanged);
+    unawaited(_recorder.refreshInputs());
     _audioPlayer = AudioPlayer();
     _backendService = BackendService();
     _transcriptionController = TextEditingController();
@@ -142,6 +144,18 @@ class _RecitationModeState extends State<RecitationMode> {
                     ? RecordingState.recording
                     : RecordingState.idle,
                 isBusy: _recorder.isBusy || _loadingRecording,
+                canStart: _recorder.inputAvailable,
+                inputSelector: _recorder.supportsInputSelection
+                    ? AudioInputSelector(
+                        inputs: _recorder.inputs,
+                        selected: _recorder.selectedInput,
+                        enabled: !_recorder.isBusy && !_loadingRecording,
+                        loading: _recorder.loadingInputs,
+                        recording: _recorder.isRecording,
+                        onChanged: _recorder.selectInput,
+                        onRefresh: _recorder.refreshInputs,
+                      )
+                    : null,
                 onToggleMute: _recorder.toggleMute,
                 onToggle: _recorder.isRecording
                     ? _recorder.stop
