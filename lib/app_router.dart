@@ -9,8 +9,10 @@ import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
 import 'package:daily_manna/ui/study/study_notes_page.dart';
 import 'package:daily_manna/ui/study/study_result_detail_page.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
+import 'package:daily_manna/services/study_notes_service.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -20,13 +22,28 @@ final appRouter = GoRouter(
     GoRoute(path: '/study-notes', builder: (_, __) => const StudyNotesPage()),
     GoRoute(
       path: '/study-notes/:noteId',
-      builder: (_, state) {
+      builder: (context, state) {
         final note = state.extra;
-        return note is db.StudyNote
-            ? StudyNotesDetailPage(note: note)
-            : const _RouteUnavailablePage(
-                message: 'This study note is no longer available.',
+        if (note is db.StudyNote) return StudyNotesDetailPage(note: note);
+        final id = int.tryParse(state.pathParameters['noteId'] ?? '');
+        return FutureBuilder<db.StudyNote?>(
+          future: id == null
+              ? Future.value()
+              : context.read<StudyNotesService>().getNote(id),
+          builder: (_, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
               );
+            }
+            final loaded = snapshot.data;
+            return loaded == null
+                ? const _RouteUnavailablePage(
+                    message: 'This study note is no longer available.',
+                  )
+                : StudyNotesDetailPage(note: loaded);
+          },
+        );
       },
     ),
     GoRoute(

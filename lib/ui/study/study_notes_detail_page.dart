@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:daily_manna/models/concept_map.dart';
 import 'package:daily_manna/services/database/database.dart' as db;
 import 'package:daily_manna/services/error_logger_service.dart';
@@ -17,6 +19,7 @@ import 'package:provider/provider.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:drift/drift.dart' show Value;
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persistent workspace for a titled study note.
 class StudyNotesDetailPage extends StatefulWidget {
@@ -42,6 +45,13 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   late String _title;
   String? _selectedMapNodeId;
   int _activeTab = 0;
+  SharedPreferences? _draftPreferences;
+  late final Future<void> _draftReady;
+  bool _saving = false;
+  String? _draftMessage;
+  Future<bool>? _draftWrite;
+
+  String get _draftKey => 'study_note_draft_${widget.note.clientId}';
 
   @override
   void initState() {
@@ -58,6 +68,63 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
           setState(() => _activeTab = _tabController.index);
         }
       });
+    _draftReady = _restoreDraft();
+  }
+
+  Future<void> _restoreDraft() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      _draftPreferences = preferences;
+      final raw = preferences.getString(_draftKey);
+      if (raw != null) {
+        final draft = jsonDecode(raw) as Map<String, dynamic>;
+        _notesController.text = draft['notes'] as String? ?? _notes ?? '';
+        _conceptMap = ConceptMapDocument.fromMermaid(
+          draft['conceptMap'] as String? ?? _savedConceptMap,
+        );
+        _isEditing = true;
+        _draftMessage = 'Local draft restored. Save to sync your changes.';
+      }
+    } catch (_) {
+      _draftMessage =
+          'Could not recover the local draft. Please save manually.';
+    }
+    if (!mounted) return;
+    _notesController.addListener(_persistDraft);
+    setState(() {});
+  }
+
+  void _persistDraft() {
+    if (!_isEditing || _saving) return;
+    final preferences = _draftPreferences;
+    if (preferences == null) return;
+    final notes = _notesController.text;
+    final map = _conceptMap.toMermaid();
+    // Store only edited fields so recovering a draft preserves other synced edits.
+    final draft = <String, String>{
+      if (notes != (_notes ?? '')) 'notes': notes,
+      if (map != _savedConceptMap) 'conceptMap': map,
+    };
+    _draftWrite = draft.isEmpty
+        ? preferences.remove(_draftKey)
+        : preferences.setString(_draftKey, jsonEncode(draft));
+    _draftWrite!.then((saved) {
+      if (!saved) _draftFailed();
+    }, onError: (Object _) => _draftFailed());
+  }
+
+  void _draftFailed() {
+    if (!mounted) return;
+    setState(() {
+      _draftMessage =
+          'Could not protect the local draft. Please save manually.';
+    });
+  }
+
+  void _changeConceptMap(ConceptMapDocument document) {
+    setState(() => _conceptMap = document);
+    _persistDraft();
   }
 
   @override
@@ -68,84 +135,98 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   }
 
   @override
-  Widget build(BuildContext context) => AppScaffold(
-    title: _title,
-    showShareButton: false,
-    appBarActions: [
-      IconButton(
-        tooltip: _exporting ? 'Generating PDF…' : 'Generate PDF',
-        onPressed: _exporting ? null : _exportPdf,
-        icon: const Icon(Icons.picture_as_pdf_outlined),
-      ),
-      if (!_isEditing)
-        PopupMenuButton<String>(
-          tooltip: 'Note actions',
-          onSelected: (action) {
-            if (action == 'rename') {
-              _rename();
-            } else {
-              _setArchived(!_archived);
-            }
-          },
-          itemBuilder: (_) => [
-            const PopupMenuItem(value: 'rename', child: Text('Rename note')),
-            PopupMenuItem(
-              value: 'archive',
-              child: Text(_archived ? 'Restore note' : 'Archive note'),
-            ),
-          ],
+  Widget build(BuildContext context) => AbsorbPointer(
+    absorbing: _saving,
+    child: AppScaffold(
+      title: _title,
+      showShareButton: false,
+      appBarActions: [
+        IconButton(
+          tooltip: _exporting ? 'Generating PDF…' : 'Generate PDF',
+          onPressed: _exporting ? null : _exportPdf,
+          icon: const Icon(Icons.picture_as_pdf_outlined),
         ),
-    ],
-    floatingActionButton: _isEditing ? null : _buildEditToolbar(editing: false),
-    body: Column(
-      children: [
-        if (_archived)
-          const Padding(
-            padding: EdgeInsets.only(top: 8),
-            child: Chip(
-              avatar: Icon(Icons.archive_outlined),
-              label: Text('Archived'),
-            ),
-          ),
-        TabBar(
-          controller: _tabController,
-          tabs: [
-            Tab(text: 'Notes'),
-            Tab(text: 'Concept Map'),
-          ],
-        ),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            // The concept map owns horizontal gestures for panning. Tabs are
-            // switched explicitly so a map swipe cannot leave the editor.
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              _NotesTab(
-                notes: _notes,
-                notesController: _notesController,
-                isEditing: _isEditing,
-                onBold: _bold,
-                onIndent: () => _adjustBullets(1),
-                onDedent: () => _adjustBullets(-1),
-              ),
-              ConceptMapEditor(
-                key: _conceptMapKey,
-                document: _conceptMap,
-                editing: _isEditing,
-                selectedNodeId: _selectedMapNodeId,
-                onNodeSelected: (id) => setState(() => _selectedMapNodeId = id),
-                onChanged: (document) => setState(() => _conceptMap = document),
+        if (!_isEditing)
+          PopupMenuButton<String>(
+            tooltip: 'Note actions',
+            onSelected: (action) {
+              if (action == 'rename') {
+                _rename();
+              } else {
+                _setArchived(!_archived);
+              }
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'rename', child: Text('Rename note')),
+              PopupMenuItem(
+                value: 'archive',
+                child: Text(_archived ? 'Restore note' : 'Archive note'),
               ),
             ],
           ),
-        ),
-        if (_isEditing) _buildEditToolbar(editing: true),
       ],
+      floatingActionButton: _isEditing
+          ? null
+          : _buildEditToolbar(editing: false),
+      body: Column(
+        children: [
+          if (_draftMessage != null)
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Semantics(liveRegion: true, child: Text(_draftMessage!)),
+            ),
+          if (_archived)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Chip(
+                avatar: Icon(Icons.archive_outlined),
+                label: Text('Archived'),
+              ),
+            ),
+          TabBar(
+            controller: _tabController,
+            tabs: [
+              Tab(text: 'Notes'),
+              Tab(text: 'Concept Map'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              // The concept map owns horizontal gestures for panning. Tabs are
+              // switched explicitly so a map swipe cannot leave the editor.
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _NotesTab(
+                  notes: _notes,
+                  notesController: _notesController,
+                  isEditing: _isEditing,
+                  onBold: _bold,
+                  onIndent: () => _adjustBullets(1),
+                  onDedent: () => _adjustBullets(-1),
+                ),
+                ConceptMapEditor(
+                  key: _conceptMapKey,
+                  document: _conceptMap,
+                  editing: _isEditing,
+                  selectedNodeId: _selectedMapNodeId,
+                  onNodeSelected: (id) =>
+                      setState(() => _selectedMapNodeId = id),
+                  onChanged: _changeConceptMap,
+                ),
+              ],
+            ),
+          ),
+          if (_isEditing) _buildEditToolbar(editing: true),
+        ],
+      ),
     ),
   );
 
-  void _enterEditMode() => setState(() => _isEditing = true);
+  Future<void> _enterEditMode() async {
+    await _draftReady;
+    if (mounted) setState(() => _isEditing = true);
+  }
 
   Future<void> _exportPdf() async {
     final format = await showDialog<StudyNotesPdfFormat>(
@@ -235,31 +316,54 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   }
 
   Future<void> _save() async {
-    final newNotes = _notesController.text;
-    final newMap = _conceptMap.toMermaid();
-    // Compare with the loaded editor baseline, not a newer row from sync.
-    final notes = newNotes == (_notes ?? '')
-        ? const Value<String?>.absent()
-        : Value<String?>(newNotes.isEmpty ? null : newNotes);
-    final conceptMap = newMap == _savedConceptMap ? null : newMap;
-    final service = context.read<StudyNotesService>();
-    await service.saveNote(
-      widget.note.id,
-      notes: notes,
-      conceptMap: conceptMap,
-    );
-    final saved = await service.getNote(widget.note.id);
-    if (mounted && saved != null) {
-      setState(() {
-        _notes = saved.notes;
-        _notesController.text = saved.notes ?? '';
-        _title = saved.title;
-        _archived = saved.archived;
-        _conceptMap = ConceptMapDocument.fromMermaid(saved.conceptMap ?? '');
-        _savedConceptMap = _conceptMap.toMermaid();
-        _isEditing = false;
-        _selectedMapNodeId = null;
-      });
+    if (_saving) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _saving = true);
+    try {
+      final newNotes = _notesController.text;
+      final newMap = _conceptMap.toMermaid();
+      // Compare with the loaded editor baseline, not a newer row from sync.
+      final notes = newNotes == (_notes ?? '')
+          ? const Value<String?>.absent()
+          : Value<String?>(newNotes.isEmpty ? null : newNotes);
+      final conceptMap = newMap == _savedConceptMap ? null : newMap;
+      final service = context.read<StudyNotesService>();
+      await service.saveNote(
+        widget.note.id,
+        notes: notes,
+        conceptMap: conceptMap,
+      );
+      final saved = await service.getNote(widget.note.id);
+      if (saved == null) throw StateError('Study note no longer exists');
+      await _draftWrite?.catchError((Object _) => false);
+      _draftPreferences?.remove(_draftKey).then((removed) {
+        if (!removed) _draftFailed();
+      }, onError: (Object _) => _draftFailed());
+      if (mounted) {
+        setState(() {
+          _notes = saved.notes;
+          _notesController.text = saved.notes ?? '';
+          _title = saved.title;
+          _archived = saved.archived;
+          _conceptMap = ConceptMapDocument.fromMermaid(saved.conceptMap ?? '');
+          _savedConceptMap = _conceptMap.toMermaid();
+          _isEditing = false;
+          _selectedMapNodeId = null;
+          _draftMessage = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not save. Your edits are still open. Please try again.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -328,11 +432,11 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
                 const SizedBox(height: 24, child: VerticalDivider()),
                 if (node.type == ConceptMapNodeType.passage)
                   TextButton.icon(
-                    onPressed: () => setState(() {
-                      _conceptMap = _conceptMap.updateNode(
+                    onPressed: () => _changeConceptMap(
+                      _conceptMap.updateNode(
                         node.copyWith(showPassage: !node.showPassage),
-                      );
-                    }),
+                      ),
+                    ),
                     icon: const Icon(Icons.article_outlined),
                     label: Text(
                       node.showPassage ? 'Hide passage' : 'Show passage',
@@ -358,15 +462,15 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
                 ),
                 if (node.type != ConceptMapNodeType.passage)
                   TextButton.icon(
-                    onPressed: () => setState(() {
-                      _conceptMap = _conceptMap.updateNode(
+                    onPressed: () => _changeConceptMap(
+                      _conceptMap.updateNode(
                         node.copyWith(
                           type: node.type == ConceptMapNodeType.keyPoint
                               ? ConceptMapNodeType.note
                               : ConceptMapNodeType.keyPoint,
                         ),
-                      );
-                    }),
+                      ),
+                    ),
                     icon: Icon(
                       node.type == ConceptMapNodeType.keyPoint
                           ? Icons.note_outlined
@@ -382,6 +486,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
                   onPressed: () => setState(() {
                     _conceptMap = _conceptMap.deleteNode(node.id);
                     _selectedMapNodeId = null;
+                    _persistDraft();
                   }),
                   icon: const Icon(Icons.delete_outline),
                   label: const Text('Delete'),
@@ -404,6 +509,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
                               node.id,
                               offset,
                             );
+                            _persistDraft();
                           }),
                     icon: Icon(icon),
                   ),

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:bible_parser_flutter/bible_parser_flutter.dart';
+import 'package:daily_manna/app_router.dart';
 import 'package:daily_manna/models/concept_map.dart';
 import 'package:daily_manna/models/scripture_range_ref.dart';
 import 'package:daily_manna/services/bible_service.dart';
@@ -23,6 +24,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _BibleService extends BibleService {
   @override
@@ -72,6 +74,7 @@ void main() {
   );
 
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     database = AppDatabase.forTesting(NativeDatabase.memory());
     notesService = _StudyNotesService(database);
   });
@@ -1227,7 +1230,11 @@ flowchart TD
             nodes: document.nodes,
             edges: [
               for (final edge in document.edges.reversed)
-                ConceptMapEdge(from: edge.to, to: edge.from, length: edge.length),
+                ConceptMapEdge(
+                  from: edge.to,
+                  to: edge.from,
+                  length: edge.length,
+                ),
             ],
           ),
           nodeSizes: sizes,
@@ -1905,6 +1912,149 @@ flowchart TD
       expect(remaining.to, 'b');
     });
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('unsaved notes and map recover without recording a session', (
+    tester,
+  ) async {
+    late StudyNote note;
+    await tester.runAsync(() async {
+      note = await notesService.createNote(title: 'Draft recovery');
+      await notesService.updateNotes(note.id, 'Saved text');
+      note = (await notesService.getNote(note.id))!;
+    });
+    await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Unsaved insight');
+    await tester.tap(find.text('Concept Map'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Key point'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'Unsaved map card');
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      expect((await notesService.getNote(note.id))!.notes, 'Saved text');
+      expect(await database.getAllResults(), hasLength(1));
+    });
+
+    // Destroy the editor and service, as a page refresh does, keeping storage.
+    await tester.pumpWidget(const SizedBox());
+    notesService = _StudyNotesService(database);
+    await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Local draft restored. Save to sync your changes.'),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      'Unsaved insight',
+    );
+    await tester.tap(find.text('Concept Map'));
+    await tester.pumpAndSettle();
+    expect(find.text('Unsaved map card'), findsOneWidget);
+    await tester.runAsync(() async {
+      await tester.tap(find.byTooltip('Save'));
+    });
+    for (
+      var attempt = 0;
+      attempt < 50 && find.byTooltip('Save').evaluate().isNotEmpty;
+      attempt++
+    ) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      final saved = (await notesService.getNote(note.id))!;
+      expect(saved.notes, 'Unsaved insight');
+      expect(saved.conceptMap, contains('Unsaved map card'));
+      expect(await database.getAllResults(), hasLength(1));
+      note = saved;
+    });
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Edit'), findsOneWidget);
+    expect(find.textContaining('Local draft restored'), findsNothing);
+  });
+
+  testWidgets(
+    'draft recovery preserves cleared text and unrelated synced fields',
+    (tester) async {
+      late StudyNote note;
+      await tester.runAsync(() async {
+        note = await notesService.createNote(title: 'Clear draft');
+        await notesService.updateNotes(note.id, 'Text to remove');
+        note = (await notesService.getNote(note.id))!;
+      });
+      await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Edit'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '');
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(const SizedBox());
+      late StudyNote other;
+      await tester.runAsync(() async {
+        other = await notesService.createNote(title: 'Unrelated note');
+        await notesService.updateConceptMap(
+          note.id,
+          'flowchart TD\n  remote[Synced card]',
+        );
+        note = (await notesService.getNote(note.id))!;
+      });
+      await tester.pumpWidget(host(StudyNotesDetailPage(note: other)));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Edit'), findsOneWidget);
+      expect(find.textContaining('Local draft restored'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        isEmpty,
+      );
+      await tester.tap(find.text('Concept Map'));
+      await tester.pumpAndSettle();
+      expect(find.text('Synced card'), findsOneWidget);
+    },
+  );
+
+  testWidgets('note URLs load without navigation extras after a refresh', (
+    tester,
+  ) async {
+    late StudyNote note;
+    await tester.runAsync(() async {
+      note = await notesService.createNote(title: 'Direct URL');
+      await notesService.updateNotes(note.id, 'Persisted note content');
+    });
+    appRouter.go('/study-notes/${note.id}');
+    await tester.pumpWidget(host(const SizedBox(), router: appRouter));
+    for (
+      var attempt = 0;
+      attempt < 50 && find.text('Persisted note content').evaluate().isEmpty;
+      attempt++
+    ) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+    expect(find.text('Direct URL'), findsOneWidget);
+    expect(find.text('Persisted note content'), findsOneWidget);
+    appRouter.go('/study-notes/not-an-id');
+    await tester.pumpAndSettle();
+    expect(
+      find.text('This study note is no longer available.'),
+      findsOneWidget,
+    );
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets(

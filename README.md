@@ -16,6 +16,8 @@ An app for building strong daily habits in interacting with the Word of God.
 ## Writing Markdown study notes
 
 - Open a study note and select **Edit** to write or paste Markdown; **Save** returns to the formatted notes view.
+- Text and concept-map edits are backed up as a local draft as you edit. After a refresh or closing the page, reopen the same note to resume the draft automatically.
+- Drafts stay on this device/browser and do not sync or record study sessions until you select **Save**. Clearing browser storage also removes local drafts; if draft storage fails, the editor warns you to save manually.
 - The shared edit toolbar provides heading decrease/increase (levels 1–6), bullet outdent/indent (up to nine levels), **Bold**, **Blockquote**, **Page break**, and **Save**.
 - Select text before using Bold; line actions apply to the current line or all selected lines.
 - With the Markdown text box focused, **Ctrl+B** (or **Cmd+B** on macOS) runs the same Bold action as the toolbar button.
