@@ -31,6 +31,10 @@ class StudyNotesService {
 
   Future<StudyNote?> getNote(int id) => _db.studyNoteById(id);
 
+  Stream<StudyNote?> watchNote(int id) => (_db.select(
+    _db.studyNotes,
+  )..where((note) => note.id.equals(id))).watchSingleOrNull();
+
   Future<StudyNote?> getNoteByClientId(String id) =>
       _db.studyNoteByClientId(id);
 
@@ -66,16 +70,38 @@ class StudyNotesService {
   Future<void> updateConceptMap(int id, String conceptMap) =>
       saveNote(id, conceptMap: conceptMap);
 
-  Future<void> saveNote(
+  /// Returns whether a competing version was kept as a conflict copy.
+  Future<bool> saveNote(
     int id, {
     Value<String?> notes = const Value.absent(),
     String? conceptMap,
+    Value<String?> previousNotes = const Value.absent(),
+    String? previousConceptMap,
+    bool preserveCurrentVersion = false,
   }) async {
+    var preservedConflict = false;
     final changed = await _db.transaction(() async {
+      final note = await _db.studyNoteById(id);
+      if (note == null) return false;
+      final savedMap = ConceptMapDocument.fromMermaid(
+        note.conceptMap ?? '',
+      ).toMermaid();
+      final conflictingNotes =
+          notes.present &&
+          (preserveCurrentVersion ||
+              (previousNotes.present && note.notes != previousNotes.value)) &&
+          note.notes != notes.value;
+      final conflictingMap =
+          conceptMap != null &&
+          (preserveCurrentVersion ||
+              (previousConceptMap != null && savedMap != previousConceptMap)) &&
+          savedMap != conceptMap;
+      if (conflictingNotes || conflictingMap) {
+        await _db.preserveStudyNoteVersion(note.toCompanion(false));
+        preservedConflict = true;
+      }
       String? passages;
       if (conceptMap != null) {
-        final note = await _db.studyNoteById(id);
-        if (note == null) return false;
         passages = _encodePassages(
           passagesFor(note.copyWith(conceptMap: Value(conceptMap))),
         );
@@ -88,6 +114,7 @@ class StudyNotesService {
       );
     });
     if (changed) await onLocalChange?.call();
+    return preservedConflict;
   }
 
   Future<void> addPassage(

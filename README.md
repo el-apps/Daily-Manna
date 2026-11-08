@@ -53,6 +53,14 @@ An app for building strong daily habits in interacting with the Word of God.
 - On **Study Notes**, switch between **Active** and **Archived**; open an archived note and select **⋮ → Restore note** to bring it back.
 - Archiving keeps note content and past study-session links, but hides the note from the picker for new sessions.
 
+## Syncing between devices
+
+- Sign in to the same account on each device. Saved changes sync automatically after edits, when you open or return to the app, and every 30 seconds while the app is in the foreground.
+- Failed uploads remain on the device and retry automatically while the app is open or when you return to it. Keep the app open with a connection long enough for uploads to finish before switching devices.
+- Incoming changes refresh an open note's preview without replacing text or cards you are actively editing. Unsaved local drafts still require **Save** before they sync.
+- If saved edits conflict, both versions are kept: the other version appears in **Study Notes → Active** with **(conflict copy)** added to its title. Conflict copies sync to your other devices and do not create extra study sessions; compare them before archiving either version.
+- **Settings → Sync now** remains available for an immediate manual attempt. Closed apps do not sync in the background.
+
 ## Development Setup
 
 ### With Nix (NixOS)

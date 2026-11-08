@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -18,7 +19,7 @@ import 'package:daily_manna/ui/study/study_notes_detail_page.dart';
 import 'package:daily_manna/ui/study/study_notes_pdf_dialog.dart';
 import 'package:daily_manna/ui/study/study_result_detail_page.dart';
 import 'package:drift/native.dart';
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' show Value, DatabaseConnection;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,7 +51,24 @@ class _BibleService extends BibleService {
 class _StudyNotesService extends StudyNotesService {
   _StudyNotesService(super.database);
 
+  final _databaseZone = Zone.current;
   final visibleNotes = <StudyNote>[];
+
+  @override
+  Stream<StudyNote?> watchNote(int id) => Stream.multi((controller) {
+    // Native SQLite must keep running while widget tests pause their fake clock
+    // inside runAsync to await writes. Only UI delivery belongs to that clock.
+    final subscription = _databaseZone.run(
+      () => super
+          .watchNote(id)
+          .listen(
+            controller.add,
+            onError: controller.addError,
+            onDone: controller.close,
+          ),
+    );
+    controller.onCancel = () => _databaseZone.run(subscription.cancel);
+  });
 
   @override
   Stream<List<StudyNote>> watchNotes({bool archived = false}) => Stream.value(
@@ -75,7 +93,12 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
-    database = AppDatabase.forTesting(NativeDatabase.memory());
+    database = AppDatabase.forTesting(
+      DatabaseConnection(
+        NativeDatabase.memory(),
+        closeStreamsSynchronously: true,
+      ),
+    );
     notesService = _StudyNotesService(database);
   });
 
@@ -213,7 +236,7 @@ void main() {
     'note menu archives, undoes and restores only outside edit mode',
     (tester) async {
       Future<void> choose(String label, bool archived) async {
-        await tester.tap(find.text(label));
+        await tester.runAsync(() => tester.tap(find.text(label)));
         await tester.pumpAndSettle();
         await tester.runAsync(() async {
           await database
@@ -341,8 +364,8 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(controller.text, '> First\n> Second\n**Third**');
-    await tester.tap(find.byTooltip('Save'));
     await tester.runAsync(() async {
+      await tester.tap(find.byTooltip('Save'));
       await database.watchStudyNotes().firstWhere(
         (notes) => notes.single.notes == '> First\n> Second\n**Third**',
       );
@@ -2025,37 +2048,207 @@ flowchart TD
     },
   );
 
-  testWidgets('note URLs load without navigation extras after a refresh', (
-    tester,
-  ) async {
-    late StudyNote note;
-    await tester.runAsync(() async {
-      note = await notesService.createNote(title: 'Direct URL');
-      await notesService.updateNotes(note.id, 'Persisted note content');
-    });
-    appRouter.go('/study-notes/${note.id}');
-    await tester.pumpWidget(host(const SizedBox(), router: appRouter));
-    for (
-      var attempt = 0;
-      attempt < 50 && find.text('Persisted note content').evaluate().isEmpty;
-      attempt++
-    ) {
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 10)),
-      );
-      await tester.pump();
-    }
-    await tester.pumpAndSettle();
-    expect(find.text('Direct URL'), findsOneWidget);
-    expect(find.text('Persisted note content'), findsOneWidget);
-    appRouter.go('/study-notes/not-an-id');
-    await tester.pumpAndSettle();
-    expect(
-      find.text('This study note is no longer available.'),
-      findsOneWidget,
+  for (final legacyDraft in [false, true]) {
+    testWidgets(
+      'recovered drafts preserve newer synced text (legacy: $legacyDraft)',
+      (tester) async {
+        late StudyNote note;
+        await tester.runAsync(() async {
+          note = await notesService.createNote(title: 'Recovered outline');
+          await notesService.updateNotes(note.id, 'Original');
+          note = (await notesService.getNote(note.id))!;
+        });
+        await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Edit'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), 'Laptop draft');
+        await tester.pumpAndSettle();
+        await tester.pumpWidget(const SizedBox());
+        await tester.runAsync(() async {
+          if (legacyDraft) {
+            final preferences = await SharedPreferences.getInstance();
+            await preferences.setString(
+              'study_note_draft_${note.clientId}',
+              jsonEncode({'notes': 'Laptop draft'}),
+            );
+          }
+          await database.mergeRemoteStudyNote(
+            note
+                .copyWith(notes: const Value('Phone revision'))
+                .toCompanion(false),
+          );
+          note = (await notesService.getNote(note.id))!;
+        });
+        await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          'Laptop draft',
+        );
+        // Further typing must not replace the recovered baseline with the new row.
+        await tester.enterText(
+          find.byType(TextField),
+          'Laptop recovered draft',
+        );
+        await tester.runAsync(() => tester.tap(find.byTooltip('Save')));
+        for (
+          var attempt = 0;
+          attempt < 50 && find.byTooltip('Save').evaluate().isNotEmpty;
+          attempt++
+        ) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 10)),
+          );
+          await tester.pump();
+        }
+        await tester.pumpAndSettle();
+        await tester.runAsync(() async {
+          expect(
+            (await database.getStudyNotes()).map((note) => note.notes).toSet(),
+            {'Phone revision', 'Laptop recovered draft'},
+          );
+        });
+      },
     );
-    await tester.pumpWidget(const SizedBox());
-  });
+  }
+
+  testWidgets(
+    'note and session URLs load without navigation extras after a refresh',
+    (tester) async {
+      late StudyNote note;
+      await tester.runAsync(() async {
+        note = await notesService.createNote(title: 'Direct URL');
+        await notesService.updateNotes(note.id, 'Persisted note content');
+      });
+      appRouter.go('/study-notes/${note.id}');
+      await tester.pumpWidget(host(const SizedBox(), router: appRouter));
+      for (
+        var attempt = 0;
+        attempt < 50 && find.text('Persisted note content').evaluate().isEmpty;
+        attempt++
+      ) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+      expect(find.text('Direct URL'), findsOneWidget);
+      expect(find.text('Persisted note content'), findsOneWidget);
+      appRouter.go('/study-notes/not-an-id');
+      await tester.pumpAndSettle();
+      expect(
+        find.text('This study note is no longer available.'),
+        findsOneWidget,
+      );
+      late Result session;
+      await tester.runAsync(() async {
+        session = (await database.getAllResults()).single;
+      });
+      appRouter.go('/history/study/${session.id}');
+      for (
+        var attempt = 0;
+        attempt < 50 && find.text('Direct URL').evaluate().isEmpty;
+        attempt++
+      ) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+      expect(find.text('Study Session'), findsOneWidget);
+      expect(find.text('Direct URL'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'incoming notes refresh the preview without replacing an open draft',
+    (tester) async {
+      late StudyNote note;
+      await tester.runAsync(() async {
+        note = await notesService.createNote(title: 'Shared outline');
+        await notesService.updateNotes(note.id, 'Original');
+        note = (await notesService.getNote(note.id))!;
+      });
+      await tester.pumpWidget(host(StudyNotesDetailPage(note: note)));
+      await tester.pumpAndSettle();
+      await tester.runAsync(
+        () => database.mergeRemoteStudyNote(
+          note
+              .copyWith(notes: const Value('Phone first revision'))
+              .toCompanion(false),
+        ),
+      );
+      for (
+        var attempt = 0;
+        attempt < 50 && find.text('Phone first revision').evaluate().isEmpty;
+        attempt++
+      ) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+      }
+      expect(find.text('Phone first revision'), findsOneWidget);
+      await tester.tap(find.byTooltip('Edit'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Laptop draft');
+      await tester.runAsync(
+        () => database.mergeRemoteStudyNote(
+          note
+              .copyWith(
+                notes: const Value('Phone second revision'),
+                conceptMap: const Value('flowchart TD\n  phone[Phone card]'),
+              )
+              .toCompanion(false),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'Laptop draft',
+      );
+      await tester.runAsync(() => tester.tap(find.byTooltip('Save')));
+      for (
+        var attempt = 0;
+        attempt < 50 && find.byTooltip('Save').evaluate().isNotEmpty;
+        attempt++
+      ) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'Another version was kept as a conflict copy in Study Notes.',
+        ),
+        findsOneWidget,
+      );
+      await tester.runAsync(() async {
+        final notes = await database.getStudyNotes();
+        expect(notes.map((note) => note.notes).toSet(), {
+          'Laptop draft',
+          'Phone second revision',
+        });
+        expect(
+          notes
+              .singleWhere((note) => note.title.endsWith('(conflict copy)'))
+              .conceptMap,
+          contains('Phone card'),
+        );
+        expect(
+          (await notesService.getNote(note.id))!.conceptMap,
+          contains('Phone card'),
+        );
+        expect(await database.getAllResults(), hasLength(1));
+      });
+    },
+  );
 
   testWidgets(
     'stale editors preserve synced fields and unchanged saves stay clean',
@@ -2455,7 +2648,7 @@ flowchart TD
     await tester.pump();
     final renamed = Completer<void>();
     notesService.onLocalChange = () async => renamed.complete();
-    await tester.tap(find.text('Rename'));
+    await tester.runAsync(() => tester.tap(find.text('Rename')));
     await tester.pumpAndSettle();
     await tester.runAsync(
       () => renamed.future.timeout(const Duration(seconds: 5)),

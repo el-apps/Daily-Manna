@@ -26,12 +26,12 @@ final appRouter = GoRouter(
         final note = state.extra;
         if (note is db.StudyNote) return StudyNotesDetailPage(note: note);
         final id = int.tryParse(state.pathParameters['noteId'] ?? '');
-        return FutureBuilder<db.StudyNote?>(
-          future: id == null
-              ? Future.value()
-              : context.read<StudyNotesService>().getNote(id),
+        return StreamBuilder<db.StudyNote?>(
+          stream: id == null
+              ? Stream.value(null)
+              : context.read<StudyNotesService>().watchNote(id),
           builder: (_, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(
                 body: Center(child: CircularProgressIndicator()),
               );
@@ -48,13 +48,31 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/history/study/:resultId',
-      builder: (_, state) {
+      builder: (context, state) {
         final result = state.extra;
-        return result is db.Result
-            ? StudyResultDetailPage(result: result)
-            : const _RouteUnavailablePage(
-                message: 'This study result is no longer available.',
+        if (result is db.Result) return StudyResultDetailPage(result: result);
+        final id = int.tryParse(state.pathParameters['resultId'] ?? '');
+        final database = context.read<db.AppDatabase>();
+        return StreamBuilder<db.Result?>(
+          stream: id == null
+              ? Stream.value(null)
+              : (database.select(
+                  database.results,
+                )..where((result) => result.id.equals(id))).watchSingleOrNull(),
+          builder: (_, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
               );
+            }
+            final loaded = snapshot.data;
+            return loaded == null
+                ? const _RouteUnavailablePage(
+                    message: 'This study result is no longer available.',
+                  )
+                : StudyResultDetailPage(result: loaded);
+          },
+        );
       },
     ),
     GoRoute(

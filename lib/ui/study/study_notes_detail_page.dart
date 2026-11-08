@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:daily_manna/models/concept_map.dart';
@@ -47,9 +48,11 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   int _activeTab = 0;
   SharedPreferences? _draftPreferences;
   late final Future<void> _draftReady;
+  late final StreamSubscription<db.StudyNote?> _noteSubscription;
   bool _saving = false;
   String? _draftMessage;
   Future<bool>? _draftWrite;
+  bool _unknownDraftBaseline = false;
 
   String get _draftKey => 'study_note_draft_${widget.note.clientId}';
 
@@ -69,6 +72,21 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
         }
       });
     _draftReady = _restoreDraft();
+    _noteSubscription = context
+        .read<StudyNotesService>()
+        .watchNote(widget.note.id)
+        .listen((note) {
+          // Never replace an open draft or change its baseline underneath it.
+          if (!mounted || note == null || _isEditing || _saving) return;
+          setState(() {
+            _notes = note.notes;
+            _notesController.text = note.notes ?? '';
+            _title = note.title;
+            _archived = note.archived;
+            _conceptMap = ConceptMapDocument.fromMermaid(note.conceptMap ?? '');
+            _savedConceptMap = _conceptMap.toMermaid();
+          });
+        });
   }
 
   Future<void> _restoreDraft() async {
@@ -79,6 +97,18 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
       final raw = preferences.getString(_draftKey);
       if (raw != null) {
         final draft = jsonDecode(raw) as Map<String, dynamic>;
+        // Old drafts have no baseline; preserve the current synced version on save.
+        _unknownDraftBaseline =
+            draft['unknownBaseline'] == true ||
+            (draft.containsKey('notes') && !draft.containsKey('baseNotes')) ||
+            (draft.containsKey('conceptMap') &&
+                !draft.containsKey('baseConceptMap'));
+        if (draft.containsKey('baseNotes')) {
+          _notes = draft['baseNotes'] as String?;
+        }
+        if (draft.containsKey('baseConceptMap')) {
+          _savedConceptMap = draft['baseConceptMap'] as String;
+        }
         _notesController.text = draft['notes'] as String? ?? _notes ?? '';
         _conceptMap = ConceptMapDocument.fromMermaid(
           draft['conceptMap'] as String? ?? _savedConceptMap,
@@ -102,10 +132,16 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
     final notes = _notesController.text;
     final map = _conceptMap.toMermaid();
     // Store only edited fields so recovering a draft preserves other synced edits.
-    final draft = <String, String>{
-      if (notes != (_notes ?? '')) 'notes': notes,
-      if (map != _savedConceptMap) 'conceptMap': map,
+    final draft = <String, Object?>{
+      if (notes != (_notes ?? '')) ...{'notes': notes, 'baseNotes': _notes},
+      if (map != _savedConceptMap) ...{
+        'conceptMap': map,
+        'baseConceptMap': _savedConceptMap,
+      },
     };
+    if (draft.isNotEmpty && _unknownDraftBaseline) {
+      draft['unknownBaseline'] = true;
+    }
     _draftWrite = draft.isEmpty
         ? preferences.remove(_draftKey)
         : preferences.setString(_draftKey, jsonEncode(draft));
@@ -129,6 +165,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
 
   @override
   void dispose() {
+    _noteSubscription.cancel();
     _notesController.dispose();
     _tabController.dispose();
     super.dispose();
@@ -328,10 +365,13 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
           : Value<String?>(newNotes.isEmpty ? null : newNotes);
       final conceptMap = newMap == _savedConceptMap ? null : newMap;
       final service = context.read<StudyNotesService>();
-      await service.saveNote(
+      final preservedConflict = await service.saveNote(
         widget.note.id,
         notes: notes,
         conceptMap: conceptMap,
+        previousNotes: Value(_notes),
+        previousConceptMap: _savedConceptMap,
+        preserveCurrentVersion: _unknownDraftBaseline,
       );
       final saved = await service.getNote(widget.note.id);
       if (saved == null) throw StateError('Study note no longer exists');
@@ -350,7 +390,17 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
           _isEditing = false;
           _selectedMapNodeId = null;
           _draftMessage = null;
+          _unknownDraftBaseline = false;
         });
+        if (preservedConflict) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Another version was kept as a conflict copy in Study Notes.',
+              ),
+            ),
+          );
+        }
       }
     } catch (_) {
       if (mounted) {
