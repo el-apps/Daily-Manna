@@ -88,6 +88,14 @@ The flake uses [android-nixpkgs](https://github.com/tadfisher/android-nixpkgs) f
 
 Install Flutter and Android SDK manually following the [official Flutter documentation](https://flutter.dev/docs/get-started/install).
 
+## Website feedback with Amp
+
+- The web app loads the feedback widget for [kwila/Daily-Manna](https://ampcode.com/@kwila/Daily-Manna). Its allowed production origin is `https://dailymanna.kwila.cloud`.
+- After deploying with `just deploy`, open `https://dailymanna.kwila.cloud/?amp`, click the widget, select an element, and add a comment.
+- Select **Send**, sign in to Amp if prompted, then select **Start in an orb** to create a thread in the project. Workspace members can submit feedback.
+- The widget is hidden for visitors until they open the site with `?amp` or use its shortcut. Press **Ctrl+.** (**Cmd+.** on macOS) to hide or show it.
+- Manage allowed origins in the project's **Feedback Widget** settings. If the widget is turned off and enabled again, replace the script tag in `web/index.html` with the new one before deploying.
+
 ## Sources
 
 KJV Bible in OSIS format is from [here](https://github.com/gratis-bible/bible/blob/master/en/kjv.xml).
