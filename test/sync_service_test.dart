@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:daily_manna/services/database/database.dart';
 import 'package:daily_manna/services/sync_service.dart';
 import 'package:daily_manna/services/study_notes_service.dart';
@@ -26,6 +28,45 @@ class FakeSyncTransport implements SyncTransport {
     calls.add(changes);
     tokens.add(authToken);
     return responses.removeAt(0);
+  }
+}
+
+/// In-memory implementation of the server's cursor and replacement contract.
+class _SyncServer implements SyncTransport {
+  int cursor = 0;
+  int calls = 0;
+  bool offline = false;
+  Future<void> Function()? beforePush;
+  final items = <String, Map<String, dynamic>>{};
+
+  @override
+  Future<SyncResponse> exchange({
+    required String clientId,
+    required int cursor,
+    required int baseCursor,
+    required List<Map<String, dynamic>> changes,
+    String? authToken,
+  }) async {
+    calls++;
+    if (offline) throw const SyncException(503);
+    if (changes.isNotEmpty) {
+      final hook = beforePush;
+      beforePush = null;
+      await hook?.call();
+      if (baseCursor != this.cursor) throw const SyncException(409);
+      for (final change in changes) {
+        items['${change['type']}:${change['id']}'] = {
+          ...change,
+          'version': ++this.cursor,
+        };
+      }
+    }
+    return SyncResponse(
+      cursor: this.cursor,
+      changes: items.values
+          .where((item) => (item['version'] as int) > cursor)
+          .toList(),
+    );
   }
 }
 
@@ -260,6 +301,171 @@ void main() {
     },
   );
 
+  test(
+    'two offline note edits preserve both versions on both devices',
+    () async {
+      final phone = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(phone.close);
+      final server = _SyncServer();
+      final phoneSync = SyncService(phone, transport: server);
+      final laptopSync = SyncService(database, transport: server);
+      final phoneNotes = StudyNotesService(phone);
+      final laptopNotes = StudyNotesService(database);
+      final original = await phoneNotes.createNote(title: 'Wisdom');
+      await phoneNotes.updateNotes(original.id, 'Original outline');
+      await phoneSync.sync();
+      await laptopSync.sync();
+      final laptop = (await database.getStudyNotes()).single;
+
+      await phoneNotes.saveNote(
+        original.id,
+        notes: const Value('Phone insight'),
+        conceptMap: 'flowchart TD\n  phone[Phone card]',
+      );
+      await laptopNotes.updateNotes(laptop.id, 'Laptop insight');
+      await phoneSync.sync();
+      await laptopSync.sync();
+      await phoneSync.sync();
+      // A later sync must not manufacture more copies from ordinary echoes.
+      await laptopSync.sync();
+
+      for (final device in [phone, database]) {
+        final notes = await device.getStudyNotes();
+        expect(notes.map((note) => note.notes).toSet(), {
+          'Phone insight',
+          'Laptop insight',
+        });
+        final recovered = notes.singleWhere(
+          (note) => note.title.endsWith('(conflict copy)'),
+        );
+        expect(recovered.notes, 'Phone insight');
+        expect(recovered.conceptMap, contains('Phone card'));
+        expect(recovered.archived, isFalse);
+        expect(await device.pendingChanges(), isEmpty);
+        expect(await device.getAllResults(), hasLength(1));
+      }
+    },
+  );
+
+  test(
+    'foreground sync retries offline writes, pulls idle changes, and resumes immediately',
+    () async {
+      final server = _SyncServer();
+      final phone = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(phone.close);
+      final phoneNotes = StudyNotesService(phone);
+      final phoneSync = SyncService(phone, transport: server);
+      final note = await phoneNotes.createNote(title: 'Phone note');
+      await phoneSync.sync();
+      final local = await StudyNotesService(
+        database,
+      ).createNote(title: 'Offline laptop note');
+      final service = SyncService(
+        database,
+        transport: server,
+        authTokenProvider: () async => 'signed-in',
+      );
+      addTearDown(service.stopAutomaticSync);
+
+      server.offline = true;
+      await service.startAutomaticSync();
+      expect(await database.studyNoteByClientId(note.clientId), isNull);
+      expect(await database.pendingChanges(), isNotEmpty);
+      server.offline = false;
+      await phoneNotes.updateNotes(note.id, 'Arrived while laptop was idle');
+      await phoneSync.sync();
+      await Future<void>.delayed(const Duration(seconds: 31));
+      expect(
+        (await database.studyNoteByClientId(note.clientId))!.notes,
+        'Arrived while laptop was idle',
+      );
+      expect(await database.pendingChanges(), isEmpty);
+      expect(server.items['study_note:${local.clientId}'], isNotNull);
+
+      final calls = server.calls;
+      await service.startAutomaticSync();
+      expect(server.calls, calls);
+      service.stopAutomaticSync();
+      await phoneNotes.updateNotes(note.id, 'Updated while laptop was away');
+      await phoneSync.sync();
+      // A later server revision wins even when the phone's clock is behind.
+      server.items['study_note:${note.clientId}']!['data']['updatedAt'] =
+          '2000-01-01T00:00:00Z';
+      await service.startAutomaticSync();
+      expect(
+        (await database.studyNoteByClientId(note.clientId))!.notes,
+        'Updated while laptop was away',
+      );
+    },
+    timeout: const Timeout(Duration(seconds: 60)),
+  );
+
+  test(
+    'overlapping manual and automatic sync retain edits made during upload',
+    () async {
+      final server = _SyncServer();
+      final service = SyncService(
+        database,
+        transport: server,
+        authTokenProvider: () async => 'signed-in',
+      );
+      final notes = StudyNotesService(database);
+      final note = await notes.createNote(title: 'In flight');
+      await notes.updateNotes(note.id, 'First edit');
+      final pushing = Completer<void>();
+      final release = Completer<void>();
+      server.beforePush = () async {
+        pushing.complete();
+        await release.future;
+      };
+      final first = service.sync();
+      await pushing.future;
+      await notes.updateNotes(note.id, 'Edit during upload');
+      final second = service.requestSync();
+      release.complete();
+      await Future.wait([first, second]);
+      expect(
+        server.items['study_note:${note.clientId}']!['data']['notes'],
+        'Edit during upload',
+      );
+      expect(
+        (await database.studyNoteByClientId(note.clientId))!.notes,
+        'Edit during upload',
+      );
+      expect(await database.getStudyNotes(), hasLength(1));
+      expect(await database.pendingChanges(), isEmpty);
+    },
+  );
+
+  test(
+    'a competing server write between pull and push is retried without losing either note',
+    () async {
+      final server = _SyncServer();
+      final phone = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(phone.close);
+      final phoneNotes = StudyNotesService(phone);
+      final phoneSync = SyncService(phone, transport: server);
+      final note = await phoneNotes.createNote(title: 'Shared');
+      await phoneSync.sync();
+      final laptopSync = SyncService(database, transport: server);
+      await laptopSync.sync();
+      await StudyNotesService(
+        database,
+      ).updateNotes((await database.getStudyNotes()).single.id, 'Laptop');
+      await phoneNotes.updateNotes(note.id, 'Phone');
+      server.beforePush = phoneSync.sync;
+      await laptopSync.sync();
+      await phoneSync.sync();
+      for (final device in [phone, database]) {
+        expect(
+          (await device.getStudyNotes()).map((note) => note.notes).toSet(),
+          {'Phone', 'Laptop'},
+        );
+        expect(await device.pendingChanges(), isEmpty);
+      }
+    },
+  );
+
   test('sync can merge the server echo of a pushed local result', () async {
     await database.insertResult(
       ResultsCompanion.insert(
@@ -271,7 +477,7 @@ void main() {
         score: 1,
         notes: const Value('copy to outline'),
         clientId: const Value('legacy-1087'),
-        updatedAt: Value(DateTime.utc(2026, 9, 7, 7, 28)),
+        updatedAt: Value(DateTime.utc(2027)),
       ),
     );
     final transport = FakeSyncTransport()

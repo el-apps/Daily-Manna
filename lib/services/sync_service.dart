@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:daily_manna/services/database/database.dart';
@@ -120,37 +121,38 @@ class SyncService {
   final ErrorLoggerService? _errorLogger;
   final Future<void> Function()? _onUnauthorized;
   static const _clientIdKey = 'sync_client_id';
-  bool _syncing = false;
+  Timer? _automaticSyncTimer;
+  Future<void>? _activeSync;
   bool _syncAgain = false;
 
-  /// Requests one sync attempt after a local write has been committed.
-  Future<void> requestSync() => _requestSync();
+  /// Pull while the app is in the foreground, even without local writes. Each
+  /// tick also retries pending uploads after a temporary connection failure.
+  Future<void> startAutomaticSync() {
+    if (_automaticSyncTimer != null) return Future.value();
+    _automaticSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (_activeSync == null) unawaited(requestSync());
+    });
+    return requestSync();
+  }
 
-  Future<void> _requestSync() async {
-    if (_syncing) {
-      _syncAgain = true;
-      return;
-    }
-    _syncing = true;
+  void stopAutomaticSync() {
+    _automaticSyncTimer?.cancel();
+    _automaticSyncTimer = null;
+  }
+
+  /// Requests one sync attempt after a local write has been committed.
+  Future<void> requestSync() async {
     try {
-      do {
-        _syncAgain = false;
-        try {
-          if (await _authTokenProvider?.call() != null) {
-            await sync();
-          } else {
-            _errorLogger?.logInfo(
-              'Auto-sync skipped because no account is signed in.',
-              context: 'Sync',
-            );
-          }
-        } catch (_) {
-          // Keep the local outbox intact; a later write or manual retry can
-          // attempt synchronization again.
-        }
-      } while (_syncAgain);
-    } finally {
-      _syncing = false;
+      if (await _authTokenProvider?.call() != null) {
+        await sync();
+      } else {
+        _errorLogger?.logInfo(
+          'Auto-sync skipped because no account is signed in.',
+          context: 'Sync',
+        );
+      }
+    } catch (_) {
+      // Keep the outbox intact. Foreground ticks and resume retry automatically.
     }
   }
 
@@ -165,7 +167,34 @@ class SyncService {
 
   /// Executes pull -> merge -> push -> final pull. Authentication is injected
   /// by the host app and may be omitted for endpoints that allow anonymous sync.
-  Future<void> sync() async {
+  Future<void> sync() {
+    final active = _activeSync;
+    if (active != null) {
+      _syncAgain = true;
+      return active;
+    }
+    return _activeSync = _syncUntilIdle().whenComplete(
+      () => _activeSync = null,
+    );
+  }
+
+  Future<void> _syncUntilIdle() async {
+    do {
+      _syncAgain = false;
+      for (var attempt = 0; ; attempt++) {
+        try {
+          await _sync();
+          break;
+        } on SyncException catch (error) {
+          // Another device can write between our pull and push. Pull its new
+          // revision before trying again; never bypass the server's cursor check.
+          if (error.statusCode != 409 || attempt >= 2) rethrow;
+        }
+      }
+    } while (_syncAgain);
+  }
+
+  Future<void> _sync() async {
     _errorLogger?.logInfo('Sync attempt started.', context: 'Sync');
     final startedAt = DateTime.now();
     try {
@@ -209,7 +238,13 @@ class SyncService {
           changes: outgoing,
           authToken: token,
         );
-        await _merge(pushed);
+        await _merge(
+          pushed,
+          pushedNotes: {
+            for (final change in outgoing)
+              if (change['type'] == 'study_note') change['id'] as String,
+          },
+        );
         await _db.acknowledgeChanges(outbox.map((change) => change.id));
         cursor = pushed.cursor;
       }
@@ -235,10 +270,29 @@ class SyncService {
     }
   }
 
-  Future<void> _merge(SyncResponse response) => _db.transaction(() async {
+  Future<void> _merge(
+    SyncResponse response, {
+    Set<String> pushedNotes = const {},
+  }) => _db.transaction(() async {
     for (final change in response.changes) {
       final id = change['id'] as String;
-      if (await _db.hasPendingChange(id)) continue;
+      if (await _db.hasPendingChange(id)) {
+        if (change['type'] == 'study_note' &&
+            change['deleted'] != true &&
+            !pushedNotes.contains(id)) {
+          final remote = _decodeStudyNote(id, change['data'] as Map);
+          final local = await _db.studyNoteByClientId(id);
+          if (local != null &&
+              (local.title != remote.title.value ||
+                  local.notes != remote.notes.value ||
+                  local.conceptMap != remote.conceptMap.value ||
+                  local.passages != remote.passages.value ||
+                  local.archived != remote.archived.value)) {
+            await _db.preserveStudyNoteVersion(remote);
+          }
+        }
+        continue;
+      }
       if (change['deleted'] == true) {
         if (change['type'] == 'study_session') {
           await _db.deleteRemoteResult(id);

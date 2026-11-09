@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:daily_manna/app_router.dart';
 import 'package:daily_manna/services/auth_service.dart';
 import 'package:daily_manna/services/bible_service.dart';
@@ -10,12 +12,16 @@ import 'package:daily_manna/services/spaced_repetition_service.dart';
 import 'package:daily_manna/services/streak_service.dart';
 import 'package:daily_manna/services/sync_service.dart';
 import 'package:daily_manna/services/notification_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 void main() {
   usePathUrlStrategy();
+  // Keep pushed screens bookmarkable while retaining the native navigation stack.
+  GoRouter.optionURLReflectsImperativeAPIs = true;
   runApp(const DailyMannaApp());
 }
 
@@ -39,6 +45,7 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
   late SyncService _syncService;
   late AuthService _authService;
   late Future _initFuture;
+  AppLifecycleListener? _appLifecycle;
 
   @override
   void initState() {
@@ -70,21 +77,46 @@ class _DailyMannaAppState extends State<DailyMannaApp> {
     _initFuture =
         Future.wait([
           _authService.init(),
-          _settingsService.init().then((_) async {
-            await _notificationService.initialize();
-            await _notificationService.scheduleDailyNotification();
-          }),
+          _settingsService.init(),
           _errorLoggerService.init(),
           _bibleService.load(context),
-        ]).then((_) async {
-          if (_authService.isSignedIn) {
-            try {
-              await _syncService.sync();
-            } catch (_) {
-              // Startup remains usable offline; Settings offers a manual retry.
-            }
-          }
+        ]).then((_) {
+          if (!mounted) return;
+          _authService.addListener(_updateAutomaticSync);
+          _appLifecycle = AppLifecycleListener(
+            onStateChange: (_) => _updateAutomaticSync(),
+          );
+          _updateAutomaticSync();
+          unawaited(_initializeNotifications());
         });
+  }
+
+  Future<void> _initializeNotifications() async {
+    if (kIsWeb) return;
+    try {
+      await _notificationService.initialize();
+      await _notificationService.scheduleDailyNotification();
+    } catch (_) {
+      // NotificationService logs failures; reminders must not prevent account sync.
+    }
+  }
+
+  void _updateAutomaticSync() {
+    final state = WidgetsBinding.instance.lifecycleState;
+    if (_authService.isSignedIn &&
+        (state == null || state == AppLifecycleState.resumed)) {
+      unawaited(_syncService.startAutomaticSync());
+    } else {
+      _syncService.stopAutomaticSync();
+    }
+  }
+
+  @override
+  void dispose() {
+    _appLifecycle?.dispose();
+    _authService.removeListener(_updateAutomaticSync);
+    _syncService.stopAutomaticSync();
+    super.dispose();
   }
 
   @override

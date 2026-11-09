@@ -305,6 +305,22 @@ class AppDatabase extends _$AppDatabase {
     studyNotes,
   )..orderBy([(note) => OrderingTerm.desc(note.updatedAt)])).get();
 
+  /// Keep the competing version as an ordinary, synced note. Never make the
+  /// user recover overwritten work from logs or a device that is still offline.
+  Future<int> preserveStudyNoteVersion(StudyNotesCompanion note) {
+    final now = DateTime.now().toUtc();
+    return insertStudyNote(
+      note.copyWith(
+        id: const Value.absent(),
+        clientId: Value(newClientId()),
+        title: Value('${note.title.value} (conflict copy)'),
+        archived: const Value(false),
+        createdAt: Value(now),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
   Future<void> _enqueueStudyNote(String clientId, DateTime now) =>
       into(syncOutbox).insert(
         SyncOutboxCompanion.insert(
@@ -318,10 +334,8 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> mergeRemoteStudyNote(StudyNotesCompanion remote) async {
     final existing = await studyNoteByClientId(remote.clientId.value);
-    if (existing != null &&
-        !remote.updatedAt.value.isAfter(existing.updatedAt)) {
-      return;
-    }
+    // Sync applies revisions in server-cursor order after checking the outbox.
+    // Device clocks (and SQLite's second precision) cannot order those revisions.
     if (existing != null) {
       await (update(
         studyNotes,
@@ -386,10 +400,6 @@ class AppDatabase extends _$AppDatabase {
   /// Applies a server value without feeding it back into the outbox.
   Future<void> mergeRemoteResult(ResultsCompanion remote) async {
     final existing = await resultByClientId(remote.clientId.value);
-    if (existing != null &&
-        !remote.updatedAt.value.isAfter(existing.updatedAt)) {
-      return;
-    }
     if (existing != null) {
       // client_id is the sync identity, while id is only the local row key.
       // An insertOnConflictUpdate cannot resolve a client_id collision when
