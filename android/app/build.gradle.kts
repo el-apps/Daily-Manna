@@ -55,6 +55,7 @@ android {
         release {
             isMinifyEnabled = true
             signingConfig = signingConfigs["release"]
+            proguardFiles("recitation-input-rules.pro")
         }
     }
 }

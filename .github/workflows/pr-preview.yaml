@@ -53,7 +53,28 @@ jobs:
           echo "Preview version: ${PREVIEW_VERSION}"
 
       - name: Build release APK
-        run: flutter build apk --release
+        shell: bash
+        run: |
+          max_attempts=3
+          build_log="${RUNNER_TEMP}/apk-build.log"
+          transient_error='HTTP response code: (429|5[0-9]{2})|Received status code (429|5[0-9]{2})|Connection timed out|Read timed out|Temporary failure in name resolution|Connection reset'
+
+          for ((attempt=1; attempt<=max_attempts; attempt++)); do
+            echo "APK build attempt ${attempt}/${max_attempts}"
+            if flutter build apk --release 2>&1 | tee "$build_log"; then
+              break
+            else
+              build_status=$?
+            fi
+
+            if ((attempt == max_attempts)) || ! grep -Eq "$transient_error" "$build_log"; then
+              exit "$build_status"
+            fi
+
+            delay=$((attempt * 30))
+            echo "::warning::Transient download failure; retrying APK build in ${delay}s"
+            sleep "$delay"
+          done
 
       - name: Upload APK
         id: upload-apk
