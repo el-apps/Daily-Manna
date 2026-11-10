@@ -14,6 +14,7 @@ import 'package:daily_manna/ui/study/study_notes_pdf_dialog.dart';
 import 'package:daily_manna/ui/study/study_note_title_dialog.dart';
 import 'package:daily_manna/ui/edit_toolbar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -659,7 +660,7 @@ class _StudyNotesDetailPageState extends State<StudyNotesDetailPage>
   }
 }
 
-class _NotesTab extends StatelessWidget {
+class _NotesTab extends StatefulWidget {
   const _NotesTab({
     required this.notes,
     required this.notesController,
@@ -677,24 +678,142 @@ class _NotesTab extends StatelessWidget {
   final VoidCallback onDedent;
 
   @override
+  State<_NotesTab> createState() => _NotesTabState();
+}
+
+class _NotesTabState extends State<_NotesTab> {
+  final _scrollController = ScrollController();
+  final _focusNode = FocusNode();
+  final _viewportKey = GlobalKey();
+  final _editorKey = GlobalKey();
+
+  @override
+  void didUpdateWidget(covariant _NotesTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isEditing && !oldWidget.isEditing) {
+      widget.notesController.selection = TextSelection.collapsed(
+        offset: _visibleSourceOffset(),
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) => _revealCursor());
+    }
+  }
+
+  // Match rendered text spans in document order, not by scroll percentage:
+  // headings, lists and wrapping have different heights in Markdown source.
+  int _visibleSourceOffset() {
+    final viewport =
+        _viewportKey.currentContext!.findRenderObject() as RenderBox;
+    final top = viewport.localToGlobal(Offset.zero).dy;
+    final source = widget.notesController.text;
+    var sourceCursor = 0;
+    int? anchor;
+
+    void visit(RenderObject object) {
+      if (anchor != null) return;
+      if (object is RenderEditable) {
+        final origin = object.localToGlobal(Offset.zero);
+        final visible = origin.dy + object.size.height > top;
+        final position = object
+            .getPositionForPoint(
+              Offset(
+                origin.dx,
+                top.clamp(origin.dy, origin.dy + object.size.height),
+              ),
+            )
+            .offset;
+        var textOffset = 0;
+        object.text?.visitChildren((span) {
+          if (span is! TextSpan || span.text == null) return true;
+          final text = span.text!;
+          // Markdown collapses source whitespace, so match words within each
+          // literal span while skipping syntax such as emphasis and link URLs.
+          for (final word in RegExp(r'\S+').allMatches(text)) {
+            final content = word.group(0)!;
+            final start = source.indexOf(content, sourceCursor);
+            if (start < 0) continue;
+            sourceCursor = start + content.length;
+            final renderedStart = textOffset + word.start;
+            if (visible &&
+                anchor == null &&
+                position < renderedStart + content.length) {
+              anchor =
+                  start + (position - renderedStart).clamp(0, content.length);
+            }
+          }
+          textOffset += text.length;
+          return true;
+        });
+        return;
+      }
+      object.visitChildren(visit);
+    }
+
+    viewport.visitChildren(visit);
+    return anchor ?? 0;
+  }
+
+  void _revealCursor() {
+    if (!mounted || !widget.isEditing) return;
+    RenderEditable? editor;
+    void visit(RenderObject object) {
+      if (object is RenderEditable) {
+        editor = object;
+      } else {
+        object.visitChildren(visit);
+      }
+    }
+
+    _editorKey.currentContext!.findRenderObject()!.visitChildren(visit);
+    if (editor != null && _scrollController.hasClients) {
+      final viewport =
+          _viewportKey.currentContext!.findRenderObject() as RenderBox;
+      final caret = editor!.getLocalRectForCaret(
+        widget.notesController.selection.extent,
+      );
+      final delta =
+          editor!.localToGlobal(caret.topLeft).dy -
+          viewport.localToGlobal(Offset.zero).dy -
+          16;
+      final position = _scrollController.position;
+      _scrollController.jumpTo(
+        (position.pixels + delta).clamp(0, position.maxScrollExtent),
+      );
+    }
+    _focusNode.requestFocus();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => ListView(
+    key: _viewportKey,
+    controller: _scrollController,
     padding: const EdgeInsets.all(16),
     children: [
-      if (isEditing) ...[
+      if (widget.isEditing) ...[
         CallbackShortcuts(
           bindings: {
             const SingleActivator(LogicalKeyboardKey.keyB, control: true):
-                onBold,
-            const SingleActivator(LogicalKeyboardKey.keyB, meta: true): onBold,
-            const SingleActivator(LogicalKeyboardKey.tab): onIndent,
+                widget.onBold,
+            const SingleActivator(LogicalKeyboardKey.keyB, meta: true):
+                widget.onBold,
+            const SingleActivator(LogicalKeyboardKey.tab): widget.onIndent,
             const SingleActivator(LogicalKeyboardKey.tab, shift: true):
-                onDedent,
+                widget.onDedent,
           },
           child: TextField(
-            controller: notesController,
+            key: _editorKey,
+            controller: widget.notesController,
+            focusNode: _focusNode,
             style: const TextStyle(fontFamily: 'DejaVuSansMono'),
             inputFormatters: [_BulletContinuationFormatter()],
-            autofocus: true,
+            autofocus:
+                widget.isEditing && !widget.notesController.selection.isValid,
             maxLines: null,
             minLines: 10,
             decoration: const InputDecoration(
@@ -704,8 +823,8 @@ class _NotesTab extends StatelessWidget {
             ),
           ),
         ),
-      ] else if (notes?.isNotEmpty == true)
-        StudyMarkdownPreview(source: notes!)
+      ] else if (widget.notes?.isNotEmpty == true)
+        StudyMarkdownPreview(source: widget.notes!)
       else
         const EmptyState(
           icon: Icons.edit_note,
