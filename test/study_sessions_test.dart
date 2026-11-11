@@ -404,6 +404,74 @@ void main() {
     expect(find.byType(StudyNotesPdfDialog), findsNothing);
   });
 
+  testWidgets('editing opens at the visible Markdown section', (tester) async {
+    final source = List.generate(
+      32,
+      (i) =>
+          '## Section $i\n\n'
+          '- A repeated **point** with [a link](https://example.com)\n'
+          '  - Supporting detail $i\n\n'
+          '> ${List.filled(i % 4 + 1, 'A quotation for section $i.').join(' ')}\n\n'
+          'A paragraph for section $i\ncontinues across source lines.\n\n'
+          'Read James 1:${i + 1}\n\n',
+    ).join();
+    late StudyNote note;
+    await tester.runAsync(() async {
+      note = await notesService.createNote(title: 'Long outline');
+      await notesService.updateNotes(note.id, source);
+      note = (await notesService.getNote(note.id))!;
+    });
+
+    for (final (section, prefix) in [
+      (0, 'Section 0'),
+      (12, 'Section 12'),
+      (18, 'A repeated point'),
+      (20, 'A paragraph for section 20'),
+      (27, 'Section 27'),
+    ]) {
+      await tester.pumpWidget(
+        host(StudyNotesDetailPage(key: ValueKey(section), note: note)),
+      );
+      await tester.pumpAndSettle();
+      final target = find.byWidgetPredicate(
+        (widget) =>
+            widget is SelectableText &&
+            widget.textSpan?.toPlainText().startsWith(prefix) == true,
+      );
+      await tester.ensureVisible(
+        prefix == 'A repeated point' ? target.at(section) : target,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Edit'));
+      await tester.pumpAndSettle();
+      final field = tester.widget<TextField>(find.byType(TextField));
+      final controller = field.controller!;
+      final sectionStart = source.indexOf('Section $section\n');
+      final sourcePrefix = prefix == 'A repeated point'
+          ? 'A repeated **point**'
+          : prefix;
+      final start = source.indexOf(sourcePrefix, sectionStart);
+      expect(
+        controller.selection.baseOffset,
+        inInclusiveRange(start, start + sourcePrefix.length),
+      );
+      final editable = tester.state<EditableTextState>(
+        find.byType(EditableText),
+      );
+      final caret = editable.renderEditable.localToGlobal(
+        editable.renderEditable
+            .getLocalRectForCaret(controller.selection.extent)
+            .topLeft,
+      );
+      expect(
+        caret.dy,
+        greaterThan(tester.getBottomLeft(find.byType(TabBar)).dy),
+      );
+      expect(caret.dy, lessThan(tester.getTopLeft(find.byTooltip('Save')).dy));
+      expect(field.focusNode!.hasFocus, isTrue);
+    }
+  });
+
   testWidgets('Markdown lists continue and indent with the keyboard', (
     tester,
   ) async {
