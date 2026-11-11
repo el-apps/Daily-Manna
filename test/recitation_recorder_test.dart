@@ -43,6 +43,8 @@ void main() {
     await recorder.start();
     expect(audio.config!.device!.id, '42');
     expect(audio.config!.androidConfig.manageBluetooth, isFalse);
+    expect(audio.config!.audioInterruption, AudioInterruptionMode.none);
+    expect(audio.config!.toMap()['audioInterruption'], 0);
     expect(audio.config!.encoder, AudioEncoder.wav);
     expect(audio.config!.sampleRate, 16000);
     expect(audio.config!.numChannels, 1);
@@ -50,6 +52,11 @@ void main() {
     recorder.selectInput('phone');
     expect(recorder.selectedInput.id, 'headset');
     await recorder.toggleMute();
+    expect(recorder.isMuted, isTrue);
+    expect(audio.paused, isTrue);
+    await recorder.toggleMute();
+    expect(recorder.isMuted, isFalse);
+    expect(audio.paused, isFalse);
     recorder.selectInput('phone');
     expect(recorder.selectedInput.id, 'headset');
     await recorder.stop();
@@ -58,6 +65,7 @@ void main() {
     await recorder.start();
     expect(audio.config!.device!.id, '7');
     expect(audio.config!.androidConfig.audioSource, AndroidAudioSource.mic);
+    expect(audio.config!.audioInterruption, AudioInterruptionMode.pause);
     expect(recorder.selectedInput.bluetooth, isFalse);
   });
 

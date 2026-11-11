@@ -153,6 +153,12 @@ class RecitationRecorder extends ChangeNotifier {
           sampleRate: 16000,
           numChannels: 1,
           device: device,
+          // Bluetooth communication routing can lose media audio focus without
+          // losing the microphone. Do not turn that into a persistent mute;
+          // native input verification still stops capture if the route is lost.
+          audioInterruption: bluetooth
+              ? AudioInterruptionMode.none
+              : AudioInterruptionMode.pause,
           androidConfig: AndroidRecordConfig(
             // Native routing owns the choice; the plugin must not auto-switch.
             manageBluetooth: !supportsInputSelection,
